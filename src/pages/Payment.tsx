@@ -143,7 +143,14 @@ export default function Payment() {
   const handlePay = async () => {
     setError(null);
 
-    if (!authUser) {
+    // Auth may still be hydrating when the user taps quickly after arriving.
+    // Fall back to a live session check before erroring out.
+    let effectiveUser = authUser;
+    if (!effectiveUser) {
+      const { data } = await supabase.auth.getSession();
+      effectiveUser = (data.session?.user as typeof authUser) ?? null;
+    }
+    if (!effectiveUser) {
       setError("You're not signed in. Please log in again to complete payment.");
       return;
     }
