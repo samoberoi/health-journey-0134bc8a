@@ -321,7 +321,7 @@ export default function AdminCoaches() {
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             <InfoCell label="Phone" value={coach.phone} />
                             <InfoCell label="Email" value={coach.email || "—"} />
-                            <InfoCell label="Package" value={packageLabel(coach.coach_type)} />
+                            <InfoCell label="Packages" value={((coach as any).coach_packages?.length ? (coach as any).coach_packages : [coach.coach_type]).map((p: string) => packageLabel(p)).join(", ")} />
                             <InfoCell label="Experience" value={`${coach.years_experience} yrs`} />
                             <InfoCell label="Commission" value={`${coach.commission_percent || 0}%`} />
                             <InfoCell label="Start Date" value={coach.start_date ? new Date(coach.start_date).toLocaleDateString("en-IN") : "—"} />
