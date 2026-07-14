@@ -454,6 +454,9 @@ function FoundationSupplementBrowser({
     });
   }, [supplements, category, timing, query]);
 
+  const availableList = useMemo(() => filtered.filter((s) => !inPlan.has(s.id)), [filtered, inPlan]);
+  const addedList = useMemo(() => filtered.filter((s) => inPlan.has(s.id)), [filtered, inPlan]);
+
   const handleAdd = async (s: Supplement) => {
     if (!userId) return toast.error("Please sign in");
     setAdding(s.id);
