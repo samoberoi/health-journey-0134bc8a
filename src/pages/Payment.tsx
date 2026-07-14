@@ -11,6 +11,24 @@ import { autoAssignCoach, fetchAssignedCoach, coachTypeLabel, type Coach } from 
 import { sendWelcomeNotification } from "@/lib/notificationService";
 import logoImg from "@/assets/logo.png";
 
+declare global {
+  interface Window { Razorpay: any }
+}
+
+const RAZORPAY_TEST_PLAN_KEY = "onboarding_test";
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const src = "https://checkout.razorpay.com/v1/checkout.js";
+    if (document.querySelector(`script[src="${src}"]`)) return resolve(true);
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.body.appendChild(s);
+  });
+}
+
 function ConfettiPiece({ delay }: { delay: number }) {
   const colors = ["hsl(var(--primary))", "hsl(var(--secondary))", "hsl(var(--warning))", "hsl(var(--destructive))"];
   const color = colors[Math.floor(Math.random() * colors.length)];
