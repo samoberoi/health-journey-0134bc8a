@@ -415,14 +415,10 @@ export async function fetchUpcomingClassesForBooking(
     .select("id, scheduled_at, meet_link, duration_min")
     .eq("is_active", true)
     .gte("scheduled_at", nowIso)
-    .order("scheduled_at", { ascending: true });
+    .order("scheduled_at", { ascending: true })
+    .limit(8);
   if (reservedSlotIds) q = q.in("id", reservedSlotIds);
   else q = q.eq("template_id", templateId);
-  if (expiresOn) {
-    const end = new Date(expiresOn);
-    end.setHours(23, 59, 59, 999);
-    q = q.lte("scheduled_at", end.toISOString());
-  }
   const { data } = await q;
   const { data: tmpl } = await supabase
     .from("channel_partner_slot_templates" as any)

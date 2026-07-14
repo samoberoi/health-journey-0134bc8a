@@ -150,7 +150,7 @@ export default function YogaUpsell() {
       toast({
         title: "Payment successful (demo)",
         description: templateId
-          ? "Your seat is reserved for every class this month — meet link is on your home screen."
+          ? "Your seat is reserved for the next 8 classes — meet link is on your home screen."
           : "Your instructor will revert with a confirmed schedule.",
       });
       await load();
@@ -220,7 +220,7 @@ export default function YogaUpsell() {
             <p className="mt-1 text-sm text-muted-foreground">
               {isConfirmed ? (
                 activeBooking.selected_slot ? (
-                  <>All classes reserved: <strong className="text-foreground">{activeBooking.selected_slot}</strong>. Join every class this month from the meet link below.</>
+                  <>All classes reserved: <strong className="text-foreground">{activeBooking.selected_slot}</strong>. Join every upcoming class from the meet link below.</>
                 ) : (
                   <>Your booking is confirmed for the full month.</>
                 )
@@ -301,7 +301,7 @@ export default function YogaUpsell() {
               <div className="mt-4 rounded-2xl bg-background ring-1 ring-border/60 p-3">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                    Upcoming classes ({upcoming.length})
+                    Upcoming 8 classes ({upcoming.length})
                   </p>
                 </div>
                 <ul className="divide-y divide-border/50">
@@ -414,7 +414,7 @@ export default function YogaUpsell() {
 
                   <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold">
                     {p.classes_per_month && (
-                      <span className="rounded-full bg-muted px-2 py-0.5">{p.classes_per_month} classes / month</span>
+                      <span className="rounded-full bg-muted px-2 py-0.5">{p.classes_per_month} classes</span>
                     )}
                     {p.duration_minutes && (
                       <span className="rounded-full bg-muted px-2 py-0.5">{p.duration_minutes} min / class</span>
@@ -501,7 +501,7 @@ export default function YogaUpsell() {
                           </div>
                           <div className="mt-1 text-[11px] text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5">
                             <Video className="w-3 h-3" /> {s.meet_link ? "Google Meet link included" : "Link shared before class"}
-                            <span>· {s.upcoming_count} classes this month</span>
+                            <span>· {Math.min(8, s.upcoming_count)} upcoming classes</span>
                             {s.package_type === "group" ? (
                               <span>· {s.series_available_seats} seats left for full series</span>
                             ) : (
