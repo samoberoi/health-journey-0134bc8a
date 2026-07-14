@@ -87,7 +87,10 @@ export default function Payment() {
     const { data: sessionData } = await supabase.auth.getSession();
     if (sessionData.session?.user) return sessionData.session.user;
 
-    const phone = String((getUser().profile as any).phone ?? "").replace(/\D/g, "");
+    const phoneFromEmail = (sessionData.session?.user?.email ?? authUser?.email ?? "").endsWith("@bbd.app")
+      ? (sessionData.session?.user?.email ?? authUser?.email ?? "").split("@")[0]
+      : "";
+    const phone = String((getUser().profile as any).phone ?? phoneFromEmail).replace(/\D/g, "");
     if (!phone) return null;
 
     await supabase.functions.invoke("ensure-phone-user", {

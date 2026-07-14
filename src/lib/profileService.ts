@@ -115,6 +115,9 @@ export function loadProfileToLocal(profile: ProfileRow) {
 
   const payload: any = {
     profile: compact({
+      phone: profile.phone,
+      country: profile.country,
+      country_code: profile.country_code,
       name: profile.name,
       age: profile.age,
       gender: profile.gender,
