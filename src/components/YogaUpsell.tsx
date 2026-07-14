@@ -464,12 +464,15 @@ export default function YogaUpsell() {
                   ? selected.package_type === "private"
                     ? "Available 1:1 recurring slots. Pick an open one — full slots are shown so you can request the same timing."
                     : "Recurring class slots from your instructor. Pick one to reserve your seat for the whole series."
-                  : "Your instructor hasn't published live classes yet. Pick a preferred window and they'll confirm the schedule."}
+                  : selected.package_type === "group"
+                    ? "Your instructor hasn't published any group classes yet. Please check back soon — we'll notify you the moment new slots open."
+                    : "Your instructor hasn't published live classes yet. Request a custom slot below and they'll confirm the schedule."}
               </p>
               {slotsLoading && <p className="text-xs text-muted-foreground">Loading slots…</p>}
-              <div className="grid gap-2">
-                {liveSlots.length > 0
-                  ? liveSlots
+
+              {liveSlots.length > 0 && (
+                <div className="grid gap-2">
+                  {liveSlots
                     .filter((s) => selected.package_type !== "private" || s.series_available_seats > 0)
                     .map((s) => {
                       const active = slotId === s.first_available_instance_id && slotId !== null;
@@ -509,28 +512,15 @@ export default function YogaUpsell() {
                           </div>
                         </button>
                       );
-                    })
-                  : (selected.schedule_slots?.length ? selected.schedule_slots : [
-                      "Mon/Wed/Fri · 6:30 AM – 7:30 AM",
-                      "Mon/Wed/Fri · 7:00 PM – 8:00 PM",
-                      "Tue/Thu/Sat · 7:00 AM – 8:00 AM",
-                    ]).map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => { setSlot(s); setSlotId(null); setTemplateId(null); }}
-                        className={`text-left rounded-2xl px-4 py-3 text-sm ring-1 transition-colors ${
-                          slot === s
-                            ? "bg-primary/10 ring-primary text-foreground"
-                            : "bg-card ring-border hover:bg-accent"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          {slot === s && <CheckCircle2 className="w-4 h-4 text-primary" />}
-                          <span className="font-semibold">{s}</span>
-                        </div>
-                      </button>
-                    ))}
-              </div>
+                    })}
+                </div>
+              )}
+
+              {liveSlots.length === 0 && !slotsLoading && selected.package_type === "group" && (
+                <div className="rounded-2xl bg-muted/40 ring-1 ring-border px-4 py-6 text-center text-sm text-muted-foreground">
+                  No group classes have been scheduled yet. Please check back shortly.
+                </div>
+              )}
 
               {selected.package_type === "private" && liveSlots.length > 0 && liveSlots.every((s) => s.series_available_seats <= 0) && (
                 <div className="rounded-2xl bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
@@ -544,7 +534,9 @@ export default function YogaUpsell() {
                   onClick={() => { setCustomMode(true); setSlot(null); setSlotId(null); setTemplateId(null); }}
                   className="w-full mt-1 rounded-2xl px-4 py-3 text-sm font-semibold ring-1 ring-dashed ring-primary/50 text-primary hover:bg-primary/5 transition-colors"
                 >
-                  {liveSlots.every((s) => s.series_available_seats <= 0)
+                  {liveSlots.length === 0
+                    ? "Request a custom slot"
+                    : liveSlots.every((s) => s.series_available_seats <= 0)
                     ? "All slots are booked — request a custom slot"
                     : "None of these work? Request a custom slot"}
                 </button>
