@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import NotificationCenter from "@/components/NotificationCenter";
+import logoImg from "@/assets/logo.png";
 
 interface Props {
   /** Short role label shown next to the mark, e.g. "Coach", "Admin", "Partner". */
