@@ -17,7 +17,7 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import logoImg from "@/assets/logo.png";
-import authHero from "@/assets/auth-activity-hero.jpg";
+import AuthHeroCarousel from "@/components/AuthHeroCarousel";
 import { toast } from "sonner";
 
 const DEFAULT_OTP = "111111";
