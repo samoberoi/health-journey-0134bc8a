@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Users, User, Handshake } from "lucide-react";
 import PackageSlotsManager from "@/components/channel-partner/PackageSlotsManager";
 import { useConfirm } from "@/components/ConfirmProvider";
+import AvatarUploader from "@/components/admin/AvatarUploader";
 
 interface Partner {
   id: string;
