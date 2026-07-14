@@ -98,7 +98,7 @@ export default function AdminSupplements() {
   };
 
   const reloadConditions = async () => {
-    const { data } = await supabase.from("supplement_conditions").select("key,label,icon").eq("is_active", true).order("sort_order").order("label");
+    const { data } = await supabase.from("supplement_conditions").select("key,label,icon").eq("is_active", true).order("label");
     setConditions(((data ?? []) as any[]).map((x) => ({ key: x.key, label: x.label, icon: x.icon || "🩺" })));
   };
 
