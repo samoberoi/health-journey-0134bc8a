@@ -406,6 +406,7 @@ export default function AdminLabTests() {
             </Button>
             <ExportCsvButton filename="lab-tests" rows={filtered as any} />
           </div>
+        </div>
         <div className="grid grid-cols-3 gap-3">
           {[
             { label: "Catalog", value: counts.total },
