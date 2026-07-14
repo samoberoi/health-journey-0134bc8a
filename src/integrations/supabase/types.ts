@@ -740,6 +740,7 @@ export type Database = {
           bank_name: string | null
           bio: string | null
           city: string | null
+          coach_packages: string[]
           coach_type: Database["public"]["Enums"]["coach_type"]
           commission_model_id: string | null
           commission_percent: number | null
@@ -781,6 +782,7 @@ export type Database = {
           bank_name?: string | null
           bio?: string | null
           city?: string | null
+          coach_packages?: string[]
           coach_type: Database["public"]["Enums"]["coach_type"]
           commission_model_id?: string | null
           commission_percent?: number | null
@@ -822,6 +824,7 @@ export type Database = {
           bank_name?: string | null
           bio?: string | null
           city?: string | null
+          coach_packages?: string[]
           coach_type?: Database["public"]["Enums"]["coach_type"]
           commission_model_id?: string | null
           commission_percent?: number | null

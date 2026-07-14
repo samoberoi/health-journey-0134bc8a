@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Plus, Edit2, Save, X, ChevronDown, ChevronUp, Phone, Mail, Star, Users as UsersIcon } from "lucide-react";
+import { Search, Plus, Edit2, Save, X, ChevronDown, ChevronUp, Phone, Mail, Star, Users as UsersIcon, Check, Package as PackageIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,6 +30,7 @@ const packageLabel = (type: string) => {
 
 const emptyCoach: Partial<Coach> = {
   name: "", phone: "", email: "", coach_type: "active_reset" as any,
+  coach_packages: ["active_reset"] as any,
   specialization: "", qualification: "", bio: "", years_experience: 0,
   commission_percent: 0, languages: [], city: "", state: "", pincode: "",
   address_line1: "", address_line2: "", bank_name: "", bank_account_number: "",
@@ -138,7 +141,8 @@ export default function AdminCoaches() {
       name: newCoach.name!,
       phone: newCoach.phone!,
       email: newCoach.email || null,
-      coach_type: (newCoach.coach_type || "active_reset") as any,
+      coach_type: (((newCoach as any).coach_packages?.[0]) || newCoach.coach_type || "active_reset") as any,
+      coach_packages: ((newCoach as any).coach_packages?.length ? (newCoach as any).coach_packages : [newCoach.coach_type || "active_reset"]) as any,
       specialization: newCoach.specialization || null,
       qualification: newCoach.qualification || null,
       bio: newCoach.bio || null,
@@ -317,7 +321,7 @@ export default function AdminCoaches() {
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             <InfoCell label="Phone" value={coach.phone} />
                             <InfoCell label="Email" value={coach.email || "—"} />
-                            <InfoCell label="Package" value={packageLabel(coach.coach_type)} />
+                            <InfoCell label="Packages" value={((coach as any).coach_packages?.length ? (coach as any).coach_packages : [coach.coach_type]).map((p: string) => packageLabel(p)).join(", ")} />
                             <InfoCell label="Experience" value={`${coach.years_experience} yrs`} />
                             <InfoCell label="Commission" value={`${coach.commission_percent || 0}%`} />
                             <InfoCell label="Start Date" value={coach.start_date ? new Date(coach.start_date).toLocaleDateString("en-IN") : "—"} />
@@ -425,14 +429,16 @@ function CoachFormFields({
       <FormField label="Phone *" value={data.phone || ""} onChange={(v) => set("phone", v)} />
       <FormField label="Email" value={data.email || ""} onChange={(v) => set("email", v)} />
       <div>
-        <label className="text-xs font-medium text-muted-foreground mb-1 block">Package</label>
-        <select
-          value={data.coach_type || "active_reset"}
-          onChange={(e) => set("coach_type", e.target.value)}
-          className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-        >
-          {COACH_PACKAGES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
+        <label className="text-xs font-medium text-muted-foreground mb-1 block">Packages</label>
+        <PackagesMultiSelect
+          value={((data as any).coach_packages && (data as any).coach_packages.length
+            ? (data as any).coach_packages
+            : (data.coach_type ? [data.coach_type as string] : []))}
+          onChange={(vals) => {
+            const next = vals.length ? vals : ["active_reset"];
+            onChange({ ...data, coach_packages: next as any, coach_type: next[0] as any });
+          }}
+        />
       </div>
       <FormField label="Specialization" value={data.specialization || ""} onChange={(v) => set("specialization", v)} />
       <FormField label="Qualification" value={data.qualification || ""} onChange={(v) => set("qualification", v)} />
@@ -512,5 +518,75 @@ function InfoCell({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-sm text-foreground font-medium capitalize">{value}</p>
     </div>
+  );
+}
+
+function PackagesMultiSelect({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const selected = value || [];
+  const toggle = (v: string) => {
+    if (selected.includes(v)) onChange(selected.filter((s) => s !== v));
+    else onChange([...selected, v]);
+  };
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="w-full min-h-10 rounded-md border border-input bg-background px-3 py-1.5 text-sm text-left hover:border-primary/50 transition-colors flex items-center gap-2 flex-wrap"
+        >
+          <PackageIcon className="w-4 h-4 text-primary shrink-0" />
+          {selected.length === 0 ? (
+            <span className="text-muted-foreground">Select packages…</span>
+          ) : (
+            selected.map((s) => {
+              const label = COACH_PACKAGES.find((p) => p.value === s)?.label || s;
+              return (
+                <Badge
+                  key={s}
+                  variant="secondary"
+                  className="gap-1 bg-primary/10 text-primary hover:bg-primary/15 border border-primary/20"
+                >
+                  {label}
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); toggle(s); }}
+                    className="ml-0.5 rounded-full hover:bg-primary/20 p-0.5 cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </span>
+                </Badge>
+              );
+            })
+          )}
+          <ChevronDown className="w-4 h-4 text-muted-foreground ml-auto shrink-0" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-1.5" align="start">
+        <div className="space-y-0.5">
+          {COACH_PACKAGES.map((p) => {
+            const isSel = selected.includes(p.value);
+            return (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => toggle(p.value)}
+                className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm text-left transition-colors ${
+                  isSel ? "bg-primary/10 text-primary" : "hover:bg-muted text-foreground"
+                }`}
+              >
+                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                  isSel ? "bg-primary border-primary text-primary-foreground" : "border-input"
+                }`}>
+                  {isSel && <Check className="w-3 h-3" />}
+                </div>
+                <span className="flex-1">{p.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
