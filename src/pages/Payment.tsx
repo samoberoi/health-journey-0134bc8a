@@ -50,7 +50,7 @@ export default function Payment() {
   const [referralStatus, setReferralStatus] = useState<"idle" | "applying" | "valid" | "invalid">("idle");
   const [referralMessage, setReferralMessage] = useState<string>("");
   const navigate = useNavigate();
-  const { user: authUser } = useAuth();
+  const { user: authUser, loading: authLoading } = useAuth();
   const storedUser = getUser();
   const name = storedUser.profile.name ?? "Friend";
   const plan = getSelectedPlan();
