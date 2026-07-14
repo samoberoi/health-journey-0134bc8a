@@ -74,11 +74,10 @@ async function getValidToken(force = false): Promise<string> {
     headers: {
       "Content-Type": "application/json",
       "Partner-Id": PARTNER_ID,
-      "Request-Id": crypto.randomUUID(),
-      "API-Version": "1.0",
-      "Client-Type": "WEB",
-      "User-Agent": "BBDO-Lovable/1.0",
+      "Request-Id": "Pass",
+      "Client-Type": "All",
       "Entity-Type": "DSA",
+      "User-Agent": "BBDO-Lovable/1.0",
     },
     body: JSON.stringify({ username: DSA_CODE, password: PASSWORD }),
   });
