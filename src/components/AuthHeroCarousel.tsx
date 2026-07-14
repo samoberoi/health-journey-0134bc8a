@@ -3,12 +3,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import supplements from "@/assets/auth-carousel/supplements.png.asset.json";
 import meditation from "@/assets/auth-carousel/meditation.png.asset.json";
 import fasting from "@/assets/auth-carousel/fasting.png.asset.json";
-import nutrition from "@/assets/auth-carousel/nutrition.png.asset.json";
 import activity from "@/assets/auth-carousel/activity.png.asset.json";
 
 const SLIDES = [
   { url: fasting.url, alt: "Fasting window — lemon water and morning light" },
-  { url: nutrition.url, alt: "Balanced plant-forward plate" },
   { url: activity.url, alt: "Active walking outdoors" },
   { url: meditation.url, alt: "Morning meditation and calm" },
   { url: supplements.url, alt: "Daily supplement support" },
