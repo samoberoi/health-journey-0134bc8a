@@ -1,10 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const BodySchema = z.object({
+  phone: z.string().transform((value) => value.replace(/\D/g, "")).pipe(z.string().length(10)),
+  country: z.string().max(80).nullable().optional(),
+  country_code: z.string().max(8).nullable().optional(),
+});
 
 async function findUserByEmail(admin: any, email: string) {
   for (let page = 1; page <= 20; page += 1) {
@@ -22,13 +24,14 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const phone = String(body.phone ?? "").replace(/\D/g, "").slice(0, 10);
-    if (phone.length !== 10) {
+    const parsed = BodySchema.safeParse(body);
+    if (!parsed.success) {
       return new Response(JSON.stringify({ error: "Valid phone number required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const { phone, country, country_code } = parsed.data;
 
     const email = `${phone}@bbd.app`;
     const password = `bbd_${phone}_secure`;
@@ -61,8 +64,8 @@ Deno.serve(async (req) => {
       {
         user_id: user.id,
         phone,
-        country: body.country ?? null,
-        country_code: body.country_code ?? null,
+        country: country ?? null,
+        country_code: country_code ?? null,
       },
       { onConflict: "user_id" },
     );
