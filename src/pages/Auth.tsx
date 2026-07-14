@@ -120,6 +120,7 @@ export default function Auth() {
         // Existing user — fetch profile and check onboarding/payment completion
         const profile = await fetchProfile(signInData.user.id);
         if (profile) {
+          saveUser({ profile: { phone, country: country.name, country_code: country.dial } as any });
           loadProfileToLocal(profile);
           const activeSubscription = await fetchActiveSubscription(signInData.user.id);
           if (profile.onboarding_completed || activeSubscription) {
