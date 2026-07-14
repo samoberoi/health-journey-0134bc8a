@@ -163,8 +163,8 @@ export default function Payment() {
     try {
       if (plan.plan_key === RAZORPAY_TEST_PLAN_KEY) {
         // Live Razorpay flow for the ₹1 test plan only.
-        await handleRazorpayPay();
-        await finalizePostPayment();
+        await handleRazorpayPay(effectiveUser);
+        await finalizePostPayment(effectiveUser);
       } else {
         // Mock flow for all other plans.
         await new Promise((r) => setTimeout(r, 1200));
@@ -183,7 +183,7 @@ export default function Payment() {
           expires_at: expiresAt.toISOString(),
         });
 
-        await finalizePostPayment();
+        await finalizePostPayment(effectiveUser);
       }
     } catch (e: any) {
       console.error("Payment failed", e);
