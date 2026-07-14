@@ -3169,6 +3169,30 @@ export type Database = {
         }
         Relationships: []
       }
+      supplement_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          key: string
+          label: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key: string
+          label: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          label?: string
+        }
+        Relationships: []
+      }
       supplement_condition_rules: {
         Row: {
           condition: string
@@ -3218,6 +3242,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      supplement_conditions: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          key: string
+          label: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key: string
+          label: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          label?: string
+        }
+        Relationships: []
       }
       supplement_master: {
         Row: {
@@ -4780,6 +4828,14 @@ export type Database = {
         Returns: string
       }
       current_user_package_key: { Args: { _user_id: string }; Returns: string }
+      delete_supplement_category: {
+        Args: { cat_key: string }
+        Returns: undefined
+      }
+      delete_supplement_condition: {
+        Args: { cond_key: string }
+        Returns: undefined
+      }
       email_exists: { Args: { _email: string }; Returns: boolean }
       generate_diet_plating: {
         Args: { _diet?: string; _user_id: string }
@@ -4868,6 +4924,14 @@ export type Database = {
       }
       refresh_gamification_for_user: {
         Args: { _day?: string; _user_id: string }
+        Returns: undefined
+      }
+      rename_supplement_category: {
+        Args: { new_key: string; new_label: string; old_key: string }
+        Returns: undefined
+      }
+      rename_supplement_condition: {
+        Args: { new_key: string; new_label: string; old_key: string }
         Returns: undefined
       }
       run_daily_gamification_close: { Args: never; Returns: number }
