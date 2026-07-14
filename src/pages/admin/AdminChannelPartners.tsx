@@ -291,8 +291,13 @@ export default function AdminChannelPartners() {
                 <Textarea rows={2} value={partnerDialog.partner.bio || ""} onChange={(e) => setPartnerDialog({ open: true, partner: { ...partnerDialog.partner, bio: e.target.value } })} />
               </div>
               <div>
-                <Label>Teacher photo URL</Label>
-                <Input value={partnerDialog.partner.avatar_url || ""} onChange={(e) => setPartnerDialog({ open: true, partner: { ...partnerDialog.partner, avatar_url: e.target.value } })} placeholder="Upload from partner profile or paste image URL" />
+                <Label>Teacher photo</Label>
+                <AvatarUploader
+                  value={partnerDialog.partner.avatar_url || null}
+                  onChange={(url) => setPartnerDialog({ open: true, partner: { ...partnerDialog.partner, avatar_url: url } })}
+                  folder="channel-partners"
+                  entityId={(partnerDialog.partner as any).id || partnerDialog.partner.contact_phone || null}
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
