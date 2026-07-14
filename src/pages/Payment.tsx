@@ -11,6 +11,24 @@ import { autoAssignCoach, fetchAssignedCoach, coachTypeLabel, type Coach } from 
 import { sendWelcomeNotification } from "@/lib/notificationService";
 import logoImg from "@/assets/logo.png";
 
+declare global {
+  interface Window { Razorpay: any }
+}
+
+const RAZORPAY_TEST_PLAN_KEY = "onboarding_test";
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const src = "https://checkout.razorpay.com/v1/checkout.js";
+    if (document.querySelector(`script[src="${src}"]`)) return resolve(true);
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.body.appendChild(s);
+  });
+}
+
 function ConfettiPiece({ delay }: { delay: number }) {
   const colors = ["hsl(var(--primary))", "hsl(var(--secondary))", "hsl(var(--warning))", "hsl(var(--destructive))"];
   const color = colors[Math.floor(Math.random() * colors.length)];
@@ -61,6 +79,67 @@ export default function Payment() {
     }
   };
 
+  const finalizePostPayment = async () => {
+    if (!authUser || !plan) return;
+    if (plan.assigns_coach !== false) {
+      await autoAssignCoach(authUser.id, plan.plan_key);
+      const c = await fetchAssignedCoach(authUser.id);
+      setAssignedCoach(c);
+    }
+    await supabase
+      .from("profiles" as any)
+      .update({ onboarding_completed: true } as any)
+      .eq("user_id", authUser.id);
+    await sendWelcomeNotification(authUser.id);
+    setStep("success");
+  };
+
+  const handleRazorpayPay = async () => {
+    const ok = await loadRazorpayScript();
+    if (!ok) throw new Error("Failed to load Razorpay checkout.");
+
+    const { data, error } = await supabase.functions.invoke("razorpay-create-order", {
+      body: { plan_key: plan!.plan_key },
+    });
+    if (error) throw error;
+    if (!data?.order_id) throw new Error("Could not create order.");
+
+    await new Promise<void>((resolve, reject) => {
+      const rzp = new window.Razorpay({
+        key: data.key_id,
+        amount: data.amount,
+        currency: data.currency,
+        order_id: data.order_id,
+        name: "Bye Bye Diabetes",
+        description: data.plan_name || plan!.name,
+        image: "https://bbdo.hyperrevamp.com/favicon.ico",
+        prefill: { email: authUser!.email ?? undefined },
+        theme: { color: "#248CCB" },
+        handler: async (resp: any) => {
+          try {
+            const { data: v, error: vErr } = await supabase.functions.invoke("razorpay-verify-payment", {
+              body: resp,
+            });
+            if (vErr || !v?.verified) {
+              reject(new Error("Payment received but verification failed. Contact support."));
+              return;
+            }
+            resolve();
+          } catch (e: any) {
+            reject(e);
+          }
+        },
+        modal: {
+          ondismiss: () => reject(new Error("Payment cancelled.")),
+        },
+      });
+      rzp.on("payment.failed", (resp: any) => {
+        reject(new Error(resp?.error?.description || "Payment failed."));
+      });
+      rzp.open();
+    });
+  };
+
   const handlePay = async () => {
     setError(null);
 
@@ -75,35 +154,30 @@ export default function Payment() {
 
     setLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 1200));
+      if (plan.plan_key === RAZORPAY_TEST_PLAN_KEY) {
+        // Live Razorpay flow for the ₹1 test plan only.
+        await handleRazorpayPay();
+        await finalizePostPayment();
+      } else {
+        // Mock flow for all other plans.
+        await new Promise((r) => setTimeout(r, 1200));
 
-      const now = new Date();
-      const expiresAt = new Date(now);
-      expiresAt.setMonth(expiresAt.getMonth() + duration);
+        const now = new Date();
+        const expiresAt = new Date(now);
+        expiresAt.setMonth(expiresAt.getMonth() + duration);
 
-      await createSubscription({
-        user_id: authUser.id,
-        plan_id: plan.plan_key,
-        plan_name: `${plan.name} — ${CYCLE_LABEL[plan.billing_cycle]}`,
-        plan_price: plan.total_price,
-        duration_months: duration,
-        started_at: now.toISOString(),
-        expires_at: expiresAt.toISOString(),
-      });
+        await createSubscription({
+          user_id: authUser.id,
+          plan_id: plan.plan_key,
+          plan_name: `${plan.name} — ${CYCLE_LABEL[plan.billing_cycle]}`,
+          plan_price: plan.total_price,
+          duration_months: duration,
+          started_at: now.toISOString(),
+          expires_at: expiresAt.toISOString(),
+        });
 
-      if (plan.assigns_coach !== false) {
-        await autoAssignCoach(authUser.id, plan.plan_key);
-        const c = await fetchAssignedCoach(authUser.id);
-        setAssignedCoach(c);
+        await finalizePostPayment();
       }
-
-      await supabase
-        .from("profiles" as any)
-        .update({ onboarding_completed: true } as any)
-        .eq("user_id", authUser.id);
-      await sendWelcomeNotification(authUser.id);
-
-      setStep("success");
     } catch (e: any) {
       console.error("Payment failed", e);
       setError(e?.message ?? "Payment failed. Please try again.");
