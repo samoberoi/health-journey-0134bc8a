@@ -380,7 +380,32 @@ export default function AdminLabTests() {
               Full Thyrocare catalog. Enable/disable tests, bulk-manage and choose which ones coaches can assign.
             </p>
           </div>
-          <ExportCsvButton filename="lab-tests" rows={filtered as any} />
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                const t = toast.loading("Syncing Thyrocare catalog…");
+                try {
+                  const { data, error } = await supabase.functions.invoke("thyrocare-api", { body: { action: "sync_catalog" } });
+                  if (error) throw error;
+                  if ((data as any)?.error) throw new Error((data as any).error);
+                  toast.success(`Synced ${(data as any)?.count ?? 0} tests`, { id: t });
+                  await load();
+                } catch (e: any) {
+                  toast.error(e.message || "Sync failed", { id: t });
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+              Sync from Thyrocare
+            </Button>
+            <ExportCsvButton filename="lab-tests" rows={filtered as any} />
+          </div>
         </div>
         <div className="grid grid-cols-3 gap-3">
           {[
