@@ -17,6 +17,8 @@ declare global {
 
 const RAZORPAY_TEST_PLAN_KEY = "onboarding_test";
 
+type PaymentUser = { id: string; email?: string | null };
+
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
     const src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -79,7 +81,31 @@ export default function Payment() {
     }
   };
 
-  const finalizePostPayment = async (user: { id: string }) => {
+  const resolvePaymentUser = async (): Promise<PaymentUser | null> => {
+    if (authUser) return authUser;
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData.session?.user) return sessionData.session.user;
+
+    const phone = String((getUser().profile as any).phone ?? "").replace(/\D/g, "");
+    if (!phone) return null;
+
+    await supabase.functions.invoke("ensure-phone-user", {
+      body: {
+        phone,
+        country: (getUser().profile as any).country ?? null,
+        country_code: (getUser().profile as any).country_code ?? null,
+      },
+    });
+
+    const { data: signInData } = await supabase.auth.signInWithPassword({
+      email: `${phone}@bbd.app`,
+      password: `bbd_${phone}_secure`,
+    });
+    return signInData.user ?? null;
+  };
+
+  const finalizePostPayment = async (user: PaymentUser) => {
     if (!plan) return;
     if (plan.assigns_coach !== false) {
       await autoAssignCoach(user.id, plan.plan_key);
@@ -94,7 +120,7 @@ export default function Payment() {
     setStep("success");
   };
 
-  const handleRazorpayPay = async (user: { email?: string | null }) => {
+  const handleRazorpayPay = async (user: PaymentUser) => {
     const ok = await loadRazorpayScript();
     if (!ok) throw new Error("Failed to load Razorpay checkout.");
 
@@ -145,11 +171,7 @@ export default function Payment() {
 
     // Auth may still be hydrating when the user taps quickly after arriving.
     // Fall back to a live session check before erroring out.
-    let effectiveUser = authUser;
-    if (!effectiveUser) {
-      const { data } = await supabase.auth.getSession();
-      effectiveUser = (data.session?.user as typeof authUser) ?? null;
-    }
+    const effectiveUser = await resolvePaymentUser();
     if (!effectiveUser) {
       setError("You're not signed in. Please log in again to complete payment.");
       return;

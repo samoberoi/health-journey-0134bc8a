@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { COUNTRIES, type Country } from "@/lib/countries";
 import { saveUser } from "@/lib/userStore";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchProfile, createProfile, loadProfileToLocal } from "@/lib/profileService";
+import { fetchProfile, loadProfileToLocal } from "@/lib/profileService";
 import { fetchActiveSubscription } from "@/lib/subscriptionService";
 import { isCoachUser, isAdminUser } from "@/lib/roleService";
 import { isChannelPartner } from "@/lib/channelPartnerService";
@@ -64,6 +64,7 @@ export default function Auth() {
   const sendOtp = async () => {
     if (phone.length < 10) return;
     setLoading(true);
+    saveUser({ profile: { phone, country: country.name, country_code: country.dial } as any });
     // Simulate OTP send
     await new Promise((r) => setTimeout(r, 800));
     setLoading(false);
@@ -143,24 +144,35 @@ export default function Auth() {
         return;
       }
 
-      // User doesn't exist — sign up
-      if (signInError?.message?.includes("Invalid login credentials")) {
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
+      // User doesn't exist yet, or an earlier sign-up exists without an active session.
+      if (signInError) {
+        const { data: ensureData, error: ensureError } = await supabase.functions.invoke("ensure-phone-user", {
+          body: { phone, country: country.name, country_code: country.dial },
         });
-
-        if (signUpError) {
-          toast.error(signUpError.message);
+        if (ensureError || !ensureData?.ok) {
+          toast.error("We couldn't start your secure session. Please try again.");
           setLoading(false);
           return;
         }
 
-        if (signUpData?.user) {
+        const { data: newSessionData, error: newSessionError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (newSessionError || !newSessionData?.user) {
+          toast.error("We couldn't start your secure session. Please enter the OTP again.");
+          setLoading(false);
+          setStep("otp");
+          return;
+        }
+
+        const signedInNewUser = newSessionData.user;
+
+        if (signedInNewUser) {
           // Auto-link coach or partner record by phone if it exists
           const { data: linkedCoachId } = await supabase.rpc(
             "link_coach_to_user" as any,
-            { _user_id: signUpData.user.id, _phone: phone }
+            { _user_id: signedInNewUser.id, _phone: phone }
           );
           if (linkedCoachId) {
             setLoading(false);
@@ -169,7 +181,7 @@ export default function Auth() {
           }
           const { data: linkedPartnerId } = await supabase.rpc(
             "link_partner_to_user" as any,
-            { _user_id: signUpData.user.id, _phone: phone }
+            { _user_id: signedInNewUser.id, _phone: phone }
           );
           if (linkedPartnerId) {
             setLoading(false);
@@ -177,11 +189,12 @@ export default function Auth() {
             return;
           }
 
-          // Create profile row
-          await createProfile({
-            user_id: signUpData.user.id,
+          await supabase.from("profiles" as any).upsert({
+            user_id: signedInNewUser.id,
             phone,
-          });
+            country: country.name,
+            country_code: country.dial,
+          } as any, { onConflict: "user_id" });
 
           // Referral codes are now applied at payment time.
 
@@ -227,14 +240,24 @@ export default function Auth() {
       return;
     }
 
-    saveUser({ profile: { name: name.trim(), email: trimmedEmail } as any });
+    saveUser({ profile: { name: name.trim(), email: trimmedEmail, phone, country: country.name, country_code: country.dial } as any });
 
     // Save name + email to backend
-    const { data: { user } } = await supabase.auth.getUser();
+    let { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      const { data: sessionData } = await supabase.auth.signInWithPassword({ email, password });
+      user = sessionData.user;
+    }
+    if (!user) {
+      setLoading(false);
+      toast.error("We couldn't keep you signed in. Please verify your phone again.");
+      setStep("otp");
+      return;
+    }
     if (user) {
       const { error } = await supabase
         .from("profiles" as any)
-        .update({ name: name.trim(), email: trimmedEmail } as any)
+        .update({ name: name.trim(), email: trimmedEmail, phone, country: country.name, country_code: country.dial } as any)
         .eq("user_id", user.id);
       if (error) console.error("Failed to save name/email:", error);
     }

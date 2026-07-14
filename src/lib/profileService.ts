@@ -4,6 +4,8 @@ import { getUser, saveUser } from "./userStore";
 export interface ProfileRow {
   user_id: string;
   phone?: string;
+  country?: string;
+  country_code?: string;
   email?: string;
   name?: string;
   age?: number;
