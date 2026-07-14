@@ -103,10 +103,10 @@ export function getFoodImageUrl(foodItemId: string): Promise<string | null> {
 
 /** Batch-prime cache for a list of items (call once per visible list). */
 export async function primeFoodImages(items: Array<{ id: string; image_url?: string | null }>) {
-  const need: Array<{ id: string; path: string }> = [];
+  const need: Array<{ id: string; path: string; absolute: boolean }> = [];
   for (const it of items) {
     if (getFromCache(it.id)) continue;
-    if (it.image_url) need.push({ id: it.id, path: it.image_url });
+    if (it.image_url) need.push({ id: it.id, path: it.image_url, absolute: /^https?:\/\//i.test(it.image_url) });
   }
   if (!need.length) return;
   // Sign in parallel, capped at 8 concurrent
