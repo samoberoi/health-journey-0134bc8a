@@ -3177,6 +3177,7 @@ export type Database = {
           is_active: boolean
           key: string
           label: string
+          sort_order: number
         }
         Insert: {
           created_at?: string
@@ -3185,6 +3186,7 @@ export type Database = {
           is_active?: boolean
           key: string
           label: string
+          sort_order?: number
         }
         Update: {
           created_at?: string
@@ -3193,6 +3195,7 @@ export type Database = {
           is_active?: boolean
           key?: string
           label?: string
+          sort_order?: number
         }
         Relationships: []
       }
