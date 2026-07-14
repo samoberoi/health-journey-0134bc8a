@@ -454,6 +454,9 @@ function FoundationSupplementBrowser({
     });
   }, [supplements, category, timing, query]);
 
+  const availableList = useMemo(() => filtered.filter((s) => !inPlan.has(s.id)), [filtered, inPlan]);
+  const addedList = useMemo(() => filtered.filter((s) => inPlan.has(s.id)), [filtered, inPlan]);
+
   const handleAdd = async (s: Supplement) => {
     if (!userId) return toast.error("Please sign in");
     setAdding(s.id);
@@ -569,8 +572,8 @@ function FoundationSupplementBrowser({
       </div>
 
       {/* Results */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        {filtered.map((s) => {
+      {(() => {
+        const renderCard = (s: Supplement) => {
           const added = inPlan.has(s.id);
           const isAdding = adding === s.id;
           const isRemoving = removing === s.id;
@@ -580,14 +583,23 @@ function FoundationSupplementBrowser({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="rounded-2xl p-4 bg-card ring-1 ring-border shadow-card flex flex-col gap-3"
+              className={`rounded-2xl p-4 ring-1 shadow-card flex flex-col gap-3 ${
+                added ? "bg-primary/5 ring-primary/30" : "bg-card ring-border"
+              }`}
             >
               <div className="flex items-start gap-3">
                 <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${CATEGORY_BG[s.category ?? ""] ?? "bg-muted"}`}>
                   <Pill className={`w-5 h-5 ${CATEGORY_COLORS[s.category ?? ""] ?? "text-muted-foreground"}`} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-black text-foreground leading-tight">{s.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-black text-foreground leading-tight">{s.name}</p>
+                    {added && (
+                      <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">
+                        <Check className="w-2.5 h-2.5" /> Added
+                      </span>
+                    )}
+                  </div>
                   {s.category && (
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{s.category}</p>
                   )}
@@ -628,13 +640,42 @@ function FoundationSupplementBrowser({
               </button>
             </motion.div>
           );
-        })}
-        {filtered.length === 0 && (
-          <p className="col-span-full text-sm text-muted-foreground text-center py-8">
-            No supplements match these filters.
-          </p>
-        )}
-      </div>
+        };
+
+        return (
+          <div className="space-y-6">
+            {addedList.length > 0 && (
+              <section className="space-y-3">
+                <div className="flex items-baseline justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-[0.18em] text-primary flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5" /> On your list
+                  </h3>
+                  <span className="text-[10px] font-semibold text-muted-foreground">{addedList.length} added</span>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">{addedList.map(renderCard)}</div>
+              </section>
+            )}
+
+            <section className="space-y-3">
+              <div className="flex items-baseline justify-between">
+                <h3 className="text-xs font-black uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" /> Available to add
+                </h3>
+                <span className="text-[10px] font-semibold text-muted-foreground">{availableList.length} options</span>
+              </div>
+              {availableList.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  {filtered.length === 0
+                    ? "No supplements match these filters."
+                    : "You've added everything in this filter. Great stack!"}
+                </p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">{availableList.map(renderCard)}</div>
+              )}
+            </section>
+          </div>
+        );
+      })()}
     </div>
   );
 }
