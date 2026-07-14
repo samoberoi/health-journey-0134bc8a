@@ -501,7 +501,7 @@ export default function YogaUpsell() {
                           </div>
                           <div className="mt-1 text-[11px] text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5">
                             <Video className="w-3 h-3" /> {s.meet_link ? "Google Meet link included" : "Link shared before class"}
-                            <span>· {s.upcoming_count} classes this month</span>
+                            <span>· {Math.min(8, s.upcoming_count)} upcoming classes</span>
                             {s.package_type === "group" ? (
                               <span>· {s.series_available_seats} seats left for full series</span>
                             ) : (
