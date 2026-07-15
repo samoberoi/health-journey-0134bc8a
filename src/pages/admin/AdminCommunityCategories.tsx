@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import type { PostCategory } from "@/lib/communityService";
 import { useConfirm } from "@/components/ConfirmProvider";
 
+import CsvToolbar from "@/components/admin/CsvToolbar";
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 const BLANK = {
@@ -106,6 +107,7 @@ export default function AdminCommunityCategories() {
 
   return (
     <div className="p-6 max-w-4xl">
+      <div className="flex justify-end mb-3"><CsvToolbar table="community_post_categories" onImported={() => window.location.reload()} /></div>
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}

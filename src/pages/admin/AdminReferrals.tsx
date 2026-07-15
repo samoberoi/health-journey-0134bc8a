@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Gift, Save, CheckCircle2, Clock, Users } from "lucide-react";
 
+import CsvToolbar from "@/components/admin/CsvToolbar";
 interface ReferralRow {
   id: string;
   created_at: string;
@@ -62,6 +63,7 @@ export default function AdminReferrals() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
+      <div className="flex justify-end mb-3"><CsvToolbar table="referrals" onImported={() => window.location.reload()} /></div>
       <header className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-black text-foreground">Referrals</h1>
         <p className="text-sm text-muted-foreground">Track who referred whom and configure the reward.</p>

@@ -14,6 +14,7 @@ import PackageSlotsManager from "@/components/channel-partner/PackageSlotsManage
 import { useConfirm } from "@/components/ConfirmProvider";
 import AvatarUploader from "@/components/admin/AvatarUploader";
 
+import CsvToolbar from "@/components/admin/CsvToolbar";
 interface Partner {
   id: string;
   partner_type: string;
@@ -163,6 +164,7 @@ export default function AdminChannelPartners() {
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex justify-end mb-3"><CsvToolbar table="channel_partners" onImported={() => window.location.reload()} /></div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-black flex items-center gap-2"><Handshake className="w-6 h-6 shrink-0" /> <span className="min-w-0">Channel Partner Manager</span></h1>

@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import DateRangeFilter, { defaultRange, DateRange } from "@/components/admin/DateRangeFilter";
 
 
+import CsvToolbar from "@/components/admin/CsvToolbar";
 interface LogRow {
   id: string;
   created_at: string;
@@ -111,6 +112,7 @@ export default function AdminLogs() {
 
   return (
     <div className="p-6 space-y-5">
+      <div className="flex justify-end mb-3"><CsvToolbar table="audit_logs" onImported={() => window.location.reload()} /></div>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-black text-foreground">Audit Logs</h1>

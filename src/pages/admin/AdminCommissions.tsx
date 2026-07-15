@@ -18,6 +18,7 @@ import { toast } from "@/hooks/use-toast";
 import { logAudit } from "@/lib/auditLog";
 import { useConfirm } from "@/components/ConfirmProvider";
 
+import CsvToolbar from "@/components/admin/CsvToolbar";
 interface CommissionModel {
   id: string;
   name: string;
@@ -149,6 +150,7 @@ export default function AdminCommissions() {
 
   return (
     <div className="p-6 md:p-8 space-y-6">
+      <div className="flex justify-end mb-3"><CsvToolbar table="commission_models" onImported={() => window.location.reload()} /></div>
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-foreground">Commission Models</h1>

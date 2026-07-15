@@ -18,6 +18,7 @@ import {
 import SoundManagerCard from "@/components/admin/SoundManagerCard";
 import { useConfirm } from "@/components/ConfirmProvider";
 
+import CsvToolbar from "@/components/admin/CsvToolbar";
 const TRIGGER_TYPES = ["reminder", "missed_action", "goal_met", "share_prompt", "profile", "delivery"];
 const DAYS = [
   { n: 1, l: "M" }, { n: 2, l: "T" }, { n: 3, l: "W" }, { n: 4, l: "T" },
@@ -101,6 +102,7 @@ export default function AdminNotificationManager() {
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex justify-end mb-3"><CsvToolbar table="notification_templates" onImported={() => window.location.reload()} /></div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-xl font-black flex items-center gap-2">

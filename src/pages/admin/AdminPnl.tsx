@@ -4,6 +4,7 @@ import { TrendingUp, Save, Download, ArrowUpRight, ArrowDownRight } from "lucide
 import { toast } from "sonner";
 import { fetchPnl, fetchPnlConfig, sumPnl, updatePnlConfig, inr, type PnlConfig, type PnlRow, type PnlTotals } from "@/lib/pnl";
 
+import CsvToolbar from "@/components/admin/CsvToolbar";
 type Scope = "month" | "all";
 
 const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
@@ -90,6 +91,7 @@ export default function AdminPnl() {
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex justify-end mb-3"><CsvToolbar table="pnl_rate_config" onImported={() => window.location.reload()} /></div>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-[#E00101]" />

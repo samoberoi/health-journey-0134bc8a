@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Palette, Plus, Trash2, Save } from "lucide-react";
 import { useColorGauges, refreshColorGauges, type GaugeModule, type GaugeBand } from "@/hooks/useColorGauges";
 
+import CsvToolbar from "@/components/admin/CsvToolbar";
 export default function AdminColorGauges() {
   const { modules } = useColorGauges();
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export default function AdminColorGauges() {
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
+      <div className="flex justify-end mb-3"><CsvToolbar table="color_gauge_bands" onImported={() => window.location.reload()} /></div>
       <div className="flex items-center gap-3">
         <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center">
           <Palette className="w-5 h-5 text-primary" />

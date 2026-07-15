@@ -10,6 +10,7 @@ import AdminNotificationManager from "./AdminNotificationManager";
 import AdminGlobalStreak from "./AdminGlobalStreak";
 import AdminPnl from "./AdminPnl";
 
+import CsvToolbar from "@/components/admin/CsvToolbar";
 type Tab = "rbac" | "subscriptions" | "assignments" | "color_gauges" | "notifications" | "global_streak" | "pnl";
 
 const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
@@ -26,6 +27,7 @@ export default function AdminControlCenter({ initialTab = "rbac" }: { initialTab
   const [tab, setTab] = useState<Tab>(initialTab);
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex justify-end mb-3"><CsvToolbar table="app_settings" onImported={() => window.location.reload()} /></div>
       <div>
         <h1 className="text-xl sm:text-2xl font-black text-foreground">Control Center</h1>
         <p className="text-muted-foreground text-sm mt-1">

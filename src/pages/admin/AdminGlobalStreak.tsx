@@ -3,6 +3,7 @@ import { Save, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { getStreakConfig, updateStreakConfig } from "@/lib/globalStreak";
 
+import CsvToolbar from "@/components/admin/CsvToolbar";
 type Pillar = { key: string; label: string; required: boolean; threshold?: number };
 
 export default function AdminGlobalStreak() {
@@ -34,6 +35,7 @@ export default function AdminGlobalStreak() {
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex justify-end mb-3"><CsvToolbar table="global_streak_config" onImported={() => window.location.reload()} /></div>
       <div className="flex items-center gap-2">
         <Flame className="w-5 h-5 text-[#E00101]" />
         <h2 className="text-xl font-black text-foreground">Global Streak Manager</h2>
