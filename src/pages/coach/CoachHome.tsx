@@ -1,29 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Users, Star, Activity, AlertTriangle, TrendingUp, TrendingDown, Minus,
   Heart, UserCheck, Clock, ChevronRight, Loader2, Bell,
-  Timer, Flame, CalendarClock, Plus, Package, Send, CheckCircle2,
-  Dumbbell, Sparkles, Utensils, XCircle, MinusCircle
+  CalendarClock, Plus, Package, Send, CheckCircle2, Search,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { coachTypeLabel, type Coach } from "@/lib/coachService";
-import { fetchTrackingForUser } from "@/lib/fastingService";
-import { calculateStreak } from "@/lib/streakService";
 import { createNotification } from "@/lib/notificationService";
 import { toast } from "sonner";
 import ScheduleMeetingDialog from "@/components/coach/ScheduleMeetingDialog";
 import PatientDailySummaryDialog from "@/components/coach/PatientDailySummaryDialog";
-
-interface FastingSummary {
-  user_id: string;
-  name: string;
-  currentStreak: number;
-  longestStreak: number;
-  lastStatus: string;
-  hasProtocol: boolean;
-}
+import CoachActivityNudgeDialog, {
+  ACTIVITY_META,
+  type ActivityKey,
+  type PendingPatient,
+} from "@/components/coach/CoachActivityNudgeDialog";
 
 interface PatientSummary {
   user_id: string;
@@ -43,8 +36,12 @@ interface PatientSummary {
   planName: string | null;
   planStarted: string | null;
   planExpires: string | null;
-  loggedToday: boolean;
-  fastingOk: boolean;
+  hasFastingProtocol: boolean;
+  hasSuppPlan: boolean;
+  activities: Record<ActivityKey, boolean>;
+  applicable: Record<ActivityKey, boolean>;
+  doneCount: number;
+  applicableCount: number;
   onTrack: boolean;
 }
 
@@ -88,20 +85,24 @@ function evaluateAlerts(patients: PatientSummary[]): Alert[] {
   return alerts.sort((a, b) => (a.type === "danger" ? -1 : 1));
 }
 
-export default function CoachHome({ onViewPatient, onViewFasting }: { onViewPatient?: () => void; onViewFasting?: () => void }) {
+const ALL_ACTIVITIES: ActivityKey[] = [
+  "glucose", "bp", "weight", "fasting", "supplements", "exercise", "yoga", "diet",
+];
+
+export default function CoachHome({ onViewPatient }: { onViewPatient?: () => void; onViewFasting?: () => void }) {
   const { user } = useAuth();
   const [coach, setCoach] = useState<Coach | null>(null);
   const [patients, setPatients] = useState<PatientSummary[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [fastingSummaries, setFastingSummaries] = useState<FastingSummary[]>([]);
   const [needsScheduling, setNeedsScheduling] = useState<PatientSummary[]>([]);
   const [scheduleFor, setScheduleFor] = useState<PatientSummary | null>(null);
   const [schedulePickerOpen, setSchedulePickerOpen] = useState(false);
   const [completedSessions, setCompletedSessions] = useState(0);
-  const [domainStats, setDomainStats] = useState({ exercise: 0, yoga: 0, diet: 0 });
   const [loading, setLoading] = useState(true);
-  const [nudging, setNudging] = useState<string | null>(null);
+  const [nudgingAll, setNudgingAll] = useState(false);
   const [summaryPatient, setSummaryPatient] = useState<PatientSummary | null>(null);
+  const [activityDialog, setActivityDialog] = useState<ActivityKey | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -126,13 +127,32 @@ export default function CoachHome({ onViewPatient, onViewFasting }: { onViewPati
       .eq("is_active", true);
 
     if (!assignments || assignments.length === 0) {
-      setPatients([]); setAlerts([]); setFastingSummaries([]); setNeedsScheduling([]);
+      setPatients([]); setAlerts([]); setNeedsScheduling([]);
       setLoading(false); return;
     }
 
     const patientIds = (assignments as any[]).map((a) => a.user_id);
 
-    const [{ data: profiles }, { data: subs }] = await Promise.all([
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayIso = todayStart.toISOString();
+    const todayDate = todayStart.toISOString().slice(0, 10);
+
+    // Fetch everything in parallel across all patients (single queries, not per-patient loops)
+    const [
+      { data: profiles },
+      { data: subs },
+      { data: hLogsToday },
+      { data: fastTodayRows },
+      { data: suppTodayRows },
+      { data: activePlans },
+      { data: activeProtocols },
+      { data: exRows },
+      { data: vidRows },
+      { data: mealRows },
+      { data: latestGlucose },
+      { data: latestBp },
+    ] = await Promise.all([
       supabase.from("profiles" as any)
         .select("user_id, name, phone, avatar_url, age, gender, weight, bmi, bmi_category, initial_health_score, assessment")
         .in("user_id", patientIds),
@@ -140,57 +160,146 @@ export default function CoachHome({ onViewPatient, onViewFasting }: { onViewPati
         .select("user_id, plan_name, started_at, expires_at, status")
         .in("user_id", patientIds)
         .eq("status", "active"),
+      supabase.from("health_logs" as any)
+        .select("user_id, log_type, glucose_morning, glucose_evening, bp_systolic, weight_kg, logged_at")
+        .in("user_id", patientIds)
+        .gte("logged_at", todayIso),
+      supabase.from("fasting_tracking" as any)
+        .select("user_id, compliance_status, fasting_hours_completed")
+        .in("user_id", patientIds)
+        .eq("tracking_date", todayDate),
+      supabase.from("user_supplement_tracking" as any)
+        .select("user_id, taken")
+        .in("user_id", patientIds)
+        .eq("date", todayDate),
+      supabase.from("user_supplement_plans" as any)
+        .select("user_id")
+        .in("user_id", patientIds)
+        .eq("status", "active"),
+      supabase.from("user_protocols" as any)
+        .select("user_id")
+        .in("user_id", patientIds)
+        .eq("status", "active"),
+      supabase.from("user_exercise_logs" as any)
+        .select("user_id").in("user_id", patientIds).gte("created_at", todayIso),
+      supabase.from("video_progress" as any)
+        .select("user_id").in("user_id", patientIds).gte("watched_at", todayIso),
+      supabase.from("meal_photos" as any)
+        .select("user_id").in("user_id", patientIds).gte("logged_at", todayIso),
+      supabase.from("health_logs" as any)
+        .select("user_id, glucose_morning, logged_at")
+        .in("user_id", patientIds).eq("log_type", "diabetes")
+        .order("logged_at", { ascending: false }),
+      supabase.from("health_logs" as any)
+        .select("user_id, bp_systolic, logged_at")
+        .in("user_id", patientIds).eq("log_type", "bp")
+        .order("logged_at", { ascending: false }),
     ]);
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayIso = todayStart.toISOString();
+    const suppPlanSet = new Set(((activePlans as any[]) ?? []).map((r) => r.user_id));
+    const fastProtoSet = new Set(((activeProtocols as any[]) ?? []).map((r) => r.user_id));
+    const exSet = new Set(((exRows as any[]) ?? []).map((r) => r.user_id));
+    const yogaSet = new Set(((vidRows as any[]) ?? []).map((r) => r.user_id));
+    const dietSet = new Set(((mealRows as any[]) ?? []).map((r) => r.user_id));
 
-    const enriched: PatientSummary[] = await Promise.all(
-      (assignments as any[]).map(async (a) => {
-        const profile = (profiles as any[])?.find((p) => p.user_id === a.user_id);
-        const sub = (subs as any[])?.find((s) => s.user_id === a.user_id);
+    // Per-patient today flags
+    const glucoseSet = new Set<string>();
+    const bpSet = new Set<string>();
+    const weightSet = new Set<string>();
+    (hLogsToday as any[] | null)?.forEach((l) => {
+      if (l.log_type === "diabetes" && (l.glucose_morning != null || l.glucose_evening != null)) glucoseSet.add(l.user_id);
+      if (l.log_type === "bp" && l.bp_systolic != null) bpSet.add(l.user_id);
+      if (l.log_type === "weight" && l.weight_kg != null) weightSet.add(l.user_id);
+    });
 
-        const [{ data: glucoseLog }, { data: bpLog }, { count: todayLogs }, { data: todayFast }] = await Promise.all([
-          supabase.from("health_logs" as any).select("glucose_morning").eq("user_id", a.user_id).eq("log_type", "diabetes").order("logged_at", { ascending: false }).limit(1).maybeSingle(),
-          supabase.from("health_logs" as any).select("bp_systolic").eq("user_id", a.user_id).eq("log_type", "bp").order("logged_at", { ascending: false }).limit(1).maybeSingle(),
-          supabase.from("health_logs" as any).select("id", { count: "exact", head: true }).eq("user_id", a.user_id).gte("logged_at", todayIso),
-          supabase.from("fasting_tracking" as any).select("compliance_status").eq("user_id", a.user_id).gte("tracking_date", todayStart.toISOString().slice(0, 10)).maybeSingle(),
-        ]);
+    const fastingSet = new Set<string>();
+    (fastTodayRows as any[] | null)?.forEach((r) => {
+      if (r.compliance_status === "completed" || r.compliance_status === "partial" || (r.fasting_hours_completed ?? 0) > 0) {
+        fastingSet.add(r.user_id);
+      }
+    });
 
-        const loggedToday = (todayLogs ?? 0) > 0;
-        const fastingOk = !todayFast || ["completed", "partial"].includes(((todayFast as any)?.compliance_status ?? ""));
-        const onTrack = loggedToday && fastingOk;
+    const suppSet = new Set<string>();
+    (suppTodayRows as any[] | null)?.forEach((r) => { if (r.taken) suppSet.add(r.user_id); });
 
-        return {
-          user_id: a.user_id,
-          assigned_at: a.assigned_at,
-          name: profile?.name ?? null,
-          phone: profile?.phone ?? null,
-          avatar_url: profile?.avatar_url ?? null,
-          age: profile?.age ?? null,
-          gender: profile?.gender ?? null,
-          weight: profile?.weight ?? null,
-          bmi: profile?.bmi ?? null,
-          bmi_category: profile?.bmi_category ?? null,
-          latestGlucose: (glucoseLog as any)?.glucose_morning ?? null,
-          latestBpSystolic: (bpLog as any)?.bp_systolic ?? null,
-          initialScore: profile?.initial_health_score ?? null,
-          currentScore: profile?.assessment?.healthScore ?? null,
-          planName: sub?.plan_name ?? null,
-          planStarted: sub?.started_at ?? null,
-          planExpires: sub?.expires_at ?? null,
-          loggedToday,
-          fastingOk,
-          onTrack,
-        };
-      })
-    );
+    // Latest glucose / BP (already ordered desc)
+    const latestGlucoseByUser = new Map<string, number>();
+    (latestGlucose as any[] | null)?.forEach((l) => {
+      if (!latestGlucoseByUser.has(l.user_id) && l.glucose_morning != null) {
+        latestGlucoseByUser.set(l.user_id, l.glucose_morning);
+      }
+    });
+    const latestBpByUser = new Map<string, number>();
+    (latestBp as any[] | null)?.forEach((l) => {
+      if (!latestBpByUser.has(l.user_id) && l.bp_systolic != null) {
+        latestBpByUser.set(l.user_id, l.bp_systolic);
+      }
+    });
+
+    const enriched: PatientSummary[] = (assignments as any[]).map((a) => {
+      const profile = (profiles as any[])?.find((p) => p.user_id === a.user_id);
+      const sub = (subs as any[])?.find((s) => s.user_id === a.user_id);
+      const hasFasting = fastProtoSet.has(a.user_id);
+      const hasSupp = suppPlanSet.has(a.user_id);
+
+      const applicable: Record<ActivityKey, boolean> = {
+        glucose: true, bp: true, weight: true,
+        fasting: hasFasting,
+        supplements: hasSupp,
+        exercise: true, yoga: true, diet: true,
+      };
+      const activities: Record<ActivityKey, boolean> = {
+        glucose: glucoseSet.has(a.user_id),
+        bp: bpSet.has(a.user_id),
+        weight: weightSet.has(a.user_id),
+        fasting: fastingSet.has(a.user_id),
+        supplements: suppSet.has(a.user_id),
+        exercise: exSet.has(a.user_id),
+        yoga: yogaSet.has(a.user_id),
+        diet: dietSet.has(a.user_id),
+      };
+
+      let applicableCount = 0;
+      let doneCount = 0;
+      for (const k of ALL_ACTIVITIES) {
+        if (applicable[k]) {
+          applicableCount++;
+          if (activities[k]) doneCount++;
+        }
+      }
+      const onTrack = applicableCount > 0 && doneCount >= Math.ceil(applicableCount * 0.7);
+
+      return {
+        user_id: a.user_id,
+        assigned_at: a.assigned_at,
+        name: profile?.name ?? null,
+        phone: profile?.phone ?? null,
+        avatar_url: profile?.avatar_url ?? null,
+        age: profile?.age ?? null,
+        gender: profile?.gender ?? null,
+        weight: profile?.weight ?? null,
+        bmi: profile?.bmi ?? null,
+        bmi_category: profile?.bmi_category ?? null,
+        latestGlucose: latestGlucoseByUser.get(a.user_id) ?? null,
+        latestBpSystolic: latestBpByUser.get(a.user_id) ?? null,
+        initialScore: profile?.initial_health_score ?? null,
+        currentScore: profile?.assessment?.healthScore ?? null,
+        planName: sub?.plan_name ?? null,
+        planStarted: sub?.started_at ?? null,
+        planExpires: sub?.expires_at ?? null,
+        hasFastingProtocol: hasFasting,
+        hasSuppPlan: hasSupp,
+        activities,
+        applicable,
+        doneCount,
+        applicableCount,
+        onTrack,
+      };
+    });
 
     setPatients(enriched);
     setAlerts(evaluateAlerts(enriched));
 
-    // Handled meetings + completed sessions count
     const { data: handledMeetings } = await supabase
       .from("coach_meetings" as any)
       .select("user_id, status")
@@ -200,62 +309,54 @@ export default function CoachHome({ onViewPatient, onViewFasting }: { onViewPati
     setCompletedSessions(((handledMeetings as any[]) ?? []).filter((m) => m.status === "completed").length);
     setNeedsScheduling(enriched.filter((p) => !handledIds.has(p.user_id)));
 
-    // Domain overviews (today) — count unique patients active per domain
-    const [{ data: exRows }, { data: vidRows }, { data: mealRows }] = await Promise.all([
-      supabase.from("user_exercise_logs" as any).select("user_id").in("user_id", patientIds).gte("created_at", todayIso),
-      supabase.from("video_progress" as any).select("user_id").in("user_id", patientIds).gte("watched_at", todayIso),
-      supabase.from("meal_photos" as any).select("user_id").in("user_id", patientIds).gte("logged_at", todayIso),
-    ]);
-    setDomainStats({
-      exercise: new Set(((exRows as any[]) ?? []).map((r) => r.user_id)).size,
-      yoga: new Set(((vidRows as any[]) ?? []).map((r) => r.user_id)).size,
-      diet: new Set(((mealRows as any[]) ?? []).map((r) => r.user_id)).size,
-    });
-
-
-    // Fasting summaries
-    const fSummaries: FastingSummary[] = await Promise.all(
-      patientIds.map(async (uid: string) => {
-        const profile = (profiles as any[])?.find((p) => p.user_id === uid);
-        const { data: up } = await supabase
-          .from("user_protocols" as any).select("id").eq("user_id", uid).eq("status", "active").limit(1).maybeSingle();
-        const tracking = await fetchTrackingForUser(uid, 14);
-        const streak = calculateStreak(tracking);
-        const lastEntry = tracking[0];
-        return {
-          user_id: uid,
-          name: profile?.name ?? "Unknown",
-          currentStreak: streak.currentStreak,
-          longestStreak: streak.longestStreak,
-          lastStatus: lastEntry?.compliance_status ?? "pending",
-          hasProtocol: !!up,
-        };
-      })
-    );
-    setFastingSummaries(fSummaries);
     setLoading(false);
   };
 
-  const handleNudge = async (p: PatientSummary) => {
-    setNudging(p.user_id);
-    try {
-      await createNotification({
-        user_id: p.user_id,
-        title: `A gentle nudge from ${coach?.name ?? "your coach"}`,
-        body: "Log today's readings and stay on your fasting window — small daily wins compound. You've got this! 💪",
-        type: "coach_nudge",
-        icon: "👋",
-      });
-      toast.success(`Nudge sent to ${p.name ?? "patient"}`);
-    } catch (e: any) {
-      toast.error("Could not send nudge");
-    } finally {
-      setNudging(null);
-    }
-  };
-
+  // Derived stats
   const onTrackCount = patients.filter((p) => p.onTrack).length;
   const offTrackPatients = patients.filter((p) => !p.onTrack);
+
+  const activityStats = useMemo(() => {
+    const map = new Map<ActivityKey, { done: number; applicable: number; pending: PendingPatient[] }>();
+    for (const k of ALL_ACTIVITIES) map.set(k, { done: 0, applicable: 0, pending: [] });
+    for (const p of patients) {
+      for (const k of ALL_ACTIVITIES) {
+        if (!p.applicable[k]) continue;
+        const s = map.get(k)!;
+        s.applicable++;
+        if (p.activities[k]) s.done++;
+        else s.pending.push({ user_id: p.user_id, name: p.name, avatar_url: p.avatar_url });
+      }
+    }
+    return map;
+  }, [patients]);
+
+  const filteredPatients = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return patients;
+    return patients.filter((p) => (p.name ?? "").toLowerCase().includes(q) || (p.phone ?? "").includes(q));
+  }, [patients, search]);
+
+  const nudgeAllOffTrack = async () => {
+    if (!offTrackPatients.length) return;
+    setNudgingAll(true);
+    try {
+      await Promise.all(offTrackPatients.map((p) =>
+        createNotification({
+          user_id: p.user_id,
+          title: `A gentle nudge from ${coach?.name ?? "your coach"}`,
+          body: "You have pending items for today — a few quick logs will keep you on track. You've got this! 💪",
+          type: "coach_nudge",
+          icon: "👋",
+        })
+      ));
+      toast.success(`Nudge sent to ${offTrackPatients.length} patient${offTrackPatients.length > 1 ? "s" : ""}`);
+    } catch {
+      toast.error("Some nudges could not be sent");
+    } finally {
+      setNudgingAll(false);
+    }
+  };
 
   const trend = (p: PatientSummary) => {
     if (p.initialScore == null || p.currentScore == null) return null;
@@ -272,6 +373,8 @@ export default function CoachHome({ onViewPatient, onViewFasting }: { onViewPati
       </div>
     );
   }
+
+  const activeActivityStats = activityDialog ? activityStats.get(activityDialog) : null;
 
   return (
     <div className="flex flex-col gap-5 px-5 pt-14 pb-4">
@@ -368,7 +471,7 @@ export default function CoachHome({ onViewPatient, onViewFasting }: { onViewPati
         </motion.div>
       )}
 
-      {/* Stats Grid — Patients clickable */}
+      {/* Stats Grid */}
       <motion.div className="grid grid-cols-3 gap-3" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <button
           onClick={onViewPatient}
@@ -396,17 +499,19 @@ export default function CoachHome({ onViewPatient, onViewFasting }: { onViewPati
         </button>
       </motion.div>
 
-      {/* Today's Tracking */}
+      {/* Patient Tracking */}
       {patients.length > 0 && (
         <motion.div className="liquid-glass rounded-3xl p-5" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
           <div className="flex items-center gap-2 mb-3">
-            <CheckCircle2 className="w-5 h-5 text-primary" strokeWidth={1.8} />
-            <span className="text-foreground font-bold">Today's Tracking</span>
-            <span className="ml-auto text-[11px] text-muted-foreground font-medium">
-              {onTrackCount} / {patients.length} on track
-            </span>
+            <UserCheck className="w-5 h-5 text-primary" strokeWidth={1.8} />
+            <span className="text-foreground font-bold">Patient Tracking</span>
+            <span className="ml-auto text-[11px] text-muted-foreground font-medium">Today</span>
           </div>
-          <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-muted rounded-xl p-3 text-center">
+              <p className="text-2xl font-black text-foreground">{patients.length}</p>
+              <p className="text-[10px] text-muted-foreground font-medium">Total</p>
+            </div>
             <div className="bg-success/10 rounded-xl p-3 text-center">
               <p className="text-2xl font-black text-success">{onTrackCount}</p>
               <p className="text-[10px] text-muted-foreground font-medium">On Track</p>
@@ -417,49 +522,77 @@ export default function CoachHome({ onViewPatient, onViewFasting }: { onViewPati
             </div>
           </div>
           {offTrackPatients.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                Nudge patients off track
-              </p>
-              {offTrackPatients.slice(0, 5).map((p) => (
-                <div key={p.user_id} className="flex items-center gap-3 p-2.5 rounded-2xl bg-card/60">
-                  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    {p.avatar_url ? (
-                      <img src={p.avatar_url} alt="" className="w-9 h-9 rounded-xl object-cover" />
-                    ) : (
-                      <span className="text-primary font-bold text-xs">{(p.name ?? "?")[0].toUpperCase()}</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-foreground font-semibold text-sm truncate">{p.name ?? "Patient"}</p>
-                    <p className="text-muted-foreground text-[11px]">
-                      {!p.loggedToday ? "No logs today" : ""}
-                      {!p.loggedToday && !p.fastingOk ? " • " : ""}
-                      {!p.fastingOk ? "Fasting missed" : ""}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleNudge(p)}
-                    disabled={nudging === p.user_id}
-                    className="gradient-blue text-primary-foreground rounded-xl px-3 py-1.5 text-xs font-bold flex items-center gap-1 shrink-0 disabled:opacity-60"
-                  >
-                    {nudging === p.user_id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Send className="w-3.5 h-3.5" />
-                    )}
-                    Nudge
-                  </button>
-                </div>
-              ))}
-            </div>
+            <button
+              onClick={nudgeAllOffTrack}
+              disabled={nudgingAll}
+              className="mt-3 w-full gradient-blue text-primary-foreground rounded-xl py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-60"
+            >
+              {nudgingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              Nudge all {offTrackPatients.length} off-track
+            </button>
           )}
+        </motion.div>
+      )}
+
+      {/* Activity Tracking */}
+      {patients.length > 0 && (
+        <motion.div className="liquid-glass rounded-3xl p-5" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
+          <div className="flex items-center gap-2 mb-3">
+            <CheckCircle2 className="w-5 h-5 text-primary" strokeWidth={1.8} />
+            <span className="text-foreground font-bold">Activity Tracking</span>
+            <span className="ml-auto text-[11px] text-muted-foreground font-medium">
+              Tap to nudge pending
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {ALL_ACTIVITIES.map((k) => {
+              const s = activityStats.get(k)!;
+              const meta = ACTIVITY_META[k];
+              const pct = s.applicable ? Math.round((s.done / s.applicable) * 100) : 0;
+              const allDone = s.applicable > 0 && s.done === s.applicable;
+              const noneApplicable = s.applicable === 0;
+              return (
+                <button
+                  key={k}
+                  onClick={() => !noneApplicable && setActivityDialog(k)}
+                  disabled={noneApplicable}
+                  className={`rounded-2xl p-3 text-left transition ${
+                    noneApplicable
+                      ? "bg-muted/30 opacity-50 cursor-not-allowed"
+                      : allDone
+                        ? "bg-success/10 border border-success/30 hover:bg-success/15"
+                        : "bg-card border border-border hover:bg-accent/40"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-base">{meta.emoji}</span>
+                    <span className={`text-[10px] font-bold ${
+                      noneApplicable ? "text-muted-foreground" :
+                      allDone ? "text-success" :
+                      pct >= 70 ? "text-warning" : "text-destructive"
+                    }`}>
+                      {noneApplicable ? "N/A" : `${pct}%`}
+                    </span>
+                  </div>
+                  <p className="text-foreground text-lg font-black leading-none">
+                    {s.done}<span className="text-xs text-muted-foreground font-medium">/{s.applicable || 0}</span>
+                  </p>
+                  <p className="text-muted-foreground text-[10px] font-medium mt-1">{meta.label}</p>
+                  {!noneApplicable && s.pending.length > 0 && (
+                    <p className="text-[10px] font-semibold text-primary mt-0.5">
+                      {s.pending.length} pending →
+                    </p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </motion.div>
       )}
 
       {/* Alerts */}
       {alerts.length > 0 && (
-        <motion.div className="liquid-glass rounded-3xl p-5" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+        <motion.div className="liquid-glass rounded-3xl p-5" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
           <div className="flex items-center gap-2 mb-4">
             <Bell className="w-5 h-5 text-warning" strokeWidth={1.8} />
             <span className="text-foreground font-bold">Attention Needed</span>
@@ -481,7 +614,6 @@ export default function CoachHome({ onViewPatient, onViewFasting }: { onViewPati
                   }`}
                   strokeWidth={2}
                 />
-
                 <div className="flex-1 min-w-0">
                   <p className="text-foreground text-sm font-semibold">{alert.patient_name}</p>
                   <p className="text-muted-foreground text-xs">{alert.message}</p>
@@ -497,11 +629,11 @@ export default function CoachHome({ onViewPatient, onViewFasting }: { onViewPati
         </motion.div>
       )}
 
-      {/* No alerts — all clear */}
+      {/* All clear */}
       {alerts.length === 0 && patients.length > 0 && (
         <motion.div
           className="liquid-glass rounded-3xl p-5 flex items-center gap-3"
-          initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+          initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}
         >
           <div className="w-10 h-10 rounded-xl bg-success/15 flex items-center justify-center shrink-0">
             <Heart className="w-5 h-5 text-success" strokeWidth={1.8} />
@@ -513,124 +645,42 @@ export default function CoachHome({ onViewPatient, onViewFasting }: { onViewPati
         </motion.div>
       )}
 
-      {/* Domain Overviews — today's engagement across pillars */}
-      {patients.length > 0 && (
-        <motion.div
-          className="grid grid-cols-3 gap-3"
-          initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.17 }}
-        >
-          {[
-            { key: "exercise", label: "Exercise", icon: Dumbbell, value: domainStats.exercise, color: "text-primary" },
-            { key: "yoga", label: "Yoga & Stress", icon: Sparkles, value: domainStats.yoga, color: "text-warning" },
-            { key: "diet", label: "Diet", icon: Utensils, value: domainStats.diet, color: "text-success" },
-          ].map((d) => {
-            const pct = patients.length ? Math.round((d.value / patients.length) * 100) : 0;
-            return (
-              <div key={d.key} className="liquid-glass rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-1.5">
-                  <d.icon className={`w-5 h-5 ${d.color}`} strokeWidth={1.8} />
-                  <span className="text-[10px] font-bold text-muted-foreground">{pct}%</span>
-                </div>
-                <p className="stat-number text-xl text-foreground">{d.value}<span className="text-xs text-muted-foreground font-medium">/{patients.length}</span></p>
-                <p className="text-muted-foreground text-[10px] font-medium mt-0.5">{d.label} today</p>
-              </div>
-            );
-          })}
-        </motion.div>
-      )}
-
-
-      {/* Fasting Overview */}
-      {fastingSummaries.length > 0 && (
-        <motion.div className="liquid-glass rounded-3xl p-5" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Timer className="w-5 h-5 text-primary" strokeWidth={1.8} />
-              <span className="text-foreground font-bold">Fasting Overview</span>
-            </div>
-            {onViewFasting && (
-              <button onClick={onViewFasting} className="text-primary text-xs font-medium flex items-center gap-0.5">
-                View All <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            <div className="bg-primary/10 rounded-xl p-3 text-center">
-              <p className="text-lg font-black text-primary">{fastingSummaries.filter((f) => f.lastStatus === "completed" || f.lastStatus === "partial").length}</p>
-              <p className="text-[10px] text-muted-foreground font-medium">On Track</p>
-            </div>
-            <div className="bg-destructive/10 rounded-xl p-3 text-center">
-              <p className="text-lg font-black text-destructive">{fastingSummaries.filter((f) => f.lastStatus === "missed").length}</p>
-              <p className="text-[10px] text-muted-foreground font-medium">Missed</p>
-            </div>
-            <div className="bg-muted rounded-xl p-3 text-center">
-              <p className="text-lg font-black text-muted-foreground">{fastingSummaries.filter((f) => !f.hasProtocol).length}</p>
-              <p className="text-[10px] text-muted-foreground font-medium">Unassigned</p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            {fastingSummaries.slice(0, 5).map((f) => (
-              <div key={f.user_id} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0">
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-2 h-2 rounded-full ${
-                    !f.hasProtocol ? "bg-muted-foreground" :
-                    f.lastStatus === "completed" ? "bg-primary" :
-                    f.lastStatus === "partial" ? "bg-amber-500" :
-                    f.lastStatus === "missed" ? "bg-destructive" : "bg-muted-foreground"
-                  }`} />
-                  <span className="text-foreground text-sm font-medium">{f.name}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  {f.hasProtocol ? (
-                    <>
-                      <span className="text-[10px] font-semibold text-primary flex items-center gap-0.5">
-                        <Flame className="w-3 h-3" /> {f.currentStreak}d
-                      </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        f.lastStatus === "completed" ? "text-primary bg-primary/10" :
-                        f.lastStatus === "partial" ? "text-amber-500 bg-amber-500/10" :
-                        f.lastStatus === "missed" ? "text-destructive bg-destructive/10" :
-                        "text-muted-foreground bg-muted"
-                      }`}>
-                        {f.lastStatus === "completed" ? <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" strokeWidth={2.4} /> Good</span> :
-                         f.lastStatus === "partial" ? <span className="inline-flex items-center gap-1"><MinusCircle className="w-3 h-3" strokeWidth={2.4} /> Partial</span> :
-                         f.lastStatus === "missed" ? <span className="inline-flex items-center gap-1"><XCircle className="w-3 h-3" strokeWidth={2.4} /> Missed</span> : "Pending"}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">No protocol</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* My Patients — richer cards */}
+      {/* My Patients — full list with search */}
       <motion.div className="liquid-glass rounded-3xl p-5" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <UserCheck className="w-5 h-5 text-primary" strokeWidth={1.8} />
             <span className="text-foreground font-bold">My Patients</span>
+            <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              {filteredPatients.length}{search ? ` of ${patients.length}` : ""}
+            </span>
           </div>
-          {patients.length > 0 && (
-            <button onClick={onViewPatient} className="text-primary text-xs font-medium flex items-center gap-0.5">
-              View All <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          )}
         </div>
+
+        {patients.length > 0 && (
+          <div className="relative mb-3">
+            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name or phone…"
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+        )}
 
         {patients.length === 0 ? (
           <div className="text-center py-8">
             <Users className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-muted-foreground text-sm">No patients assigned yet</p>
           </div>
+        ) : filteredPatients.length === 0 ? (
+          <div className="text-center py-6">
+            <p className="text-muted-foreground text-sm">No patients match "{search}"</p>
+          </div>
         ) : (
-          <div className="flex flex-col gap-3">
-            {patients.slice(0, 6).map((p) => {
+          <div className="flex flex-col gap-3 max-h-[70vh] overflow-y-auto -mx-1 px-1">
+            {filteredPatients.map((p) => {
               const t = trend(p);
               return (
                 <button
@@ -661,6 +711,9 @@ export default function CoachHome({ onViewPatient, onViewFasting }: { onViewPati
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="text-[10px] font-bold text-muted-foreground">
+                        {p.doneCount}/{p.applicableCount} today
+                      </span>
                       {p.planName && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
                           <Package className="w-2.5 h-2.5" /> {p.planName}
@@ -672,13 +725,6 @@ export default function CoachHome({ onViewPatient, onViewFasting }: { onViewPati
                         </span>
                       )}
                     </div>
-                    {(p.planStarted || p.planExpires) && (
-                      <p className="text-muted-foreground text-[10px] mt-0.5">
-                        {p.planStarted ? new Date(p.planStarted).toLocaleDateString("en-IN", { month: "short", day: "numeric" }) : "—"}
-                        {" → "}
-                        {p.planExpires ? new Date(p.planExpires).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "2-digit" }) : "—"}
-                      </p>
-                    )}
                   </div>
                   <div className="text-right flex-shrink-0">
                     {p.weight && <p className="text-foreground text-xs font-bold">{p.weight} kg</p>}
@@ -687,6 +733,7 @@ export default function CoachHome({ onViewPatient, onViewFasting }: { onViewPati
                       {new Date(p.assigned_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
                     </p>
                   </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
                 </button>
               );
             })}
@@ -724,6 +771,17 @@ export default function CoachHome({ onViewPatient, onViewFasting }: { onViewPati
             avatar_url: summaryPatient.avatar_url,
             assigned_at: summaryPatient.assigned_at,
           }}
+          coachName={coach?.name ?? null}
+        />
+      )}
+      {activityDialog && activeActivityStats && (
+        <CoachActivityNudgeDialog
+          open={!!activityDialog}
+          onClose={() => setActivityDialog(null)}
+          activity={activityDialog}
+          pending={activeActivityStats.pending}
+          doneCount={activeActivityStats.done}
+          totalApplicable={activeActivityStats.applicable}
           coachName={coach?.name ?? null}
         />
       )}
