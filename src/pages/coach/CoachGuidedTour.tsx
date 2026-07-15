@@ -24,6 +24,7 @@ const SLIDES = [
   {
     id: 1,
     icon: Heart,
+    image: philosophyImg,
     accent: "from-rose-500 to-pink-600",
     glow: "shadow-rose-500/20",
     title: "Philosophy Reset",
@@ -38,6 +39,7 @@ const SLIDES = [
   {
     id: 2,
     icon: Target,
+    image: punchImg,
     accent: "from-secondary to-primary",
     glow: "shadow-secondary/20",
     title: "Core System — PUNCH",
@@ -52,6 +54,7 @@ const SLIDES = [
   {
     id: 3,
     icon: ShieldCheck,
+    image: roleImg,
     accent: "from-emerald-500 to-teal-600",
     glow: "shadow-emerald-500/20",
     title: "Role Clarity",
@@ -66,6 +69,7 @@ const SLIDES = [
   {
     id: 4,
     icon: Sparkles,
+    image: traitsImg,
     accent: "from-amber-500 to-orange-600",
     glow: "shadow-amber-500/20",
     title: "Top 5 Traits Needed",
@@ -80,6 +84,7 @@ const SLIDES = [
   {
     id: 5,
     icon: Rocket,
+    image: visionImg,
     accent: "from-violet-500 to-purple-600",
     glow: "shadow-violet-500/20",
     title: "Vision & Opportunity",
