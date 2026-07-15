@@ -6,6 +6,11 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import philosophyImg from "@/assets/coach-tour/philosophy.jpg";
+import punchImg from "@/assets/coach-tour/punch.jpg";
+import roleImg from "@/assets/coach-tour/role.jpg";
+import traitsImg from "@/assets/coach-tour/traits.jpg";
+import visionImg from "@/assets/coach-tour/vision.jpg";
 
 interface Props {
   coachId: string;
