@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -103,7 +103,7 @@ function NativeSessionRedirect() {
   return null;
 }
 
-function NativeAuthStartupGate({ children }: { children: React.ReactNode }) {
+function NativeAuthStartupGate({ children }: { children: ReactNode }) {
   const { loading, ready } = useAuth();
 
   if (isNative() && (loading || !ready)) {

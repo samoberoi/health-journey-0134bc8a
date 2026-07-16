@@ -129,6 +129,8 @@
   * { @apply border-border; }
   html {
     font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -140,6 +142,8 @@
   }
   body {
     @apply text-foreground;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
     overscroll-behavior: none;
     font-feature-settings: "ss01", "kern";
     line-height: 1.5;
@@ -157,6 +161,17 @@
   .stat-number, .tabular { font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
   ::-webkit-scrollbar { display: none; }
   * { -ms-overflow-style: none; scrollbar-width: none; }
+
+  #root,
+  .phone-container,
+  .ob-lock,
+  button,
+  input,
+  textarea,
+  select {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
 
   svg.lucide, .lucide, svg[stroke] { stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
