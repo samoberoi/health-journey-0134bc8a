@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getUser, saveUser } from "./userStore";
+import { fireHealthMetricFeedback } from "@/lib/healthAlerts";
 
 export interface ProfileRow {
   user_id: string;
@@ -69,6 +70,12 @@ export async function createProfile(profile: ProfileRow) {
 
 /** Update an existing profile (upserts if missing) */
 export async function updateProfile(userId: string, updates: Partial<ProfileRow>) {
+  const shouldCheckHealthAlert =
+    Object.prototype.hasOwnProperty.call(updates, "weight") ||
+    !!(updates.clinical as any)?.systolicBP ||
+    !!(updates.clinical as any)?.diastolicBP;
+  const previousProfile = shouldCheckHealthAlert ? await fetchProfile(userId) : null;
+
   const { error } = await supabase
     .from("profiles" as any)
     .upsert({ user_id: userId, ...updates } as any, { onConflict: "user_id" });
@@ -77,6 +84,31 @@ export async function updateProfile(userId: string, updates: Partial<ProfileRow>
     console.error("Failed to update profile:", error);
     return false;
   }
+
+  const nextWeight = Number((updates as any).weight);
+  if (Number.isFinite(nextWeight) && previousProfile?.weight !== nextWeight) {
+    void fireHealthMetricFeedback(
+      { user_id: userId, log_type: "weight", weight_kg: nextWeight },
+      previousProfile?.weight ?? null,
+    );
+  }
+
+  const clinical = (updates.clinical ?? {}) as any;
+  const previousClinical = (previousProfile?.clinical ?? {}) as any;
+  const systolic = Number(clinical.systolicBP ?? clinical.bp_systolic ?? clinical.systolic ?? clinical.bloodPressureSystolic);
+  const diastolic = Number(clinical.diastolicBP ?? clinical.bp_diastolic ?? clinical.diastolic ?? clinical.bloodPressureDiastolic);
+  const previousSystolic = Number(previousClinical.systolicBP ?? previousClinical.bp_systolic ?? previousClinical.systolic ?? previousClinical.bloodPressureSystolic);
+  const previousDiastolic = Number(previousClinical.diastolicBP ?? previousClinical.bp_diastolic ?? previousClinical.diastolic ?? previousClinical.bloodPressureDiastolic);
+  const bpChanged = systolic !== previousSystolic || diastolic !== previousDiastolic;
+  if (Number.isFinite(systolic) && Number.isFinite(diastolic) && bpChanged) {
+    void fireHealthMetricFeedback({
+      user_id: userId,
+      log_type: "bp",
+      bp_systolic: systolic,
+      bp_diastolic: diastolic,
+    });
+  }
+
   return true;
 }
 

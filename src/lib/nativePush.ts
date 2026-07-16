@@ -12,6 +12,7 @@
  */
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
+import { LocalNotifications } from "@capacitor/local-notifications";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -65,6 +66,17 @@ export async function registerNativePush(userId: string): Promise<
     }
     if (perm.receive !== "granted") {
       return { ok: false, reason: "permission_denied" };
+    }
+
+    // Same iOS permission family, but request it explicitly so local health
+    // alerts can show a banner + system beep immediately after an abnormal log.
+    try {
+      let localPerm = await LocalNotifications.checkPermissions();
+      if (localPerm.display === "prompt" || localPerm.display === "prompt-with-rationale") {
+        localPerm = await LocalNotifications.requestPermissions();
+      }
+    } catch (err) {
+      console.warn("[push] local alert permission setup failed", err);
     }
 
     if (!registered) {

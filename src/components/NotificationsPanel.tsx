@@ -27,6 +27,7 @@ const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: 
   lab_test:            { icon: FlaskConical, color: "text-primary", bg: "bg-primary/10" },
   compliment:          { icon: Sparkles, color: "text-yellow-500", bg: "bg-yellow-500/10" },
   achievement_share:   { icon: Megaphone, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  health_alert:        { icon: AlertTriangle, color: "text-destructive", bg: "bg-destructive/10" },
   system:              { icon: Bell, color: "text-muted-foreground", bg: "bg-muted" },
 };
 

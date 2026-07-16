@@ -41,6 +41,7 @@ import { playNotificationSound, getMasterVolume, setMasterVolume, getMuted, setM
 import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
 import { createNotification } from "@/lib/notificationService";
 import { registerNativePushWithToast, isNativePushSupported } from "@/lib/nativePush";
+import { sendLocalHealthAlert } from "@/lib/healthAlerts";
 
 const APP_VERSION = (globalThis as any).__APP_VERSION__ ?? "1.0.0";
 
@@ -871,6 +872,7 @@ export default function Profile({ onClose, isDark = true, onToggleTheme }: Profi
                     // realtime is slow, then insert a real notification row.
                     const s = await getNotificationSoundSettings();
                     if (!getMuted()) playNotificationSound(s.variant);
+                    await sendLocalHealthAlert("BBDO test alert", "If your ringer is on, this should beep as a native phone alert.");
                     await createNotification({
                       user_id: user.id,
                       title: "Test alert",

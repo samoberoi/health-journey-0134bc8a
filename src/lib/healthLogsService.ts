@@ -1,69 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { playNotificationSound, playImpact, playSuccess } from "@/lib/soundEngine";
-import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
-import { toast } from "sonner";
-
-/**
- * Evaluate a health log for out-of-range values and return a human alert.
- * Returns null if everything is within normal range.
- */
-function evaluateHealthLog(log: Partial<HealthLog>): { level: "alert" | "ok"; message: string } | null {
-  if (log.log_type === "weight" && log.weight_kg != null) {
-    // Weight change alerts are handled by caller (needs prior value); default ok.
-    return { level: "ok", message: `Weight logged: ${log.weight_kg} kg` };
-  }
-  if (log.log_type === "diabetes") {
-    const g = log.glucose_morning ?? log.glucose_evening;
-    if (g != null) {
-      if (g >= 180) return { level: "alert", message: `High glucose: ${g} mg/dL` };
-      if (g <= 70)  return { level: "alert", message: `Low glucose: ${g} mg/dL` };
-      if (g >= 140) return { level: "alert", message: `Elevated glucose: ${g} mg/dL` };
-      return { level: "ok", message: `Glucose logged: ${g} mg/dL` };
-    }
-  }
-  if (log.log_type === "bp" && log.bp_systolic != null && log.bp_diastolic != null) {
-    const s = log.bp_systolic, d = log.bp_diastolic;
-    if (s >= 140 || d >= 90) return { level: "alert", message: `High BP: ${s}/${d} mmHg` };
-    if (s <= 90  || d <= 60) return { level: "alert", message: `Low BP: ${s}/${d} mmHg` };
-    return { level: "ok", message: `BP logged: ${s}/${d} mmHg` };
-  }
-  return null;
-}
-
-/** Fire an audible + toast alert after a health log is written. */
-async function firePostLogFeedback(log: Partial<HealthLog>, prevWeight?: number | null) {
-  try {
-    const settings = await getNotificationSoundSettings().catch(() => ({ enabled: true, variant: "bbdo_signature" as const, volume: 1 }));
-    const evalRes = evaluateHealthLog(log);
-
-    // Weight-change alert: compare to previous value
-    let weightAlert: string | null = null;
-    if (log.log_type === "weight" && log.weight_kg != null && prevWeight != null) {
-      const delta = log.weight_kg - prevWeight;
-      if (Math.abs(delta) >= 2) {
-        weightAlert = `Weight ${delta > 0 ? "up" : "down"} ${Math.abs(delta).toFixed(1)} kg (${prevWeight} → ${log.weight_kg})`;
-      }
-    }
-
-    const isAlert = evalRes?.level === "alert" || !!weightAlert;
-    const msg = weightAlert ?? evalRes?.message ?? "Logged";
-
-    if (settings.enabled) {
-      if (isAlert) {
-        // Louder, more attention-grabbing: impact thud + brand chime
-        playImpact();
-        setTimeout(() => playNotificationSound(settings.variant), 220);
-      } else {
-        playSuccess();
-      }
-    }
-
-    if (isAlert) toast.warning(msg);
-    else toast.success(msg);
-  } catch (e) {
-    console.warn("post-log feedback failed", e);
-  }
-}
+import { fireHealthMetricFeedback } from "@/lib/healthAlerts";
 
 export interface HealthLog {
   id: string;
@@ -124,7 +60,7 @@ export async function insertHealthLog(log: Partial<Omit<HealthLog, "id" | "creat
     prevWeight = (prev as any)?.weight_kg ?? null;
   }
 
-  void firePostLogFeedback(log, prevWeight);
+  void fireHealthMetricFeedback(log, prevWeight);
 
   return data as unknown as HealthLog;
 }

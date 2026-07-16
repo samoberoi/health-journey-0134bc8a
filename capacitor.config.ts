@@ -17,6 +17,9 @@ const config: CapacitorConfig = {
       splashFullScreen: true,
       splashImmersive: true,
     },
+    LocalNotifications: {
+      presentationOptions: ["badge", "sound", "banner", "list"],
+    },
   },
   ios: {
     preferredContentMode: "mobile",
