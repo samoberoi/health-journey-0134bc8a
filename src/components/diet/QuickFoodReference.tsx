@@ -688,24 +688,19 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
                 )}
               </div>
 
-              {/* Condition chips (from profile, all on by default, tappable) */}
+              {/* Condition chips — read-only. These reflect the user's saved
+                  profile conditions. To change them, edit Profile. */}
               <div className="mt-2.5 overflow-x-auto scrollbar-hide">
                 <div className="flex gap-1.5 min-w-max">
                   {conditionCatalog
                     .filter((c) => profileConditionKeys.has(c.key))
                     .map((c) => {
-                      const active = conditionKeys.has(c.key);
                       const Icon = CONDITION_ICONS[c.key] ?? ShieldAlert;
                       return (
-                        <button
+                        <div
                           key={c.key}
-                          onClick={() => toggleCondition(c.key)}
-                          aria-pressed={active}
-                          className={`shrink-0 h-8 px-3 rounded-full text-[11.5px] font-bold border transition-all active:scale-[0.97] flex items-center gap-1.5 ${
-                            active
-                              ? "bg-[var(--bbdo-blue)] text-white border-[var(--bbdo-blue)] shadow-sm shadow-[var(--bbdo-blue)]/25"
-                              : "bg-white text-foreground border-border hover:border-[var(--bbdo-blue)]/40"
-                          }`}
+                          title="Managed in your profile"
+                          className="shrink-0 h-8 px-3 rounded-full text-[11.5px] font-bold border flex items-center gap-1.5 bg-[var(--bbdo-blue)] text-white border-[var(--bbdo-blue)] shadow-sm shadow-[var(--bbdo-blue)]/25"
                         >
                           {c.emoji ? (
                             <span className="text-[13px] leading-none">{c.emoji}</span>
@@ -713,8 +708,7 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
                             <Icon className="w-3 h-3" strokeWidth={2.4} />
                           )}
                           {c.label}
-                          {active && <Check className="w-3 h-3" strokeWidth={2.8} />}
-                        </button>
+                        </div>
                       );
                     })}
                 </div>
