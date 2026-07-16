@@ -84,9 +84,16 @@ function normalizePref(p: string | null | undefined): DietKey | null {
   if (v === "vegan") return "vegan";
   if (v === "jain") return "jain";
   if (v === "veg" || v === "vegetarian") return "veg";
-  if (v === "non_veg" || v === "non-veg" || v === "nonveg") return "non_veg";
+  if (v === "non_veg" || v === "non-veg" || v === "nonveg" || v === "non_vegetarian") return "non_veg";
   return null;
 }
+
+const DIET_PREF_LABEL: Record<DietKey, string> = {
+  veg: "Vegetarian",
+  vegan: "Vegan",
+  jain: "Jain",
+  non_veg: "Non-Vegetarian",
+};
 
 export default function QuickFoodReference({ onClose, embedded = false }: { onClose?: () => void; embedded?: boolean }) {
   const { user } = useAuth();
@@ -133,9 +140,12 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
     (async () => {
       const [dietRes, profRes] = await Promise.all([
         supabase.from("user_diet_profiles").select("diet_preference").eq("user_id", user.id).maybeSingle(),
-        supabase.from("profiles").select("deep_profiling").eq("user_id", user.id).maybeSingle(),
+        supabase.from("profiles").select("deep_profiling, lifestyle").eq("user_id", user.id).maybeSingle(),
       ]);
-      const pref = normalizePref(dietRes.data?.diet_preference as string);
+      const lifestyleDiet = (profRes.data as any)?.lifestyle?.diet as string | undefined;
+      const pref =
+        normalizePref(dietRes.data?.diet_preference as string) ??
+        normalizePref(lifestyleDiet);
       if (pref) { setProfilePref(pref); setDiet(pref); }
       const conds = deriveActiveConditions((profRes.data as any)?.deep_profiling);
       if (conds.length) setConditionKeys(new Set(conds.map((c) => c.key)));
@@ -469,70 +479,42 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
           </div>
         )}
 
-        {/* Diet chips — collapsed to the user's profile preference by default.
-            "Change" reveals the full row so they can browse other diets. */}
-        <div className="px-4 pb-2 pt-0 max-w-3xl mx-auto overflow-x-auto scrollbar-hide">
-          <div className="flex gap-1.5 min-w-max items-center">
-            {(() => {
-              const collapsed = profilePref !== null && !showAllDiets;
-              const visibleChips = collapsed
-                ? DIET_CHIPS.filter((d) => d.key === profilePref)
-                : DIET_CHIPS;
-              return (
-                <>
-                  {visibleChips.map((d) => {
-                    const active = diet === d.key;
-                    const isProfile = profilePref === d.key;
-                    return (
-                      <button
-                        key={d.key}
-                        onClick={() => onDietChipTap(d.key)}
-                        className={`shrink-0 h-9 px-3.5 rounded-full text-[11.5px] font-bold border transition-colors active:scale-[0.98] flex items-center gap-1.5 ${
-                          active
-                            ? "bg-foreground text-background border-foreground"
-                            : "bg-white text-foreground border-border"
-                        }`}
-                      >
-                        <span className={`w-2 h-2 rounded-sm ${d.dot}`} />
-                        {d.label}
-                        {isProfile && (
-                          <span className={`text-[9px] font-bold ${active ? "opacity-70" : "text-[var(--bbdo-blue)]"}`}>
-                            • You
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                  {collapsed ? (
-                    <button
-                      onClick={() => setShowAllDiets(true)}
-                      className="shrink-0 h-9 px-3 rounded-full text-[11.5px] font-bold border border-dashed border-border bg-white text-muted-foreground active:scale-[0.98]"
-                    >
-                      + Include other diets
-                    </button>
-                  ) : (
-                    profilePref !== null && (
-                      <button
-                        onClick={() => { setShowAllDiets(false); setDiet(profilePref); }}
-                        className="shrink-0 h-9 px-3 text-[11px] font-bold text-[var(--bbdo-blue)] active:opacity-70"
-                      >
-                        Show less
-                      </button>
-                    )
-                  )}
-                  {dietChanged && (
-                    <button
-                      onClick={() => setDiet(profilePref)}
-                      className="shrink-0 h-8 px-2 text-[11px] font-bold text-rose-600 active:opacity-70"
-                    >
-                      Reset
-                    </button>
-                  )}
-                </>
-              );
-            })()}
-          </div>
+        {/* Diet preference — read-only display. Users change it in Profile → Settings. */}
+        <div className="px-4 pb-2 pt-0 max-w-3xl mx-auto">
+          {profilePref !== null ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-[11.5px] font-bold bg-emerald-500/10 text-emerald-700 border border-emerald-500/30">
+                <span className={`w-2 h-2 rounded-sm ${DIET_CHIPS.find((d) => d.key === profilePref)?.dot ?? "bg-emerald-600"}`} />
+                Your preference: {DIET_PREF_LABEL[profilePref]}
+              </span>
+              <span className="text-[10.5px] text-muted-foreground">
+                Change it in Profile → Settings.
+              </span>
+            </div>
+          ) : (
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide items-center">
+              {DIET_CHIPS.map((d) => {
+                const active = diet === d.key;
+                return (
+                  <button
+                    key={d.key}
+                    onClick={() => onDietChipTap(d.key)}
+                    className={`shrink-0 h-9 px-3.5 rounded-full text-[11.5px] font-bold border transition-colors active:scale-[0.98] flex items-center gap-1.5 ${
+                      active
+                        ? "bg-foreground text-background border-foreground"
+                        : "bg-white text-foreground border-border"
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-sm ${d.dot}`} />
+                    {d.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
+
+
 
 
         {/* Health-condition chips — toggle to filter foods by clinical condition.
