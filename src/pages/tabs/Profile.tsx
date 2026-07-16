@@ -37,6 +37,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchCompliments, markAllSeen, type Compliment } from "@/lib/complimentService";
 import HealthScoreRing from "@/components/HealthScoreRing";
 import BbdoBadgeGrid from "@/components/badges/BbdoBadgeGrid";
+import { playNotificationSound, getMasterVolume, setMasterVolume, getMuted, setMuted } from "@/lib/soundEngine";
+import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
+import { createNotification } from "@/lib/notificationService";
 
 const APP_VERSION = (globalThis as any).__APP_VERSION__ ?? "1.0.0";
 
@@ -116,9 +119,16 @@ type SubPage = null | "logs" | "appSettings" | "notifications" | "plan" | "editP
 function SubScreenShell({ title, onBack, children }: { title: string; onBack: () => void; children: React.ReactNode }) {
   return (
     <div className="min-h-dvh flex flex-col bg-background">
-      <div className="flex items-center gap-3 px-5 pt-4 pb-4 bg-background border-b border-border">
-        <button onClick={onBack} className="w-9 h-9 shrink-0 rounded-full liquid-glass flex items-center justify-center">
-          <ArrowLeft className="w-4 h-4 text-foreground" strokeWidth={1.6} />
+      <div
+        className="sticky top-0 z-30 flex items-center gap-3 px-4 pb-3 bg-background/95 backdrop-blur border-b border-border"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
+      >
+        <button
+          onClick={onBack}
+          aria-label="Back"
+          className="w-11 h-11 shrink-0 rounded-full liquid-glass flex items-center justify-center active:scale-95 transition"
+        >
+          <ArrowLeft className="w-5 h-5 text-foreground" strokeWidth={2} />
         </button>
         <h2 className="flex-1 min-w-0 text-lg font-black text-foreground leading-tight break-words">{title}</h2>
       </div>
@@ -153,6 +163,9 @@ export default function Profile({ onClose, isDark = true, onToggleTheme }: Profi
   const [notifCommunity, setNotifCommunity] = useState(true);
   const [notifSupplement, setNotifSupplement] = useState(true);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [soundVolume, setSoundVolumeState] = useState(() => getMasterVolume());
+  const [soundMuted, setSoundMutedState] = useState(() => getMuted());
+  const [sendingTest, setSendingTest] = useState(false);
   const [healthLogs, setHealthLogs] = useState<HealthLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [progressSummaries, setProgressSummaries] = useState<ProgressSummary[]>([]);
@@ -805,6 +818,79 @@ export default function Profile({ onClose, isDark = true, onToggleTheme }: Profi
               <Switch className="shrink-0 mt-1" checked={value} onCheckedChange={setter} />
             </div>
           ))}
+
+          {/* Sound preview + test notification */}
+          <div className="liquid-glass rounded-2xl p-4 flex flex-col gap-3 mt-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-foreground font-semibold text-sm">Notification Sound</p>
+                <p className="text-muted-foreground text-xs">BBDO signature chime plays on new alerts</p>
+              </div>
+              <Switch
+                checked={!soundMuted}
+                onCheckedChange={(on) => { setMuted(!on); setSoundMutedState(!on); }}
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground w-14">Volume</span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={soundVolume}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  setMasterVolume(v);
+                  setSoundVolumeState(v);
+                }}
+                className="flex-1 accent-primary"
+              />
+              <span className="text-xs text-foreground w-10 text-right">{Math.round(soundVolume * 100)}%</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                onClick={async () => {
+                  const s = await getNotificationSoundSettings();
+                  playNotificationSound(s.variant);
+                }}
+                className="rounded-xl liquid-glass py-2.5 text-sm font-semibold text-foreground active:scale-[0.98] transition"
+              >
+                Play sound
+              </button>
+              <button
+                disabled={sendingTest || !user?.id}
+                onClick={async () => {
+                  if (!user?.id) return;
+                  setSendingTest(true);
+                  try {
+                    // Trigger the sound immediately so users hear it even if
+                    // realtime is slow, then insert a real notification row.
+                    const s = await getNotificationSoundSettings();
+                    if (!getMuted()) playNotificationSound(s.variant);
+                    await createNotification({
+                      user_id: user.id,
+                      title: "Test alert",
+                      body: "This is a test notification from BBDO.",
+                      type: "test",
+                      icon: "🔔",
+                    });
+                    toast.success("Test notification sent");
+                  } catch (err: any) {
+                    toast.error(err?.message ?? "Failed to send test");
+                  } finally {
+                    setSendingTest(false);
+                  }
+                }}
+                className="rounded-xl gradient-blue py-2.5 text-sm font-semibold text-primary-foreground active:scale-[0.98] transition disabled:opacity-60"
+              >
+                {sendingTest ? "Sending…" : "Send test notification"}
+              </button>
+            </div>
+          </div>
+
           <p className="text-muted-foreground text-xs px-1 mt-2">Push notifications require device permission to work.</p>
         </div>
       </SubScreenShell>
