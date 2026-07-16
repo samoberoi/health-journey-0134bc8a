@@ -1,6 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { createNotification } from "@/lib/notificationService";
 import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
 import {
@@ -164,6 +165,23 @@ export function fireRealtimeHealthNotificationAlert(notification: RealtimeHealth
   void sendLocalHealthAlert(notification.title, notification.body);
 }
 
+export async function sendRemoteHealthPush(title: string, body: string): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return false;
+  try {
+    const { data, error } = await supabase.functions.invoke("send-health-push", {
+      body: { title, body, actionUrl: "/home?tab=profile" },
+    });
+    if (error) {
+      console.warn("remote health push failed", error);
+      return false;
+    }
+    return Boolean((data as any)?.ok);
+  } catch (err) {
+    console.warn("remote health push failed", err);
+    return false;
+  }
+}
+
 export async function fireHealthMetricFeedback(
   log: Partial<HealthAlertLog>,
   prevWeight?: number | null,
@@ -188,6 +206,7 @@ export async function fireHealthMetricFeedback(
       setTimeout(() => playNotificationSound(settings.variant), 520);
       setTimeout(() => setMasterVolume(previousVolume), 1_800);
       void sendLocalHealthAlert(result.title, result.message);
+      void sendRemoteHealthPush(result.title, result.message);
 
       if (opts.createInboxNotification !== false && log.user_id) {
         void createNotification({

@@ -6,9 +6,7 @@
  * with the OS push service, and upserts the device token into
  * `device_push_tokens` so a server-side sender can target it later.
  *
- * The server side (an APNs edge function) is intentionally not wired here —
- * the client just deposits the token. Add the sender once your APNs auth
- * key + Team ID are in place.
+ * The server-side APNs sender reads this token from `device_push_tokens`.
  */
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
@@ -123,7 +121,7 @@ export async function registerNativePushWithToast(userId: string) {
   }
   const res = await registerNativePush(userId);
   if (res.ok === true) {
-    toast.success("Push notifications enabled");
+    toast.success("Push notifications enabled for this iPhone");
     return;
   }
   if (res.reason === "permission_denied") {
