@@ -1167,7 +1167,10 @@ export default function EditProfile({ onBack }: EditProfileProps) {
             )}
             <ToggleChip label="Vitamin D Deficient" value={deepProfiling.vitaminD ?? "no"} onChange={(v) => setDeepProfiling({ ...deepProfiling, vitaminD: v })} options={[{ id: "no", label: "No" }, { id: "yes", label: "Yes" }, { id: "unsure", label: "Not Sure" }]} />
             <ToggleChip label="Fatty Liver" value={deepProfiling.fattyLiver ?? "no"} onChange={(v) => setDeepProfiling({ ...deepProfiling, fattyLiver: v })} options={[{ id: "no", label: "No" }, { id: "yes", label: "Yes" }, { id: "unsure", label: "Not Sure" }]} />
-            <ToggleChip label="Kidney Disease" value={deepProfiling.kidneyDisease ?? "no"} onChange={(v) => setDeepProfiling({ ...deepProfiling, kidneyDisease: v })} options={[{ id: "no", label: "No" }, { id: "yes", label: "Yes" }, { id: "unsure", label: "Not Sure" }]} />
+            <ToggleChip label="Kidney Disease" value={deepProfiling.kidneyDisease ?? "no"} onChange={(v) => setDeepProfiling({ ...deepProfiling, kidneyDisease: v, kidneyStones: v === "yes" ? (deepProfiling.kidneyStones ?? "no") : undefined })} options={[{ id: "no", label: "No" }, { id: "yes", label: "Yes" }, { id: "unsure", label: "Not Sure" }]} />
+            {deepProfiling.kidneyDisease === "yes" && (
+              <ToggleChip label="Kidney Stones" value={deepProfiling.kidneyStones ?? "no"} onChange={(v) => setDeepProfiling({ ...deepProfiling, kidneyStones: v })} options={[{ id: "no", label: "No" }, { id: "yes", label: "Yes" }]} />
+            )}
             <ToggleChip label="Iron Deficiency" value={deepProfiling.ironDeficiency ?? "no"} onChange={(v) => setDeepProfiling({ ...deepProfiling, ironDeficiency: v })} options={[{ id: "no", label: "No" }, { id: "yes", label: "Yes" }, { id: "unsure", label: "Not Sure" }]} />
             {gender === "female" && (
               <ToggleChip label="PMOS" value={deepProfiling.pcos ?? "no"} onChange={(v) => setDeepProfiling({ ...deepProfiling, pcos: v })} options={[{ id: "no", label: "No" }, { id: "yes", label: "Yes" }, { id: "unsure", label: "Not Sure" }]} />
