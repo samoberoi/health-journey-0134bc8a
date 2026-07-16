@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 
 /**
  * Native-only Face ID / biometric gate.
- * - Runs on iOS/Android when the user has enabled biometric unlock in-app.
+ * - Runs on iOS/Android automatically whenever an authenticated session exists.
  * - Prompts on first mount (after login) and again when the app returns
  *   from background.
  * - On failure the app stays locked behind a full-screen overlay with a
