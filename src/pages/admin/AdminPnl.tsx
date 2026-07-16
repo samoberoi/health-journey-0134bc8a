@@ -19,7 +19,7 @@ export default function AdminPnl() {
   const [draft, setDraft] = useState<PnlConfig | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [filter, setFilter] = useState<"all" | "subscription" | "yoga">("all");
+  const [filter, setFilter] = useState<"all" | "subscription" | "yoga" | "event">("all");
 
   const load = async () => {
     setLoading(true);
@@ -154,9 +154,9 @@ export default function AdminPnl() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
           <h3 className="text-sm font-black text-foreground">Line entries · {filtered.length}</h3>
           <div className="inline-flex rounded-full border border-border p-1 bg-background">
-            {(["all", "subscription", "yoga"] as const).map(f => (
+            {(["all", "subscription", "yoga", "event"] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)} className={`px-3 h-7 rounded-full text-[11px] font-bold ${filter === f ? "bg-foreground text-background" : "text-muted-foreground"}`}>
-                {f === "all" ? "All" : f === "subscription" ? "Subscriptions" : "Yoga"}
+                {f === "all" ? "All" : f === "subscription" ? "Subscriptions" : f === "yoga" ? "Yoga" : "Events"}
               </button>
             ))}
           </div>
@@ -180,7 +180,7 @@ export default function AdminPnl() {
                 <tr key={r.source + r.ref_id} className="border-b border-border/40 hover:bg-muted/20">
                   <Td>{new Date(r.occurred_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</Td>
                   <Td>
-                    <span className={`inline-flex items-center h-5 px-2 rounded-full text-[10px] font-bold ${r.source === "yoga" ? "bg-emerald-500/10 text-emerald-600" : "bg-blue-500/10 text-blue-600"}`}>
+                    <span className={`inline-flex items-center h-5 px-2 rounded-full text-[10px] font-bold ${r.source === "yoga" ? "bg-emerald-500/10 text-emerald-600" : r.source === "event" ? "bg-amber-500/10 text-amber-600" : "bg-blue-500/10 text-blue-600"}`}>
                       {r.source}
                     </span>
                   </Td>
