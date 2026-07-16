@@ -674,7 +674,7 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
                     Personalised for your health
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                    Tap a condition or action to focus. All on by default.
+                    Your conditions from Profile. Tap Avoid / Limit / Encourage to focus.
                   </p>
                 </div>
                 {skippedCount > 0 && (
