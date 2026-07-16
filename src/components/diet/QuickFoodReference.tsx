@@ -781,7 +781,6 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
                       limit={actionKeys.has("limit") ? buckets.limit : []}
                       encourage={actionKeys.has("encourage") ? buckets.encourage : []}
                       onOpen={(it) => setOpenItem(it)}
-                      onOpen={(it) => setOpenItem(it)}
                     />
                   );
                 })}
