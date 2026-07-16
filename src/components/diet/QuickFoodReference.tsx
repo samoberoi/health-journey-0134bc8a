@@ -204,14 +204,68 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Raw rules for the currently-active conditions (used for the breakdown card).
+  const [conditionRules, setConditionRules] = useState<ConditionRuleRow[]>([]);
+
   // Rebuild the food → rule map whenever conditions or the catalog change.
   useEffect(() => {
     (async () => {
-      if (!activeConditions.length || !items.length) { setRuleMap(new Map()); return; }
+      if (!activeConditions.length || !items.length) {
+        setRuleMap(new Map());
+        setConditionRules([]);
+        return;
+      }
       const rules = await fetchConditionRules(activeConditions.map((c) => c.key));
+      setConditionRules(rules);
       setRuleMap(buildFoodRuleMap(items, rules, activeConditions));
     })();
   }, [activeConditions, items]);
+
+  // Per-condition breakdown: for each active condition, group matched foods by action.
+  // Used by the "For your <condition>: avoid / limit / encourage" card.
+  const conditionBreakdown = useMemo(() => {
+    if (!activeConditions.length || !conditionRules.length || !items.length) {
+      return [] as {
+        condition: ActiveCondition;
+        avoid: { item: FoodItem; reason: string }[];
+        limit: { item: FoodItem; reason: string }[];
+        encourage: { item: FoodItem; reason: string }[];
+      }[];
+    }
+    return activeConditions.map((cond) => {
+      const rulesForCond = conditionRules.filter((r) => r.condition_key === cond.key);
+      const buckets: Record<
+        ConditionAction,
+        { item: FoodItem; reason: string }[]
+      > = { avoid: [], limit: [], encourage: [] };
+      const seen: Record<ConditionAction, Set<string>> = {
+        avoid: new Set(), limit: new Set(), encourage: new Set(),
+      };
+      for (const item of items) {
+        const hay = `${item.name} ${item.alt_name || ""}`.toLowerCase();
+        // Strongest action for THIS condition on this item.
+        let best: { action: ConditionAction; reason: string; priority: number } | null = null;
+        for (const rule of rulesForCond) {
+          if (rule.filter_id && rule.filter_id !== item.filter_id) continue;
+          if (!hay.includes(rule.name_pattern.toLowerCase())) continue;
+          const rank = { avoid: 3, limit: 2, encourage: 1 }[rule.action];
+          const bestRank = best ? { avoid: 3, limit: 2, encourage: 1 }[best.action] : -1;
+          if (rank > bestRank || (rank === bestRank && rule.priority > (best?.priority ?? -1))) {
+            best = { action: rule.action, reason: rule.reason, priority: rule.priority };
+          }
+        }
+        if (best && !seen[best.action].has(item.id)) {
+          seen[best.action].add(item.id);
+          buckets[best.action].push({ item, reason: best.reason });
+        }
+      }
+      return { condition: cond, ...buckets };
+    });
+  }, [activeConditions, conditionRules, items]);
+
+  // Import ConditionAction type locally for the memo above.
+  type ConditionAction = "avoid" | "limit" | "encourage";
+
 
 
   const activeFilterObj = useMemo(
