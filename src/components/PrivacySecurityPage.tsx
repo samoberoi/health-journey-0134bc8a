@@ -11,6 +11,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
+import BiometricToggle from "@/components/BiometricToggle";
 
 interface DataCategory {
   id: string;
