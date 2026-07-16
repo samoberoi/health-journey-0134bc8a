@@ -197,6 +197,9 @@ export default function PrivacySecurityPage({ userId, userName, onBack }: Props)
           </div>
         </div>
 
+        {/* Face ID / Biometric unlock */}
+        <BiometricToggle />
+
         {/* Export Data */}
         <motion.button
           onClick={handleExportData}
