@@ -26,9 +26,11 @@ interface Condition {
   key: string;
   label: string;
   emoji: string | null;
+  icon_url: string | null;
   sort_order: number;
   is_active: boolean;
 }
+
 
 interface Rule {
   id: string;
@@ -65,9 +67,11 @@ const emptyConditionForm = (): Omit<Condition, "id"> => ({
   key: "",
   label: "",
   emoji: "",
+  icon_url: null,
   sort_order: 100,
   is_active: true,
 });
+
 
 export default function AdminFoodConditionRules() {
   const confirm = useConfirm();
@@ -205,7 +209,7 @@ export default function AdminFoodConditionRules() {
   };
   const openEditCondition = (c: Condition) => {
     setCondEditing(c);
-    setCondForm({ key: c.key, label: c.label, emoji: c.emoji || "", sort_order: c.sort_order, is_active: c.is_active });
+    setCondForm({ key: c.key, label: c.label, emoji: c.emoji || "", icon_url: c.icon_url || null, sort_order: c.sort_order, is_active: c.is_active });
     setCondDialogOpen(true);
   };
   const slugify = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
@@ -217,9 +221,11 @@ export default function AdminFoodConditionRules() {
       key,
       label: condForm.label.trim(),
       emoji: (condForm.emoji || "").trim() || null,
+      icon_url: condForm.icon_url || null,
       sort_order: Number(condForm.sort_order) || 100,
       is_active: condForm.is_active,
     };
+
     if (condEditing) {
       // If key changed, cascade-update existing rules to new key
       const keyChanged = condEditing.key !== key;
