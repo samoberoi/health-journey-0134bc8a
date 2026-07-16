@@ -1278,6 +1278,149 @@ export type Database = {
         }
         Relationships: []
       }
+      event_registrations: {
+        Row: {
+          amount_paid_inr: number
+          cancelled_at: string | null
+          created_at: string
+          event_id: string
+          id: string
+          notes: string | null
+          payment_status: string
+          registered_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_paid_inr?: number
+          cancelled_at?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          notes?: string | null
+          payment_status?: string
+          registered_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_paid_inr?: number
+          cancelled_at?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          notes?: string | null
+          payment_status?: string
+          registered_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          capacity: number | null
+          cover_image_url: string | null
+          created_at: string
+          created_by: string
+          currency: string
+          description: string | null
+          ends_at: string | null
+          fee_inr: number
+          id: string
+          is_paid: boolean
+          mode: string
+          online_url: string | null
+          organizer_avatar_url: string | null
+          organizer_id: string | null
+          organizer_name: string
+          organizer_type: string
+          registered_count: number
+          starts_at: string
+          status: string
+          tags: string[]
+          timezone: string
+          title: string
+          updated_at: string
+          venue_address: string | null
+          venue_city: string | null
+          venue_lat: number | null
+          venue_lng: number | null
+          venue_name: string | null
+        }
+        Insert: {
+          capacity?: number | null
+          cover_image_url?: string | null
+          created_at?: string
+          created_by: string
+          currency?: string
+          description?: string | null
+          ends_at?: string | null
+          fee_inr?: number
+          id?: string
+          is_paid?: boolean
+          mode?: string
+          online_url?: string | null
+          organizer_avatar_url?: string | null
+          organizer_id?: string | null
+          organizer_name: string
+          organizer_type?: string
+          registered_count?: number
+          starts_at: string
+          status?: string
+          tags?: string[]
+          timezone?: string
+          title: string
+          updated_at?: string
+          venue_address?: string | null
+          venue_city?: string | null
+          venue_lat?: number | null
+          venue_lng?: number | null
+          venue_name?: string | null
+        }
+        Update: {
+          capacity?: number | null
+          cover_image_url?: string | null
+          created_at?: string
+          created_by?: string
+          currency?: string
+          description?: string | null
+          ends_at?: string | null
+          fee_inr?: number
+          id?: string
+          is_paid?: boolean
+          mode?: string
+          online_url?: string | null
+          organizer_avatar_url?: string | null
+          organizer_id?: string | null
+          organizer_name?: string
+          organizer_type?: string
+          registered_count?: number
+          starts_at?: string
+          status?: string
+          tags?: string[]
+          timezone?: string
+          title?: string
+          updated_at?: string
+          venue_address?: string | null
+          venue_city?: string | null
+          venue_lat?: number | null
+          venue_lng?: number | null
+          venue_name?: string | null
+        }
+        Relationships: []
+      }
       exercise_badges: {
         Row: {
           color: string
@@ -4830,6 +4973,28 @@ export type Database = {
           enabled_count: number
         }[]
       }
+      cancel_event_registration: {
+        Args: { _event_id: string }
+        Returns: {
+          amount_paid_inr: number
+          cancelled_at: string | null
+          created_at: string
+          event_id: string
+          id: string
+          notes: string | null
+          payment_status: string
+          registered_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_registrations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       coach_owns_patient: {
         Args: { _patient_user_id: string }
         Returns: boolean
@@ -4959,6 +5124,10 @@ export type Database = {
         Args: { _coach_id: string }
         Returns: undefined
       }
+      recompute_event_registered_count: {
+        Args: { _event_id: string }
+        Returns: undefined
+      }
       recompute_movement_progress_for_user: {
         Args: { _through_day?: string; _user_id: string }
         Returns: Json
@@ -4970,6 +5139,28 @@ export type Database = {
       refresh_gamification_for_user: {
         Args: { _day?: string; _user_id: string }
         Returns: undefined
+      }
+      register_for_event: {
+        Args: { _event_id: string }
+        Returns: {
+          amount_paid_inr: number
+          cancelled_at: string | null
+          created_at: string
+          event_id: string
+          id: string
+          notes: string | null
+          payment_status: string
+          registered_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_registrations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       rename_supplement_category:
         | {
