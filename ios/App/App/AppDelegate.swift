@@ -2,9 +2,14 @@ import UIKit
 import Capacitor
 import HealthKit
 import LocalAuthentication
+import Security
 import AparajitaCapacitorBiometricAuth
 import AppPlugin
 import PreferencesPlugin
+
+private func bbdoNativeLog(_ message: String) {
+    NSLog("[BBDO native] %@", message)
+}
 
 @objc(BBDOBiometricsPlugin)
 public class BBDOBiometricsPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -38,6 +43,7 @@ public class BBDOBiometricsPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func check(_ call: CAPPluginCall) {
+        bbdoNativeLog("BBDOBiometrics.check invoked")
         let context = LAContext()
         var authError: NSError?
         let canUseDeviceAuth = context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &authError)
@@ -58,6 +64,7 @@ public class BBDOBiometricsPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func authenticate(_ call: CAPPluginCall) {
+        bbdoNativeLog("BBDOBiometrics.authenticate invoked")
         let reason = call.getString("reason") ?? "Unlock bye bye diabetes"
         let context = LAContext()
         context.localizedFallbackTitle = "Use Passcode"
@@ -93,10 +100,12 @@ public class BBDOHealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
     private let healthStore = HKHealthStore()
 
     @objc func isAvailable(_ call: CAPPluginCall) {
+        bbdoNativeLog("BBDOHealthKit.isAvailable invoked")
         call.resolve(["available": HKHealthStore.isHealthDataAvailable()])
     }
 
     @objc func requestAuthorization(_ call: CAPPluginCall) {
+        bbdoNativeLog("BBDOHealthKit.requestAuthorization invoked")
         guard HKHealthStore.isHealthDataAvailable() else {
             call.reject("Apple Health is not available on this device", "healthkitUnavailable")
             return
@@ -118,6 +127,7 @@ public class BBDOHealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func getTodayStepCount(_ call: CAPPluginCall) {
+        bbdoNativeLog("BBDOHealthKit.getTodayStepCount invoked")
         guard HKHealthStore.isHealthDataAvailable() else {
             call.reject("Apple Health is not available on this device", "healthkitUnavailable")
             return
@@ -149,15 +159,93 @@ public class BBDOHealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 }
 
+@objc(BBDONativeAuthStorePlugin)
+public class BBDONativeAuthStorePlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "BBDONativeAuthStorePlugin"
+    public let jsName = "BBDONativeAuthStore"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "getTokens", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setTokens", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "clearTokens", returnType: CAPPluginReturnPromise)
+    ]
+
+    private let service = "app.lovable.byebyediabetes.auth"
+    private let account = "session"
+
+    private func baseQuery() -> [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+    }
+
+    @objc func getTokens(_ call: CAPPluginCall) {
+        var query = baseQuery()
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status == errSecSuccess, let data = item as? Data else {
+            call.resolve(["hasTokens": false])
+            return
+        }
+
+        do {
+            let object = try JSONSerialization.jsonObject(with: data) as? [String: String]
+            call.resolve([
+                "hasTokens": true,
+                "access_token": object?["access_token"] ?? "",
+                "refresh_token": object?["refresh_token"] ?? ""
+            ])
+        } catch {
+            call.reject("Stored auth tokens are unreadable", "decodeFailed")
+        }
+    }
+
+    @objc func setTokens(_ call: CAPPluginCall) {
+        guard let accessToken = call.getString("access_token"), let refreshToken = call.getString("refresh_token") else {
+            call.reject("Missing auth tokens", "missingTokens")
+            return
+        }
+
+        do {
+            let data = try JSONSerialization.data(withJSONObject: [
+                "access_token": accessToken,
+                "refresh_token": refreshToken
+            ])
+            SecItemDelete(baseQuery() as CFDictionary)
+            var attributes = baseQuery()
+            attributes[kSecValueData as String] = data
+            attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            let status = SecItemAdd(attributes as CFDictionary, nil)
+            if status == errSecSuccess {
+                bbdoNativeLog("Native auth tokens stored in Keychain")
+                call.resolve(["saved": true])
+            } else {
+                call.reject("Keychain save failed", "keychainSaveFailed", NSError(domain: NSOSStatusErrorDomain, code: Int(status)))
+            }
+        } catch {
+            call.reject(error.localizedDescription, "encodeFailed")
+        }
+    }
+
+    @objc func clearTokens(_ call: CAPPluginCall) {
+        SecItemDelete(baseQuery() as CFDictionary)
+        call.resolve(["cleared": true])
+    }
+}
+
 @objc(BBDOBridgeViewController)
 class BBDOBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
+        bbdoNativeLog("BBDOBridgeViewController.capacitorDidLoad")
         bridge?.registerPluginInstance(BBDOBiometricsPlugin())
-        bridge?.registerPluginInstance(BiometricAuthNative())
-        bridge?.registerPluginInstance(AppPlugin())
-        bridge?.registerPluginInstance(PreferencesPlugin())
+        bridge?.registerPluginInstance(BBDONativeAuthStorePlugin())
         bridge?.registerPluginInstance(BBDOHealthKitPlugin())
+        bbdoNativeLog("Custom native plugins registered")
     }
 }
 
@@ -168,6 +256,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        bbdoNativeLog("application didFinishLaunching")
         return true
     }
 

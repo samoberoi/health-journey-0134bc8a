@@ -14,6 +14,7 @@ import {
   syncNativePersistenceFromLocalStorage,
 } from "@/lib/nativePersistence";
 import { isNative } from "@/lib/biometric";
+import { logStartupEvent, reportStartupError } from "@/lib/startupDiagnostics";
 
 export const EXPLICIT_LOGOUT_KEY = "bb_explicit_logout";
 let existingSessionRestorePromise: Promise<Session | null> | null = null;
@@ -78,15 +79,24 @@ function readStoredSessionTokens(): { access_token: string; refresh_token: strin
 
 async function recoverNativeStoredSession(): Promise<Session | null> {
   if (!isNative()) return null;
+  logStartupEvent("native session recovery started");
   await hydrateNativePersistence();
   const tokens = (await readNativeSessionTokens()) ?? readStoredSessionTokens();
-  if (!tokens) return null;
+  if (!tokens) {
+    logStartupEvent("native session recovery", "no tokens found");
+    return null;
+  }
   try {
     const { data, error } = await supabase.auth.setSession(tokens);
-    if (error || !data.session) return null;
+    if (error || !data.session) {
+      reportStartupError("native session setSession failed", error || "no session returned");
+      return null;
+    }
     await persistSupabaseSessionToNative(data.session);
+    logStartupEvent("native session recovered", data.session.user?.id || "session");
     return data.session;
   } catch {
+    reportStartupError("native session recovery threw", "setSession threw");
     return null;
   }
 }
@@ -106,6 +116,7 @@ export async function getExistingSessionUnlessLoggedOut() {
   if (existingSessionRestorePromise) return existingSessionRestorePromise;
   existingSessionRestorePromise = (async () => {
   try {
+    logStartupEvent("existing session restore started");
     if (isNative()) await hydrateNativePersistence();
     let { data } = await supabase.auth.getSession();
     if (!data.session && isNative() && await hasNativePersistedAuthSession()) {
@@ -120,11 +131,17 @@ export async function getExistingSessionUnlessLoggedOut() {
     if (data.session) {
       localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
       if (isNative()) void persistSupabaseSessionToNative(data.session);
+      logStartupEvent("existing session restore found session", data.session.user?.id || "session");
       return data.session;
     }
-    if (localStorage.getItem(EXPLICIT_LOGOUT_KEY) === "1") return null;
+    if (localStorage.getItem(EXPLICIT_LOGOUT_KEY) === "1") {
+      logStartupEvent("existing session restore", "explicit logout marker present");
+      return null;
+    }
+    logStartupEvent("existing session restore", "no session");
     return data.session ?? null;
-  } catch {
+  } catch (error) {
+    reportStartupError("existing session restore failed", error);
     return null;
   }
   })();
@@ -200,9 +217,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     (async () => {
+      logStartupEvent("auth provider initial restore started");
       if (isNative()) {
         const diagnostics = await getNativePersistenceDiagnostics();
         console.info("Native auth storage status", diagnostics);
+        logStartupEvent("native auth storage status", diagnostics);
       }
       let { data: { session } } = await supabase.auth.getSession();
       if (!session && isNative() && await hasNativePersistedAuthSession()) {
@@ -230,6 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       applySession(session);
       setLoading(false);
       setReady(true);
+      logStartupEvent("auth provider ready", session?.user?.id || "no-session");
       const uid = session?.user?.id;
       if (uid) {
         setTimeout(() => {
@@ -239,7 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }, 0);
       }
     })().catch((error) => {
-      console.error("Initial auth restore failed", error);
+      reportStartupError("Initial auth restore failed", error);
       applySession(null);
       setLoading(false);
       setReady(true);

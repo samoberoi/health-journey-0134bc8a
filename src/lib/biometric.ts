@@ -8,6 +8,7 @@ import {
   type CheckBiometryResult,
 } from "@aparajita/capacitor-biometric-auth";
 import { syncNativePersistenceFromLocalStorage } from "@/lib/nativePersistence";
+import { logStartupEvent, reportStartupError } from "@/lib/startupDiagnostics";
 
 const ENABLED_KEY = "bb_biometric_enabled";
 const DISABLED_KEY = "bb_biometric_disabled";
@@ -77,7 +78,9 @@ export async function getBiometricDiagnostics(): Promise<BiometricDiagnostics> {
   }
 
   try {
+    logStartupEvent("biometric check", "BBDOBiometrics.check");
     const info = await BBDOBiometrics.check();
+    logStartupEvent("biometric check result", `${info.code}:${info.label}`);
     return {
       native: true,
       platform,
@@ -87,11 +90,13 @@ export async function getBiometricDiagnostics(): Promise<BiometricDiagnostics> {
       code: info.code || (info.available ? "available" : "unavailable"),
       reason: info.reason || "Device biometric status checked.",
     };
-  } catch {
+  } catch (error) {
+    reportStartupError("BBDOBiometrics.check failed", error);
     /* Fall through to the package plugin for older installed builds. */
   }
 
   try {
+    logStartupEvent("biometric check", "BiometricAuth.checkBiometry");
     const info = await BiometricAuth.checkBiometry();
     return {
       native: true,
@@ -104,6 +109,7 @@ export async function getBiometricDiagnostics(): Promise<BiometricDiagnostics> {
       raw: info,
     };
   } catch (error) {
+    reportStartupError("BiometricAuth.checkBiometry failed", error);
     const err = error as BiometryError;
     return {
       native: true,
@@ -172,9 +178,12 @@ export async function authenticateWithBiometrics(
 ): Promise<boolean> {
   if (isNative()) {
     try {
+      logStartupEvent("biometric authenticate", "BBDOBiometrics.authenticate");
       const result = await BBDOBiometrics.authenticate({ reason });
+      logStartupEvent("biometric authenticate result", result.success !== false ? "success" : "failed");
       return result.success !== false;
     } catch (error) {
+      reportStartupError("BBDOBiometrics.authenticate failed", error);
       const message = error instanceof Error ? error.message : String(error ?? "");
       if (!/not implemented|unimplemented|plugin/i.test(message)) {
         console.warn("Native biometric auth failed:", message);
@@ -184,6 +193,7 @@ export async function authenticateWithBiometrics(
   }
 
   try {
+    logStartupEvent("biometric authenticate", "BiometricAuth.authenticate");
     await BiometricAuth.authenticate({
       reason,
       cancelTitle: "Cancel",
@@ -196,6 +206,7 @@ export async function authenticateWithBiometrics(
     });
     return true;
   } catch (err) {
+    reportStartupError("BiometricAuth.authenticate failed", err);
     const e = err as BiometryError;
     console.warn("Biometric auth failed:", e?.message ?? err);
     return false;
