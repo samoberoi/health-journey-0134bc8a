@@ -53,3 +53,22 @@ export async function syncTodayStepsFromAppleHealth(): Promise<number | null> {
     throw error;
   }
 }
+
+export async function fetchAppleHealthSnapshot(): Promise<HealthSnapshot | null> {
+  if (!canUseAppleHealthSteps()) return null;
+  try {
+    const availability = await BBDOHealthKit.isAvailable();
+    if (!availability.available) return null;
+    await BBDOHealthKit.requestAuthorization();
+    if (typeof BBDOHealthKit.getHealthSnapshot !== "function") {
+      // Old native build without snapshot method — fall back to steps only
+      const steps = await BBDOHealthKit.getTodayStepCount();
+      return { steps: Math.max(0, Math.round(Number(steps.steps || 0))) };
+    }
+    const snap = await BBDOHealthKit.getHealthSnapshot();
+    return snap ?? null;
+  } catch (error) {
+    reportStartupError("healthkit snapshot failed", error);
+    return null;
+  }
+}
