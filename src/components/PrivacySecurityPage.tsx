@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { clearPersistedAuthState } from "@/contexts/AuthContext";
+import { clearNativePersistedAuthState, flushNativePersistenceWrites } from "@/lib/nativePersistence";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -126,10 +128,11 @@ export default function PrivacySecurityPage({ userId, userName, onBack }: Props)
         supabase.from("profiles" as any).delete().eq("user_id", userId),
         supabase.from("user_roles" as any).delete().eq("user_id", userId),
       ]);
-      // Clear local storage
-      localStorage.clear();
       // Sign out
       await supabase.auth.signOut();
+      clearPersistedAuthState(true);
+      await clearNativePersistedAuthState();
+      await flushNativePersistenceWrites();
       toast.success("Account deleted. All data has been removed.");
       window.location.href = "/";
     } catch (err) {

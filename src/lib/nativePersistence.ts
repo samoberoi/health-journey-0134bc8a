@@ -1,7 +1,10 @@
 import { Capacitor } from "@capacitor/core";
+import { App as CapApp } from "@capacitor/app";
 import { Preferences } from "@capacitor/preferences";
 
 const KEY_LIST = "bb_native_persisted_keys";
+const LAST_HYDRATED_KEY = "bb_native_last_hydrated_at";
+const EXPLICIT_LOGOUT_STORAGE_KEY = "bb_explicit_logout";
 const pendingWrites = new Set<Promise<unknown>>();
 
 function isNativeApp() {
@@ -10,7 +13,21 @@ function isNativeApp() {
 
 function shouldPersistKey(key: string) {
   const lower = key.toLowerCase();
-  return key.startsWith("sb-") || lower.includes("supabase") || key.startsWith("bb_");
+  return (
+    key.startsWith("sb-") ||
+    lower.includes("supabase") ||
+    (key.startsWith("bb_") && key !== EXPLICIT_LOGOUT_STORAGE_KEY)
+  );
+}
+
+async function writePersistedKey(key: string, value: string) {
+  await Preferences.set({ key, value });
+  await rememberKey(key);
+}
+
+async function removePersistedKey(key: string) {
+  await Preferences.remove({ key });
+  await forgetKey(key);
 }
 
 async function readPersistedKeyList(): Promise<string[]> {
@@ -65,6 +82,7 @@ export async function hydrateNativePersistence() {
         localStorage.setItem(key, value);
       }
     }
+    localStorage.setItem(LAST_HYDRATED_KEY, String(Date.now()));
   } catch (error) {
     console.warn("Native persistence hydration failed", error);
   }
@@ -83,27 +101,37 @@ export function installNativePersistenceMirror() {
   Storage.prototype.setItem = function setItem(key: string, value: string) {
     originalSetItem.call(this, key, value);
     if (this === storage && shouldPersistKey(key)) {
-      trackNativeWrite(Preferences.set({ key, value }).then(() => rememberKey(key)));
+      trackNativeWrite(writePersistedKey(key, value));
     }
   };
 
   Storage.prototype.removeItem = function removeItem(key: string) {
     originalRemoveItem.call(this, key);
     if (this === storage && shouldPersistKey(key)) {
-      trackNativeWrite(Preferences.remove({ key }).then(() => forgetKey(key)));
+      trackNativeWrite(removePersistedKey(key));
     }
   };
 
   Storage.prototype.clear = function clear() {
     if (this === storage) {
-      void (async () => {
+      trackNativeWrite((async () => {
         const keys = await readPersistedKeyList();
         await Promise.all(keys.map((key) => Preferences.remove({ key })));
         await Preferences.remove({ key: KEY_LIST });
-      })();
+      })());
     }
     originalClear.call(this);
   };
+}
+
+export function installNativePersistenceLifecycleFlush() {
+  if (!isNativeApp()) return;
+  void CapApp.addListener("appStateChange", ({ isActive }) => {
+    if (!isActive) void flushNativePersistenceWrites();
+  });
+  void CapApp.addListener("pause", () => {
+    void flushNativePersistenceWrites();
+  });
 }
 
 export async function syncNativePersistenceFromLocalStorage() {
@@ -130,4 +158,39 @@ export async function syncNativePersistenceFromLocalStorage() {
     ]
   );
   await Preferences.set({ key: KEY_LIST, value: JSON.stringify(keys) });
+}
+
+export async function persistAuthSessionToNative() {
+  if (!isNativeApp()) return;
+  await flushNativePersistenceWrites();
+  const authKeys: string[] = [];
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (!key) continue;
+    const lower = key.toLowerCase();
+    if (key.startsWith("sb-") || lower.includes("supabase")) {
+      authKeys.push(key);
+    }
+  }
+
+  await Promise.all(
+    authKeys.map(async (key) => {
+      const value = localStorage.getItem(key);
+      if (value != null) await writePersistedKey(key, value);
+    })
+  );
+  await syncNativePersistenceFromLocalStorage();
+  await flushNativePersistenceWrites();
+}
+
+export async function clearNativePersistedAuthState() {
+  if (!isNativeApp()) return;
+  await flushNativePersistenceWrites();
+  const persistedKeys = await readPersistedKeyList();
+  const authKeys = persistedKeys.filter((key) => {
+    const lower = key.toLowerCase();
+    return key.startsWith("sb-") || lower.includes("supabase") || key.startsWith("bb_");
+  });
+  await Promise.all(authKeys.map((key) => Preferences.remove({ key })));
+  await Preferences.set({ key: KEY_LIST, value: JSON.stringify(persistedKeys.filter((key) => !authKeys.includes(key))) });
 }

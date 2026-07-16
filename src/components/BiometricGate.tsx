@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
  *   "Try again" button.
  */
 export default function BiometricGate({ children }: { children: ReactNode }) {
-  const { session, loading } = useAuth();
+  const { session, loading, signOut } = useAuth();
   const [locked, setLocked] = useState<boolean>(false);
   const [authenticating, setAuthenticating] = useState<boolean>(false);
   const [biometryChecked, setBiometryChecked] = useState<boolean>(false);
@@ -129,9 +129,19 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
             </Button>
           )}
           {biometryChecked && !biometryAvailable && (
-            <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-              If Face ID is unavailable, your device passcode can unlock this app.
-            </p>
+            <div className="flex max-w-xs flex-col items-center gap-3">
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Face ID is not available on this device right now. Your device passcode can unlock this app if it is enabled.
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => void signOut()}
+                className="rounded-full px-5 text-muted-foreground"
+              >
+                Sign out
+              </Button>
+            </div>
           )}
         </div>
       )}
