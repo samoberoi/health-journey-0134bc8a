@@ -5,10 +5,27 @@ type HealthAvailability = { available: boolean };
 type HealthAuthorization = { granted: boolean };
 type TodaySteps = { steps: number; startDate: string; endDate: string };
 
+export type HealthSnapshot = {
+  steps?: number;
+  activeCalories?: number;
+  distanceMeters?: number;
+  exerciseMinutes?: number;
+  weightKg?: number;
+  weightAt?: string;
+  restingHeartRate?: number;
+  restingHeartRateAt?: string;
+  hrvMs?: number;
+  hrvAt?: string;
+  glucoseMgDl?: number;
+  glucoseAt?: string;
+  sleepHours?: number;
+};
+
 type BBDOHealthKitPlugin = {
   isAvailable(): Promise<HealthAvailability>;
   requestAuthorization(): Promise<HealthAuthorization>;
   getTodayStepCount(): Promise<TodaySteps>;
+  getHealthSnapshot?(): Promise<HealthSnapshot>;
 };
 
 const BBDOHealthKit = registerPlugin<BBDOHealthKitPlugin>("BBDOHealthKit");
