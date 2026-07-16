@@ -29,30 +29,22 @@ const CONDITION_ICONS: Record<string, LucideIcon> = {
   hyperthyroid: HeartPulse,
   pcos: Flower2,
   ckd: Activity,
+  kidney_stone: Activity,
   uric_acid: FlaskConical,
   fatty_liver: HeartPulse,
   iron_deficiency: Droplet,
 };
 
-// All health conditions the user can filter by, shown as a togglable chip row.
-// Auto-selected from profile deep_profiling; users can turn any on/off manually.
-const CONDITION_CHOICES: { key: ConditionKey; label: string; short: string }[] = [
-  { key: "hypothyroid",     label: "Hypothyroidism",   short: "Thyroid" },
-  { key: "pcos",            label: "PMOS",             short: "PMOS" },
-  { key: "ckd",             label: "Kidney Disease",   short: "Kidney" },
-  { key: "uric_acid",       label: "High Uric Acid",   short: "Uric acid" },
-  { key: "fatty_liver",     label: "Fatty Liver",      short: "Fatty liver" },
-  { key: "iron_deficiency", label: "Iron Deficiency",  short: "Iron" },
-];
-
-const CONDITION_META_BY_KEY: Record<ConditionKey, { label: string; emoji: string }> = {
-  hypothyroid:     { label: "Hypothyroidism",   emoji: "🦋" },
-  hyperthyroid:    { label: "Hyperthyroidism",  emoji: "🦋" },
-  pcos:            { label: "PMOS",             emoji: "🌸" },
-  ckd:             { label: "Kidney Disease",   emoji: "🫘" },
-  uric_acid:       { label: "High Uric Acid",   emoji: "🧪" },
-  fatty_liver:     { label: "Fatty Liver",      emoji: "🫀" },
-  iron_deficiency: { label: "Iron Deficiency",  emoji: "🩸" },
+// Short labels for the chip row. Anything not listed falls back to the DB label.
+const CONDITION_SHORT: Record<string, string> = {
+  hypothyroid: "Thyroid",
+  hyperthyroid: "Hyperthyroid",
+  pcos: "PCOS",
+  ckd: "Kidney",
+  kidney_stone: "Kidney stones",
+  uric_acid: "Uric acid",
+  fatty_liver: "Fatty liver",
+  iron_deficiency: "Iron",
 };
 
 const PRESETS: { key: PresetKey; label: string; Icon: typeof Sparkles; tint: string }[] = [
