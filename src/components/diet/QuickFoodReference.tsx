@@ -712,29 +712,25 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
                   {conditionCatalog
                     .filter((c) => profileConditionKeys.has(c.key))
                     .map((c) => {
-                      const Icon = CONDITION_ICONS[c.key] ?? ShieldAlert;
                       return (
                         <div
                           key={c.key}
                           title="Managed in your profile"
                           className="shrink-0 h-8 pl-1.5 pr-3 rounded-full text-[11.5px] font-bold border flex items-center gap-1.5 bg-[var(--bbdo-blue)] text-white border-[var(--bbdo-blue)] shadow-sm shadow-[var(--bbdo-blue)]/25"
                         >
-                          {c.icon_url ? (
+                          {c.icon_url && (
                             <img
                               src={c.icon_url}
                               alt=""
                               className="w-5 h-5 rounded-full bg-white/95 object-contain p-0.5"
                               loading="lazy"
                             />
-                          ) : c.emoji ? (
-                            <span className="text-[13px] leading-none pl-1">{c.emoji}</span>
-                          ) : (
-                            <Icon className="w-3 h-3 ml-1" strokeWidth={2.4} />
                           )}
                           {c.label}
                         </div>
                       );
                     })}
+
 
                 </div>
               </div>
@@ -1189,11 +1185,10 @@ function ConditionBreakdownCard({
   return (
     <div className="rounded-2xl border border-border bg-white overflow-hidden">
       <div className="px-3.5 py-2.5 bg-muted/40 border-b border-border flex items-center gap-2">
-        {condition.icon_url ? (
+        {condition.icon_url && (
           <img src={condition.icon_url} alt="" className="w-7 h-7 rounded-lg bg-white object-contain p-0.5 border border-border" loading="lazy" />
-        ) : condition.emoji ? (
-          <span className="text-base leading-none">{condition.emoji}</span>
-        ) : null}
+        )}
+
 
         <div className="flex-1 min-w-0">
           <p className="text-[9.5px] font-bold tracking-[0.14em] uppercase text-muted-foreground">
