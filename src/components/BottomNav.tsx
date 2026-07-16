@@ -19,6 +19,7 @@ const ICON_FOR: Record<Tab, AppIconName> = {
   community: "users",
   consult: "stethoscope",
   messages: "chat",
+  events: "calendar",
 } as const;
 
 // Per-tab accent colors (PUNCH pillars get distinct colors so each section is instantly identifiable)
