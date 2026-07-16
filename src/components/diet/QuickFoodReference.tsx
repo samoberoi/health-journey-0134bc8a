@@ -88,6 +88,7 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
   const [cats, setCats] = useState<FoodCategory[]>([]);
   const [filters, setFilters] = useState<FoodFilter[]>([]);
   const [items, setItems] = useState<FoodItem[]>([]);
+  const [rulesReloadTick, setRulesReloadTick] = useState(0);
 
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   // Single-value diet view, mirrors profile by default. null = show all.
@@ -242,12 +243,16 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [rulesReloadTick]);
 
   // Raw rules for the currently-active conditions (used for the breakdown card).
   const [conditionRules, setConditionRules] = useState<ConditionRuleRow[]>([]);
 
-  // Rebuild the food → rule map whenever conditions or the catalog change.
+  // Rebuild the food → rule map whenever conditions/items change, AND live-subscribe
+  // to admin edits on food_condition_rules / food_conditions / food_items so users
+  // see new rules (e.g. "Encourage broccoli for hypertension") appear immediately
+  // without a hard refresh.
+  
   useEffect(() => {
     (async () => {
       if (!activeConditions.length || !items.length) {
@@ -259,7 +264,18 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
       setConditionRules(rules);
       setRuleMap(buildFoodRuleMap(items, rules, activeConditions));
     })();
-  }, [activeConditions, items]);
+  }, [activeConditions, items, rulesReloadTick]);
+
+  useEffect(() => {
+    const bump = () => setRulesReloadTick((t) => t + 1);
+    const channel = supabase
+      .channel("qfr-condition-rules")
+      .on("postgres_changes", { event: "*", schema: "public", table: "food_condition_rules" }, bump)
+      .on("postgres_changes", { event: "*", schema: "public", table: "food_conditions" }, bump)
+      .on("postgres_changes", { event: "*", schema: "public", table: "food_items" }, bump)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   // Per-condition breakdown: for each active condition, group matched foods by action.
   // Used by the "For your <condition>: avoid / limit / encourage" card.
