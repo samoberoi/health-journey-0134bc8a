@@ -625,10 +625,16 @@ export default function AdminFoodConditionRules() {
                       const path = `${key}-${Date.now()}.${ext}`;
                       const { error } = await supabase.storage.from("condition-icons").upload(path, file, { upsert: true, contentType: file.type });
                       if (error) { toast.error(error.message); return; }
-                      const { data } = supabase.storage.from("condition-icons").getPublicUrl(path);
-                      setCondForm((f) => ({ ...f, icon_url: data.publicUrl }));
+                      // Bucket is private (workspace blocks public buckets), so mint a long-lived signed URL.
+                      const tenYears = 60 * 60 * 24 * 365 * 10;
+                      const { data: signed, error: signErr } = await supabase.storage
+                        .from("condition-icons")
+                        .createSignedUrl(path, tenYears);
+                      if (signErr || !signed?.signedUrl) { toast.error(signErr?.message || "Could not sign URL"); return; }
+                      setCondForm((f) => ({ ...f, icon_url: signed.signedUrl }));
                       toast.success("Icon uploaded");
                     }}
+
                   />
                   {condForm.icon_url && (
                     <Button variant="ghost" size="sm" onClick={() => setCondForm((f) => ({ ...f, icon_url: null }))}>
