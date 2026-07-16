@@ -12,6 +12,7 @@ import { calculateSupplementStreak } from "@/lib/supplementBadgeService";
 import ScheduleMeetingDialog from "@/components/coach/ScheduleMeetingDialog";
 import RecommendTestsDialog from "@/components/coach/RecommendTestsDialog";
 import RecommendSupplementsDialog from "@/components/coach/RecommendSupplementsDialog";
+import PatientVitalsCard from "@/components/coach/PatientVitalsCard";
 
 type LogTab = "diabetes" | "bp" | "weight" | "fasting" | "supps";
 
@@ -442,6 +443,11 @@ export default function CoachPatients({ onChatWithPatient }: CoachPatientsProps 
             />
           </>
         )}
+
+        {/* Apple Health vitals + trends */}
+        {selectedPatient && <PatientVitalsCard patientId={selectedPatient.user_id} />}
+
+
 
 
         {/* Current Vitals */}
