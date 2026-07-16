@@ -11,6 +11,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
+import BiometricToggle from "@/components/BiometricToggle";
 
 interface DataCategory {
   id: string;
@@ -196,6 +197,9 @@ export default function PrivacySecurityPage({ userId, userName, onBack }: Props)
             })}
           </div>
         </div>
+
+        {/* Face ID / Biometric unlock */}
+        <BiometricToggle />
 
         {/* Export Data */}
         <motion.button

@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import PageTransition from "@/components/PageTransition";
 import AppErrorBoundary from "@/components/AppErrorBoundary";
+import BiometricGate from "@/components/BiometricGate";
 
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProfileSyncProvider } from "@/components/ProfileSyncProvider";
@@ -163,7 +164,9 @@ const App = () => (
             <ProfileSyncProvider>
               <ConfirmProvider>
                 <AppErrorBoundary>
-                  <AnimatedRoutes />
+                  <BiometricGate>
+                    <AnimatedRoutes />
+                  </BiometricGate>
                 </AppErrorBoundary>
               </ConfirmProvider>
             </ProfileSyncProvider>
