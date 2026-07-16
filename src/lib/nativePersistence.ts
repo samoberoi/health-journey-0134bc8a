@@ -88,6 +88,25 @@ export async function hydrateNativePersistence() {
   }
 }
 
+export async function hasNativePersistedAuthSession(): Promise<boolean> {
+  if (!isNativeApp()) return false;
+  try {
+    const listedKeys = await readPersistedKeyList();
+    const { keys: allPreferenceKeys } = await Preferences.keys();
+    const keys = new Set([...listedKeys, ...allPreferenceKeys]);
+    for (const key of keys) {
+      const lower = key.toLowerCase();
+      if (key.startsWith("sb-") || lower.includes("supabase")) {
+        const { value } = await Preferences.get({ key });
+        if (value) return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 export function installNativePersistenceMirror() {
   if (!isNativeApp()) return;
   const storage = window.localStorage as Storage & { __bbNativeMirrorInstalled?: boolean };
@@ -144,6 +163,10 @@ export async function syncNativePersistenceFromLocalStorage() {
     if (key && shouldPersistKey(key)) keys.push(key);
   }
   const currentKeys = new Set(keys);
+  const hasCurrentAuthKeys = keys.some((key) => {
+    const lower = key.toLowerCase();
+    return key.startsWith("sb-") || lower.includes("supabase");
+  });
   await Promise.all(
     [
       ...keys.map(async (key) => {
@@ -153,11 +176,22 @@ export async function syncNativePersistenceFromLocalStorage() {
         }
       }),
       ...previousKeys
-        .filter((key) => !currentKeys.has(key))
+        .filter((key) => {
+          if (currentKeys.has(key)) return false;
+          const lower = key.toLowerCase();
+          const isAuthKey = key.startsWith("sb-") || lower.includes("supabase");
+          return hasCurrentAuthKeys || !isAuthKey;
+        })
         .map((key) => Preferences.remove({ key })),
     ]
   );
-  await Preferences.set({ key: KEY_LIST, value: JSON.stringify(keys) });
+  const nextKeys = hasCurrentAuthKeys
+    ? keys
+    : [...new Set([...previousKeys.filter((key) => {
+        const lower = key.toLowerCase();
+        return key.startsWith("sb-") || lower.includes("supabase");
+      }), ...keys])];
+  await Preferences.set({ key: KEY_LIST, value: JSON.stringify(nextKeys) });
 }
 
 export async function persistAuthSessionToNative() {

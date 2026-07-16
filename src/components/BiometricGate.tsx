@@ -3,10 +3,12 @@ import { App as CapApp } from "@capacitor/app";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   authenticateWithBiometrics,
+  getBiometricDiagnostics,
   isBiometricAvailable,
   isNative,
   getBiometryLabel,
   setBiometricEnabled,
+  type BiometricDiagnostics,
 } from "@/lib/biometric";
 import { Button } from "@/components/ui/button";
 
@@ -24,6 +26,7 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
   const [authenticating, setAuthenticating] = useState<boolean>(false);
   const [biometryChecked, setBiometryChecked] = useState<boolean>(false);
   const [biometryAvailable, setBiometryAvailable] = useState<boolean>(false);
+  const [diagnostics, setDiagnostics] = useState<BiometricDiagnostics | null>(null);
   const [label, setLabel] = useState<string>("Face ID");
   const lastAuthAt = useRef<number>(0);
   const authenticatingRef = useRef(false);
@@ -40,7 +43,9 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
     authenticatingRef.current = true;
     setLocked(true);
     setAuthenticating(true);
-    setLabel(await getBiometryLabel());
+    const nextDiagnostics = await getBiometricDiagnostics();
+    setDiagnostics(nextDiagnostics);
+    setLabel(nextDiagnostics.label || await getBiometryLabel());
     let available = await isBiometricAvailable();
     if (!available) {
       await new Promise((resolve) => setTimeout(resolve, 350));
@@ -133,6 +138,12 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
               <p className="text-xs leading-relaxed text-muted-foreground">
                 Face ID is not available on this device right now. Your device passcode can unlock this app if it is enabled.
               </p>
+              {diagnostics && (
+                <p className="rounded-xl bg-muted/70 px-3 py-2 text-[11px] leading-snug text-muted-foreground">
+                  Status: {diagnostics.code || "unavailable"}
+                  {diagnostics.reason ? ` — ${diagnostics.reason}` : ""}
+                </p>
+              )}
               <Button
                 type="button"
                 variant="ghost"

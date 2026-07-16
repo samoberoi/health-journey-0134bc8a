@@ -4,10 +4,11 @@ import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
   authenticateWithBiometrics,
+  getBiometricDiagnostics,
   getBiometryLabel,
-  isBiometricAvailable,
   isNative,
   setBiometricEnabled,
+  type BiometricDiagnostics,
 } from "@/lib/biometric";
 
 /**
@@ -23,7 +24,8 @@ export default function BiometricToggle() {
   const [supported, setSupported] = useState(false);
   const [checking, setChecking] = useState(native);
   const [testing, setTesting] = useState(false);
-  const [label, setLabel] = useState("Face ID");
+  const [label, setLabel] = useState("Face ID / Touch ID");
+  const [diagnostics, setDiagnostics] = useState<BiometricDiagnostics | null>(null);
 
   useEffect(() => {
     if (!native) {
@@ -31,11 +33,11 @@ export default function BiometricToggle() {
       return;
     }
     void (async () => {
-      let ok = false;
       try {
-        ok = await isBiometricAvailable();
-        setSupported(ok);
-        setLabel(await getBiometryLabel());
+        const nextDiagnostics = await getBiometricDiagnostics();
+        setDiagnostics(nextDiagnostics);
+        setSupported(nextDiagnostics.available);
+        setLabel(nextDiagnostics.label || (await getBiometryLabel()));
       } catch {
         setSupported(false);
       } finally {
@@ -83,6 +85,12 @@ export default function BiometricToggle() {
               ? `${label} is required automatically whenever the app opens.`
               : "Required automatically. If Face ID is unavailable, your device passcode can be used."}
         </div>
+        {native && diagnostics && (
+          <div className="mt-2 rounded-xl bg-muted/60 px-3 py-2 text-[11px] leading-snug text-muted-foreground">
+            Status: {diagnostics.available ? "available" : diagnostics.code || "unavailable"}
+            {diagnostics.reason ? ` — ${diagnostics.reason}` : ""}
+          </div>
+        )}
       </div>
       <Button
         type="button"

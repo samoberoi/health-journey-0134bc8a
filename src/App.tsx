@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -89,18 +89,32 @@ const PUBLIC_ENTRY_ROUTES = new Set([
 ]);
 
 function NativeSessionRedirect() {
-  const { session, loading } = useAuth();
+  const { session, loading, ready } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isNative() || loading || !session) return;
+    if (!isNative() || loading || !ready || !session) return;
     if (PUBLIC_ENTRY_ROUTES.has(location.pathname)) {
       navigate("/home", { replace: true });
     }
-  }, [loading, location.pathname, navigate, session]);
+  }, [loading, location.pathname, navigate, ready, session]);
 
   return null;
+}
+
+function NativeAuthStartupGate({ children }: { children: ReactNode }) {
+  const { loading, ready } = useAuth();
+
+  if (isNative() && (loading || !ready)) {
+    return (
+      <div className="min-h-dvh w-full bg-background flex items-center justify-center text-foreground">
+        <div className="h-6 w-6 rounded-full border-2 border-primary/25 border-t-primary animate-spin" />
+      </div>
+    );
+  }
+
+  return <>{children}</>;
 }
 
 function AnimatedRoutes() {
@@ -195,8 +209,10 @@ const App = () => (
               <ConfirmProvider>
                 <AppErrorBoundary>
                   <BiometricGate>
-                    <NativeSessionRedirect />
-                    <AnimatedRoutes />
+                    <NativeAuthStartupGate>
+                      <NativeSessionRedirect />
+                      <AnimatedRoutes />
+                    </NativeAuthStartupGate>
                   </BiometricGate>
                 </AppErrorBoundary>
               </ConfirmProvider>
