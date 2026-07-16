@@ -88,6 +88,7 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
   const [cats, setCats] = useState<FoodCategory[]>([]);
   const [filters, setFilters] = useState<FoodFilter[]>([]);
   const [items, setItems] = useState<FoodItem[]>([]);
+  const [rulesReloadTick, setRulesReloadTick] = useState(0);
 
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   // Single-value diet view, mirrors profile by default. null = show all.
