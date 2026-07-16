@@ -45,9 +45,13 @@ export async function prepareFreshLoginState() {
 }
 
 export async function getExistingSessionUnlessLoggedOut() {
-  if (localStorage.getItem(EXPLICIT_LOGOUT_KEY) === "1") return null;
   try {
     const { data } = await supabase.auth.getSession();
+    if (data.session) {
+      localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
+      return data.session;
+    }
+    if (localStorage.getItem(EXPLICIT_LOGOUT_KEY) === "1") return null;
     return data.session ?? null;
   } catch {
     return null;
@@ -77,13 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (localStorage.getItem(EXPLICIT_LOGOUT_KEY) === "1") {
-          setSession(null);
-          setLoading(false);
-          prevUserId.current = null;
           if (session) {
-            void supabase.auth.signOut({ scope: "local" }).finally(() => clearPersistedAuthState());
+            localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
+          } else {
+            setSession(null);
+            setLoading(false);
+            prevUserId.current = null;
+            return;
           }
-          return;
         }
 
         setSession(session);
@@ -104,11 +109,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (localStorage.getItem(EXPLICIT_LOGOUT_KEY) === "1") {
-        if (session) void supabase.auth.signOut({ scope: "local" }).finally(() => clearPersistedAuthState());
-        setSession(null);
-        prevUserId.current = null;
-        setLoading(false);
-        return;
+        if (session) {
+          localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
+        } else {
+          setSession(null);
+          setLoading(false);
+          prevUserId.current = null;
+          return;
+        }
       }
 
       setSession(session);

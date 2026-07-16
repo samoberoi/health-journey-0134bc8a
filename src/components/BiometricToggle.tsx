@@ -65,20 +65,18 @@ export default function BiometricToggle() {
       });
       return;
     }
-    if (!supported) {
-      toast({
-        title: "Face ID not available",
-        description:
-          "Enroll Face ID in iOS Settings, or run on a real device. Face ID doesn't work in the iOS simulator.",
-      });
-      return;
-    }
     if (next) {
       const ok = await authenticateWithBiometrics(`Enable ${label} for this app`);
       if (!ok) {
-        toast({ title: `${label} not verified`, description: "Please try again." });
+        toast({
+          title: `${label} not verified`,
+          description: supported
+            ? "Please try again."
+            : "Enroll Face ID and allow it for this app in iPhone Settings, then try again.",
+        });
         return;
       }
+      setSupported(true);
       setBiometricEnabled(true);
       setEnabled(true);
       toast({ title: `${label} enabled`, description: "You'll be asked to unlock on launch." });
@@ -106,7 +104,7 @@ export default function BiometricToggle() {
       <Switch
         checked={enabled}
         onCheckedChange={handleToggle}
-        disabled={!native || checking || !supported}
+        disabled={!native || checking}
       />
     </div>
   );

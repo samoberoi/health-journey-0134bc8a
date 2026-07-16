@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import logoImg from "@/assets/logo.png";
 import { setPhase } from "@/lib/musicEngine";
-import { supabase } from "@/integrations/supabase/client";
-import { EXPLICIT_LOGOUT_KEY } from "@/contexts/AuthContext";
+import { getExistingSessionUnlessLoggedOut } from "@/contexts/AuthContext";
 
 /**
  * Minimal, modern splash.
@@ -36,14 +35,10 @@ export default function Splash() {
       // skip the entire onboarding funnel and go straight to the app.
       // BiometricGate will then prompt for Face ID before revealing content.
       try {
-        const explicitlyLoggedOut =
-          localStorage.getItem(EXPLICIT_LOGOUT_KEY) === "1";
-        if (!explicitlyLoggedOut) {
-          const { data } = await supabase.auth.getSession();
-          if (data.session) {
-            navigate("/home", { replace: true });
-            return;
-          }
+        const session = await getExistingSessionUnlessLoggedOut();
+        if (session) {
+          navigate("/home", { replace: true });
+          return;
         }
       } catch {
         /* fall through to onboarding */

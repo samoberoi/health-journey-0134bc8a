@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { App as CapApp } from "@capacitor/app";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -27,22 +27,25 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
   const [label, setLabel] = useState<string>("Face ID");
   const [preferenceVersion, setPreferenceVersion] = useState(0);
   const lastAuthAt = useRef<number>(0);
+  const authenticatingRef = useRef(false);
 
   const native = isNative();
   const biometricEnabled = isBiometricEnabled();
   const startupShield = native && loading && biometricEnabled;
   const shouldPrepareGate = native && !loading && !!session && biometricEnabled;
-  const shouldGate = shouldPrepareGate && biometryAvailable;
+  const shouldGate = shouldPrepareGate;
   const gateVisible =
     startupShield ||
     (shouldPrepareGate && !biometryChecked) ||
     (shouldGate && (locked || authenticating || lastAuthAt.current === 0));
 
-  const runAuth = async () => {
-    if (authenticating) return;
+  const runAuth = useCallback(async () => {
+    if (authenticatingRef.current) return;
+    authenticatingRef.current = true;
     setLocked(true);
     setAuthenticating(true);
     const ok = await authenticateWithBiometrics("Unlock bye bye diabetes");
+    authenticatingRef.current = false;
     setAuthenticating(false);
     if (ok) {
       lastAuthAt.current = Date.now();
@@ -50,7 +53,7 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
     } else {
       setLocked(true);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const syncPreference = () => setPreferenceVersion((value) => value + 1);
@@ -67,6 +70,7 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
     if (!shouldPrepareGate) {
       setLocked(false);
       setAuthenticating(false);
+      authenticatingRef.current = false;
       setBiometryChecked(false);
       setBiometryAvailable(false);
       lastAuthAt.current = 0;
@@ -78,10 +82,6 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
       if (cancelled) return;
       setBiometryAvailable(available);
       setBiometryChecked(true);
-      if (!available) {
-        setLocked(false);
-        return;
-      }
       setLabel(await getBiometryLabel());
       if (cancelled) return;
       setLocked(true);
@@ -90,8 +90,7 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldPrepareGate, session?.user?.id, preferenceVersion]);
+  }, [runAuth, shouldPrepareGate, session?.user?.id, preferenceVersion]);
 
   // Re-lock whenever the native app leaves the foreground, then prompt on resume.
   useEffect(() => {
@@ -109,8 +108,7 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
     return () => {
       void sub.then((s) => s.remove());
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldGate]);
+  }, [runAuth, shouldGate]);
 
   return (
     <>
@@ -130,13 +128,18 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
                 : `Use ${label} to unlock bye bye diabetes.`}
             </p>
           </div>
-          {biometryChecked && biometryAvailable && (
+          {biometryChecked && (
             <button
               onClick={() => void runAuth()}
               className="px-6 py-3 rounded-full bg-primary text-primary-foreground font-semibold"
             >
               Unlock with {label}
             </button>
+          )}
+          {biometryChecked && !biometryAvailable && (
+            <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
+              Face ID is not responding. Make sure Face ID is enabled for this app in iPhone Settings, then try again.
+            </p>
           )}
         </div>
       )}

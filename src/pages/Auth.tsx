@@ -10,7 +10,7 @@ import { fetchProfile, loadProfileToLocal } from "@/lib/profileService";
 import { fetchActiveSubscription } from "@/lib/subscriptionService";
 import { isCoachUser, isAdminUser } from "@/lib/roleService";
 import { isChannelPartner } from "@/lib/channelPartnerService";
-import { EXPLICIT_LOGOUT_KEY, getExistingSessionUnlessLoggedOut, prepareFreshLoginState } from "@/contexts/AuthContext";
+import { EXPLICIT_LOGOUT_KEY, getExistingSessionUnlessLoggedOut } from "@/contexts/AuthContext";
 import {
   InputOTP,
   InputOTPGroup,
@@ -59,7 +59,6 @@ export default function Auth() {
       } catch {
         /* fall through to fresh login prep */
       }
-      await prepareFreshLoginState();
       if (!cancelled) setSessionPreparing(false);
     };
 
