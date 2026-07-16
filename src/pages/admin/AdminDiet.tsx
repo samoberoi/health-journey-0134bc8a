@@ -240,25 +240,22 @@ export default function AdminDiet() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
         {categories.map((c, idx) => {
           const active = c.id === activeCat;
+          const th = themeFor(c.slug);
           const count = items.filter(i => filters.some(f => f.id === i.filter_id && f.category_id === c.id)).length;
           return (
             <motion.button
               key={c.id}
               onClick={() => setActiveCat(c.id)}
               whileTap={{ scale: 0.99 }}
-              className={`text-left p-5 rounded-2xl border transition-all ${
-                active
-                  ? "border-primary bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-lift"
-                  : "border-border bg-card hover:border-primary/30"
-              }`}
+              className={`text-left p-5 rounded-2xl border transition-all ${active ? th.tileActive : th.tileInactive}`}
             >
               <div className="flex items-start justify-between mb-2">
-                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md ${active ? th.chip : "bg-muted text-muted-foreground"}`}>
                   CAT.{String(idx + 1).padStart(2, "0")}
                 </span>
                 <span className="text-[10px] text-muted-foreground font-mono">{count} items</span>
               </div>
-              <h3 className={`text-base font-bold leading-tight ${active ? "text-primary" : "text-foreground"}`}>{c.name}</h3>
+              <h3 className={`text-base font-bold leading-tight ${active ? th.title : "text-foreground"}`}>{c.name}</h3>
               {c.description && <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{c.description}</p>}
             </motion.button>
           );
