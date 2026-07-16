@@ -116,9 +116,16 @@ type SubPage = null | "logs" | "appSettings" | "notifications" | "plan" | "editP
 function SubScreenShell({ title, onBack, children }: { title: string; onBack: () => void; children: React.ReactNode }) {
   return (
     <div className="min-h-dvh flex flex-col bg-background">
-      <div className="flex items-center gap-3 px-5 pt-4 pb-4 bg-background border-b border-border">
-        <button onClick={onBack} className="w-9 h-9 shrink-0 rounded-full liquid-glass flex items-center justify-center">
-          <ArrowLeft className="w-4 h-4 text-foreground" strokeWidth={1.6} />
+      <div
+        className="sticky top-0 z-30 flex items-center gap-3 px-4 pb-3 bg-background/95 backdrop-blur border-b border-border"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
+      >
+        <button
+          onClick={onBack}
+          aria-label="Back"
+          className="w-11 h-11 shrink-0 rounded-full liquid-glass flex items-center justify-center active:scale-95 transition"
+        >
+          <ArrowLeft className="w-5 h-5 text-foreground" strokeWidth={2} />
         </button>
         <h2 className="flex-1 min-w-0 text-lg font-black text-foreground leading-tight break-words">{title}</h2>
       </div>
