@@ -11,6 +11,13 @@ const APNS_PRIVATE_KEY = Deno.env.get("APNS_PRIVATE_KEY") ?? "";
 const APNS_BUNDLE_ID = Deno.env.get("APNS_BUNDLE_ID") ?? "app.lovable.byebyediabetes";
 const APNS_ENVIRONMENT = (Deno.env.get("APNS_ENVIRONMENT") ?? "sandbox").toLowerCase();
 
+type ApnsAttempt = {
+  ok: boolean;
+  status: number;
+  environment: "sandbox" | "production";
+  response: Record<string, unknown> | null;
+};
+
 type PushBody = {
   title?: unknown;
   body?: unknown;
@@ -78,6 +85,37 @@ function validText(value: unknown, max: number): string | null {
   return clean;
 }
 
+function parseApnsResponse(text: string): Record<string, unknown> | null {
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return { raw: text };
+  }
+}
+
+function apnsHosts(): Array<{ environment: "sandbox" | "production"; host: string }> {
+  const production = { environment: "production" as const, host: "api.push.apple.com" };
+  const sandbox = { environment: "sandbox" as const, host: "api.sandbox.push.apple.com" };
+  return APNS_ENVIRONMENT === "production" ? [production, sandbox] : [sandbox, production];
+}
+
+async function sendApnsAttempt(token: string, jwt: string, payload: Record<string, unknown>, target: { environment: "sandbox" | "production"; host: string }): Promise<ApnsAttempt> {
+  const res = await fetch(`https://${target.host}/3/device/${token}`, {
+    method: "POST",
+    headers: {
+      authorization: `bearer ${jwt}`,
+      "apns-topic": APNS_BUNDLE_ID,
+      "apns-push-type": "alert",
+      "apns-priority": "10",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  const text = await res.text();
+  return { ok: res.ok, status: res.status, environment: target.environment, response: parseApnsResponse(text) };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" });
@@ -114,7 +152,7 @@ Deno.serve(async (req) => {
     if (!tokens?.length) return json(200, { ok: true, sent: 0, note: "No iOS device token registered" });
 
     const jwt = await createApnsJwt();
-    const host = APNS_ENVIRONMENT === "production" ? "api.push.apple.com" : "api.sandbox.push.apple.com";
+    const hosts = apnsHosts();
     const payload = {
       aps: {
         alert: { title, body },
@@ -128,22 +166,23 @@ Deno.serve(async (req) => {
     };
 
     const results = await Promise.all((tokens as Array<{ id: string; token: string }>).map(async (row) => {
-      const res = await fetch(`https://${host}/3/device/${row.token}`, {
-        method: "POST",
-        headers: {
-          authorization: `bearer ${jwt}`,
-          "apns-topic": APNS_BUNDLE_ID,
-          "apns-push-type": "alert",
-          "apns-priority": "10",
-          "content-type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-      const text = await res.text();
-      if ((res.status === 400 || res.status === 410) && /BadDeviceToken|Unregistered|DeviceTokenNotForTopic/.test(text)) {
+      const attempts: ApnsAttempt[] = [];
+      const first = await sendApnsAttempt(row.token, jwt, payload, hosts[0]);
+      attempts.push(first);
+
+      const firstReason = typeof first.response?.reason === "string" ? first.response.reason : "";
+      if (!first.ok && firstReason === "BadDeviceToken") {
+        attempts.push(await sendApnsAttempt(row.token, jwt, payload, hosts[1]));
+      }
+
+      const success = attempts.find((attempt) => attempt.ok);
+      const last = attempts[attempts.length - 1];
+      const lastReason = typeof last.response?.reason === "string" ? last.response.reason : "";
+      if (!success && (last.status === 410 || lastReason === "Unregistered" || (lastReason === "BadDeviceToken" && attempts.length > 1))) {
         await admin.from("device_push_tokens").delete().eq("id", row.id);
       }
-      return { ok: res.ok, status: res.status, response: text ? JSON.parse(text) : null };
+      console.log("APNs push attempt", { ok: Boolean(success), attempts: attempts.map((a) => ({ status: a.status, environment: a.environment, reason: a.response?.reason ?? null })) });
+      return { ok: Boolean(success), status: success?.status ?? last.status, environment: success?.environment ?? last.environment, response: success?.response ?? last.response, attempts };
     }));
 
     return json(200, {

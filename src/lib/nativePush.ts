@@ -17,6 +17,9 @@ import { toast } from "sonner";
 const APP_VERSION = (globalThis as any).__APP_VERSION__ ?? "1.0.0";
 
 let registered = false;
+let activeUserId: string | null = null;
+let lastRegistrationToken: string | null = null;
+let tokenWaiters: Array<(token: string) => void> = [];
 
 export function isNativePushSupported(): boolean {
   return Capacitor.isNativePlatform();
@@ -31,7 +34,7 @@ export function currentPlatform(): "ios" | "android" | "web" {
 
 async function upsertToken(userId: string, token: string) {
   const platform = currentPlatform();
-  await (supabase as any)
+  const { error } = await (supabase as any)
     .from("device_push_tokens")
     .upsert(
       {
@@ -43,6 +46,48 @@ async function upsertToken(userId: string, token: string) {
       },
       { onConflict: "user_id,token" },
     );
+  if (error) throw error;
+}
+
+async function fetchStoredToken(userId: string): Promise<string | null> {
+  const { data, error } = await (supabase as any)
+    .from("device_push_tokens")
+    .select("token")
+    .eq("user_id", userId)
+    .eq("platform", currentPlatform())
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("[push] failed to read stored token", error);
+    return null;
+  }
+  return (data as any)?.token ?? null;
+}
+
+function waitForToken(timeoutMs = 8_000): Promise<string | null> {
+  if (lastRegistrationToken) return Promise.resolve(lastRegistrationToken);
+
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(() => {
+      tokenWaiters = tokenWaiters.filter((waiter) => waiter !== done);
+      resolve(null);
+    }, timeoutMs);
+
+    const done = (token: string) => {
+      window.clearTimeout(timer);
+      resolve(token);
+    };
+
+    tokenWaiters.push(done);
+  });
+}
+
+function resolveTokenWaiters(token: string) {
+  const waiters = tokenWaiters;
+  tokenWaiters = [];
+  waiters.forEach((resolve) => resolve(token));
 }
 
 /**
@@ -58,6 +103,7 @@ export async function registerNativePush(userId: string): Promise<
   }
 
   try {
+    activeUserId = userId;
     let perm = await PushNotifications.checkPermissions();
     if (perm.receive === "prompt" || perm.receive === "prompt-with-rationale") {
       perm = await PushNotifications.requestPermissions();
@@ -82,7 +128,11 @@ export async function registerNativePush(userId: string): Promise<
 
       PushNotifications.addListener("registration", async (t) => {
         try {
-          await upsertToken(userId, t.value);
+          lastRegistrationToken = t.value;
+          resolveTokenWaiters(t.value);
+          const uid = activeUserId;
+          if (!uid) throw new Error("No active user for push token");
+          await upsertToken(uid, t.value);
           // eslint-disable-next-line no-console
           console.log("[push] token registered:", t.value.slice(0, 12) + "…");
         } catch (err) {
@@ -106,7 +156,8 @@ export async function registerNativePush(userId: string): Promise<
     }
 
     await PushNotifications.register();
-    return { ok: true };
+    const token = (await waitForToken()) ?? (await fetchStoredToken(userId));
+    return { ok: true, token: token ?? undefined };
   } catch (err: any) {
     console.warn("[push] setup failed", err);
     return { ok: false, reason: err?.message ?? "setup_failed" };
@@ -121,7 +172,11 @@ export async function registerNativePushWithToast(userId: string) {
   }
   const res = await registerNativePush(userId);
   if (res.ok === true) {
-    toast.success("Push notifications enabled for this iPhone");
+    if (res.token) {
+      toast.success("Push notifications enabled for this iPhone");
+    } else {
+      toast.warning("Permission is on, but the iPhone token has not arrived yet. Try again in a few seconds.");
+    }
     return;
   }
   if (res.reason === "permission_denied") {

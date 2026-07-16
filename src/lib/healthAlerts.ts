@@ -34,6 +34,15 @@ type HealthAlertResult = {
   message: string;
 };
 
+export type RemoteHealthPushResult = {
+  ok: boolean;
+  sent?: number;
+  attempted?: number;
+  environment?: string;
+  note?: string;
+  error?: string;
+};
+
 let localChannelReady = false;
 const playedRealtimeAlertIds = new Set<string>();
 
@@ -165,21 +174,27 @@ export function fireRealtimeHealthNotificationAlert(notification: RealtimeHealth
   void sendLocalHealthAlert(notification.title, notification.body);
 }
 
-export async function sendRemoteHealthPush(title: string, body: string): Promise<boolean> {
-  if (!Capacitor.isNativePlatform()) return false;
+export async function sendRemoteHealthPushResult(title: string, body: string): Promise<RemoteHealthPushResult> {
+  if (!Capacitor.isNativePlatform()) return { ok: false, note: "not_native" };
   try {
     const { data, error } = await supabase.functions.invoke("send-health-push", {
       body: { title, body, actionUrl: "/home?tab=profile" },
     });
     if (error) {
       console.warn("remote health push failed", error);
-      return false;
+      return { ok: false, error: error.message };
     }
-    return Boolean((data as any)?.ok);
+    const result = (data ?? {}) as RemoteHealthPushResult;
+    return { ...result, ok: Boolean(result.ok) };
   } catch (err) {
     console.warn("remote health push failed", err);
-    return false;
+    return { ok: false, error: (err as Error)?.message ?? "remote_push_failed" };
   }
+}
+
+export async function sendRemoteHealthPush(title: string, body: string): Promise<boolean> {
+  const result = await sendRemoteHealthPushResult(title, body);
+  return result.ok;
 }
 
 export async function fireHealthMetricFeedback(

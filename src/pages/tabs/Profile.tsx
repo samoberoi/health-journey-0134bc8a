@@ -40,8 +40,8 @@ import BbdoBadgeGrid from "@/components/badges/BbdoBadgeGrid";
 import { playNotificationSound, getMasterVolume, setMasterVolume, getMuted, setMuted } from "@/lib/soundEngine";
 import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
 import { createNotification } from "@/lib/notificationService";
-import { registerNativePushWithToast, isNativePushSupported } from "@/lib/nativePush";
-import { sendLocalHealthAlert } from "@/lib/healthAlerts";
+import { registerNativePush, registerNativePushWithToast, isNativePushSupported } from "@/lib/nativePush";
+import { sendLocalHealthAlert, sendRemoteHealthPushResult } from "@/lib/healthAlerts";
 
 const APP_VERSION = (globalThis as any).__APP_VERSION__ ?? "1.0.0";
 
@@ -880,7 +880,23 @@ export default function Profile({ onClose, isDark = true, onToggleTheme }: Profi
                       type: "test",
                       icon: "🔔",
                     });
-                    toast.success("Test notification sent");
+                    if (isNativePushSupported()) {
+                      const registration = await registerNativePush(user.id);
+                      if (registration.ok === false) {
+                        toast.error(registration.reason === "permission_denied" ? "Enable notifications in iOS Settings." : `Push setup failed: ${registration.reason}`);
+                      } else if (!registration.token) {
+                        toast.warning("iPhone permission is on, but the push token is not ready yet. Try again in a few seconds.");
+                      }
+
+                      const remote = await sendRemoteHealthPushResult("BBDO push test", "This is a real iPhone push notification test.");
+                      if (remote.ok) {
+                        toast.success(`Phone push sent (${remote.sent ?? 0}/${remote.attempted ?? 0})`);
+                      } else {
+                        toast.error(remote.note ?? remote.error ?? "Phone push was not accepted yet");
+                      }
+                    } else {
+                      toast.success("Test notification sent");
+                    }
                   } catch (err: any) {
                     toast.error(err?.message ?? "Failed to send test");
                   } finally {
