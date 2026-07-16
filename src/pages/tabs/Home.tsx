@@ -1888,6 +1888,10 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
         window.dispatchEvent(evt);
       }} />
 
+      {/* ─── Apple Health snapshot ─── */}
+      <AppleHealthSnapshotCard />
+
+
       {/* ─── Supplement Tracker Card ─── */}
       {suppPlan && suppItems.length > 0 && (() => {
         const suppMap = Object.fromEntries(suppList.map((s) => [s.id, s]));
