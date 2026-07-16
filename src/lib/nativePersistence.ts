@@ -7,6 +7,7 @@ const LAST_HYDRATED_KEY = "bb_native_last_hydrated_at";
 const EXPLICIT_LOGOUT_STORAGE_KEY = "bb_explicit_logout";
 const AUTH_SESSION_BACKUP_KEY = "bb_native_auth_session_backup";
 const pendingWrites = new Set<Promise<unknown>>();
+let nativePersistenceQueue: Promise<unknown> = Promise.resolve();
 
 type NativeAuthSessionBackup = {
   key: string;
@@ -104,6 +105,13 @@ function trackNativeWrite(write: Promise<unknown>) {
   void write.finally(() => pendingWrites.delete(write));
 }
 
+function serializeNativePersistence<T>(operation: () => Promise<T>): Promise<T> {
+  if (!isNativeApp()) return operation();
+  const run = nativePersistenceQueue.then(operation, operation);
+  nativePersistenceQueue = run.catch(() => undefined);
+  return run;
+}
+
 export async function flushNativePersistenceWrites() {
   if (!isNativeApp() || pendingWrites.size === 0) return;
   await Promise.allSettled([...pendingWrites]);
@@ -111,6 +119,7 @@ export async function flushNativePersistenceWrites() {
 
 export async function hydrateNativePersistence() {
   if (!isNativeApp()) return;
+  return serializeNativePersistence(async () => {
   try {
     const authBackup = await readAuthSessionBackup();
     if (authBackup) {
@@ -145,10 +154,12 @@ export async function hydrateNativePersistence() {
   } catch (error) {
     console.warn("Native persistence hydration failed", error);
   }
+  });
 }
 
 export async function hasNativePersistedAuthSession(): Promise<boolean> {
   if (!isNativeApp()) return false;
+  return serializeNativePersistence(async () => {
   try {
     const authBackup = await readAuthSessionBackup();
     if (authBackup?.value) return true;
@@ -166,6 +177,7 @@ export async function hasNativePersistedAuthSession(): Promise<boolean> {
     return false;
   }
   return false;
+  });
 }
 
 export function installNativePersistenceMirror() {
@@ -216,6 +228,7 @@ export function installNativePersistenceLifecycleFlush() {
 
 export async function syncNativePersistenceFromLocalStorage() {
   if (!isNativeApp()) return;
+  return serializeNativePersistence(async () => {
   await flushNativePersistenceWrites();
   const previousKeys = await readPersistedKeyList();
   const keys: string[] = [];
@@ -249,10 +262,12 @@ export async function syncNativePersistenceFromLocalStorage() {
         return isAuthStorageKey(key);
       }), ...keys])];
   await Preferences.set({ key: KEY_LIST, value: JSON.stringify(nextKeys) });
+  });
 }
 
 export async function persistAuthSessionToNative() {
   if (!isNativeApp()) return;
+  return serializeNativePersistence(async () => {
   await flushNativePersistenceWrites();
   const authKeys: string[] = [];
   for (let index = 0; index < localStorage.length; index += 1) {
@@ -271,10 +286,12 @@ export async function persistAuthSessionToNative() {
   );
   await syncNativePersistenceFromLocalStorage();
   await flushNativePersistenceWrites();
+  });
 }
 
 export async function clearNativePersistedAuthState() {
   if (!isNativeApp()) return;
+  return serializeNativePersistence(async () => {
   await flushNativePersistenceWrites();
   const persistedKeys = await readPersistedKeyList();
   const authKeys = persistedKeys.filter((key) => {
@@ -283,6 +300,7 @@ export async function clearNativePersistedAuthState() {
   await Promise.all(authKeys.map((key) => Preferences.remove({ key })));
   await Preferences.remove({ key: AUTH_SESSION_BACKUP_KEY });
   await Preferences.set({ key: KEY_LIST, value: JSON.stringify(persistedKeys.filter((key) => !authKeys.includes(key))) });
+  });
 }
 
 export async function getNativePersistenceDiagnostics() {
@@ -296,6 +314,7 @@ export async function getNativePersistenceDiagnostics() {
     };
   }
 
+  return serializeNativePersistence(async () => {
   try {
     const [listedKeys, authBackup, preferences] = await Promise.all([
       readPersistedKeyList(),
@@ -324,4 +343,5 @@ export async function getNativePersistenceDiagnostics() {
       error: error instanceof Error ? error.message : "Native Preferences did not respond.",
     };
   }
+  });
 }
