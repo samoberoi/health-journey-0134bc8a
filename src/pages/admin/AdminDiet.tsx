@@ -88,6 +88,51 @@ const DIET_BADGE: Record<DietType, { label: string; cls: string; title: string }
   jain:    { label: "JN", cls: "bg-amber-500/10  text-amber-700   border-amber-500/30",   title: "Strictly Jain" },
 };
 
+// Color themes per category — visual reinforcement for admins.
+// sugar_spike = red (never touch), metabolic_essential + power_addon = green (encourage).
+const CAT_THEME: Record<string, {
+  tileActive: string;
+  tileInactive: string;
+  title: string;
+  chip: string;
+  filterActive: string;
+  filterInactive: string;
+  filterIconBox: string;
+  filterCount: string;
+}> = {
+  sugar_spike: {
+    tileActive: "border-destructive bg-gradient-to-br from-destructive/15 via-destructive/5 to-transparent shadow-lift",
+    tileInactive: "border-destructive/30 bg-destructive/5 hover:border-destructive/60",
+    title: "text-destructive",
+    chip: "bg-destructive text-destructive-foreground",
+    filterActive: "bg-destructive text-destructive-foreground border-destructive shadow-card",
+    filterInactive: "bg-destructive/5 text-destructive border-destructive/30 hover:border-destructive/60",
+    filterIconBox: "bg-destructive-foreground/15",
+    filterCount: "bg-destructive-foreground/15",
+  },
+  metabolic_essential: {
+    tileActive: "border-emerald-600 bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent shadow-lift",
+    tileInactive: "border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-500/60",
+    title: "text-emerald-700",
+    chip: "bg-emerald-600 text-white",
+    filterActive: "bg-emerald-600 text-white border-emerald-600 shadow-card",
+    filterInactive: "bg-emerald-500/5 text-emerald-700 border-emerald-500/30 hover:border-emerald-500/60",
+    filterIconBox: "bg-white/15",
+    filterCount: "bg-white/15",
+  },
+  power_addon: {
+    tileActive: "border-green-600 bg-gradient-to-br from-green-500/15 via-green-500/5 to-transparent shadow-lift",
+    tileInactive: "border-green-500/30 bg-green-500/5 hover:border-green-500/60",
+    title: "text-green-700",
+    chip: "bg-green-600 text-white",
+    filterActive: "bg-green-600 text-white border-green-600 shadow-card",
+    filterInactive: "bg-green-500/5 text-green-700 border-green-500/30 hover:border-green-500/60",
+    filterIconBox: "bg-white/15",
+    filterCount: "bg-white/15",
+  },
+};
+const themeFor = (slug?: string) => CAT_THEME[slug || ""] || CAT_THEME.metabolic_essential;
+
 export default function AdminDiet() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [filters, setFilters] = useState<Filter[]>([]);
@@ -195,25 +240,22 @@ export default function AdminDiet() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
         {categories.map((c, idx) => {
           const active = c.id === activeCat;
+          const th = themeFor(c.slug);
           const count = items.filter(i => filters.some(f => f.id === i.filter_id && f.category_id === c.id)).length;
           return (
             <motion.button
               key={c.id}
               onClick={() => setActiveCat(c.id)}
               whileTap={{ scale: 0.99 }}
-              className={`text-left p-5 rounded-2xl border transition-all ${
-                active
-                  ? "border-primary bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-lift"
-                  : "border-border bg-card hover:border-primary/30"
-              }`}
+              className={`text-left p-5 rounded-2xl border transition-all ${active ? th.tileActive : th.tileInactive}`}
             >
               <div className="flex items-start justify-between mb-2">
-                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md ${active ? th.chip : "bg-muted text-muted-foreground"}`}>
                   CAT.{String(idx + 1).padStart(2, "0")}
                 </span>
                 <span className="text-[10px] text-muted-foreground font-mono">{count} items</span>
               </div>
-              <h3 className={`text-base font-bold leading-tight ${active ? "text-primary" : "text-foreground"}`}>{c.name}</h3>
+              <h3 className={`text-base font-bold leading-tight ${active ? th.title : "text-foreground"}`}>{c.name}</h3>
               {c.description && <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{c.description}</p>}
             </motion.button>
           );
@@ -234,25 +276,24 @@ export default function AdminDiet() {
             const Icon = FILTER_ICONS[f.slug] || Leaf;
             const num = f.number_label ?? `F${String(f.order_number ?? idx + 1).padStart(2, "0")}`;
             const count = items.filter(i => i.filter_id === f.id).length;
+            const th = themeFor(activeCatObj?.slug);
             return (
               <motion.button
                 key={f.id}
                 onClick={() => setActiveFilter(f.id)}
                 whileTap={{ scale: 0.98 }}
                 className={`shrink-0 flex items-center gap-2.5 pl-2.5 pr-3.5 py-2 rounded-xl border transition-all ${
-                  active
-                    ? "bg-primary text-primary-foreground border-primary shadow-card"
-                    : "bg-card text-foreground border-border hover:border-primary/40"
+                  active ? th.filterActive : th.filterInactive
                 }`}
               >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${active ? "bg-primary-foreground/15" : "bg-muted"}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${active ? th.filterIconBox : "bg-muted"}`}>
                   <Icon className="w-4 h-4" strokeWidth={2} />
                 </div>
                 <div className="text-left">
-                  <p className={`text-[9px] font-mono font-bold leading-none ${active ? "opacity-80" : "opacity-50"}`}>{num}</p>
+                  <p className={`text-[9px] font-mono font-bold leading-none ${active ? "opacity-80" : "opacity-70"}`}>{num}</p>
                   <p className="text-xs font-semibold leading-tight whitespace-nowrap mt-0.5">{f.name}</p>
                 </div>
-                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${active ? "bg-primary-foreground/15" : "bg-muted text-muted-foreground"}`}>{count}</span>
+                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${active ? th.filterCount : "bg-muted text-muted-foreground"}`}>{count}</span>
               </motion.button>
             );
           })}
