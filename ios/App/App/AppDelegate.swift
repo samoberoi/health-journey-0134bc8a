@@ -4,8 +4,9 @@ import AparajitaCapacitorBiometricAuth
 import AppPlugin
 import PreferencesPlugin
 
+@objc(BBDOBridgeViewController)
 class BBDOBridgeViewController: CAPBridgeViewController {
-    override open func capacitorDidLoad() {
+    override func capacitorDidLoad() {
         bridge?.registerPluginInstance(BiometricAuthNative())
         bridge?.registerPluginInstance(AppPlugin())
         bridge?.registerPluginInstance(PreferencesPlugin())
