@@ -6,9 +6,9 @@ import CapacitorPreferences
 
 class BBDOBridgeViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
-        bridge?.registerPluginType(BiometricAuthNative.self)
-        bridge?.registerPluginType(AppPlugin.self)
-        bridge?.registerPluginType(PreferencesPlugin.self)
+        bridge?.registerPluginInstance(BiometricAuthNative())
+        bridge?.registerPluginInstance(AppPlugin())
+        bridge?.registerPluginInstance(PreferencesPlugin())
     }
 }
 
