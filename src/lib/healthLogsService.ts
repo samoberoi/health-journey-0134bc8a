@@ -108,6 +108,24 @@ export async function insertHealthLog(log: Partial<Omit<HealthLog, "id" | "creat
     console.error("Failed to insert health log:", error);
     return null;
   }
+
+  // Fetch previous weight for delta alerts
+  let prevWeight: number | null = null;
+  if (log.log_type === "weight") {
+    const { data: prev } = await supabase
+      .from("health_logs" as any)
+      .select("weight_kg")
+      .eq("user_id", log.user_id)
+      .eq("log_type", "weight")
+      .neq("id", (data as any).id)
+      .order("logged_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    prevWeight = (prev as any)?.weight_kg ?? null;
+  }
+
+  void firePostLogFeedback(log, prevWeight);
+
   return data as unknown as HealthLog;
 }
 
