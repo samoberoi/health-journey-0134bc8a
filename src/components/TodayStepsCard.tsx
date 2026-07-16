@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Footprints, Plus, ChevronRight, Flame } from "lucide-react";
+import { Footprints, Plus, ChevronRight, Flame, RefreshCw, Watch } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchProfile } from "@/lib/profileService";
+import { canUseAppleHealthSteps, syncTodayStepsFromAppleHealth } from "@/lib/appleHealth";
 import {
   fetchMovementOverview,
   logTodaySteps,
@@ -15,6 +16,8 @@ export default function TodayStepsCard({ onOpenMovement }: { onOpenMovement?: ()
   const [data, setData] = useState<MovementOverview | null>(null);
   const [val, setVal] = useState("");
   const [saving, setSaving] = useState(false);
+  const [syncingHealth, setSyncingHealth] = useState(false);
+  const healthStepsAvailable = canUseAppleHealthSteps();
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -32,6 +35,29 @@ export default function TodayStepsCard({ onOpenMovement }: { onOpenMovement?: ()
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!user || !healthStepsAvailable) return;
+    let cancelled = false;
+    const sync = async () => {
+      setSyncingHealth(true);
+      try {
+        const steps = await syncTodayStepsFromAppleHealth();
+        if (!cancelled && steps != null) {
+          await logTodaySteps(user.id, steps);
+          window.dispatchEvent(new CustomEvent("health-log-saved"));
+          await load();
+        }
+      } catch (error) {
+        console.warn("Apple Health steps sync failed", error);
+      } finally {
+        if (!cancelled) setSyncingHealth(false);
+      }
+    };
+    void sync();
+    return () => {
+      cancelled = true;
+    };
+  }, [healthStepsAvailable, load, user]);
   useEffect(() => {
     const handler = () => load();
     window.addEventListener("health-log-saved", handler);
@@ -59,6 +85,26 @@ export default function TodayStepsCard({ onOpenMovement }: { onOpenMovement?: ()
       toast.error(e?.message || "Couldn't save steps");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleHealthSync = async () => {
+    if (!user) return;
+    setSyncingHealth(true);
+    try {
+      const steps = await syncTodayStepsFromAppleHealth();
+      if (steps == null) {
+        toast.error("Apple Health is not available on this device");
+        return;
+      }
+      await logTodaySteps(user.id, steps);
+      toast.success(`Synced ${steps.toLocaleString("en-IN")} Apple Health steps`);
+      window.dispatchEvent(new CustomEvent("health-log-saved"));
+      await load();
+    } catch (error: any) {
+      toast.error(error?.message || "Couldn't sync Apple Health steps");
+    } finally {
+      setSyncingHealth(false);
     }
   };
 
@@ -111,24 +157,44 @@ export default function TodayStepsCard({ onOpenMovement }: { onOpenMovement?: ()
         </div>
       </div>
 
-      <div className="mt-4 flex gap-2">
-        <input
-          type="number"
-          inputMode="numeric"
-          min={0}
-          placeholder="Log today's steps"
-          value={val}
-          onChange={(e) => setVal(e.target.value)}
-          className="flex-1 h-10 rounded-xl border border-input bg-background px-3 text-sm"
-        />
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="h-10 px-4 rounded-xl bg-[var(--bbdo-red)] text-white text-sm font-bold inline-flex items-center gap-1.5 disabled:opacity-60"
-        >
-          <Plus className="w-4 h-4" /> {saving ? "Saving…" : "Log"}
-        </button>
-      </div>
+      {healthStepsAvailable ? (
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-border bg-background px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <Watch className="h-4 w-4 shrink-0 text-primary" />
+            <p className="truncate text-[12px] font-semibold text-muted-foreground">
+              Apple Health steps sync automatically
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleHealthSync}
+            disabled={syncingHealth}
+            aria-label="Sync Apple Health steps"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-primary disabled:opacity-60"
+          >
+            <RefreshCw className={`h-4 w-4 ${syncingHealth ? "animate-spin" : ""}`} />
+          </button>
+        </div>
+      ) : (
+        <div className="mt-4 flex gap-2">
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            placeholder="Log today's steps"
+            value={val}
+            onChange={(e) => setVal(e.target.value)}
+            className="flex-1 h-10 rounded-xl border border-input bg-background px-3 text-sm"
+          />
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="h-10 px-4 rounded-xl bg-[var(--bbdo-red)] text-white text-sm font-bold inline-flex items-center gap-1.5 disabled:opacity-60"
+          >
+            <Plus className="w-4 h-4" /> {saving ? "Saving…" : "Log"}
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }

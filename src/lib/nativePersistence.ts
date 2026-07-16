@@ -7,6 +7,7 @@ const LAST_HYDRATED_KEY = "bb_native_last_hydrated_at";
 const EXPLICIT_LOGOUT_STORAGE_KEY = "bb_explicit_logout";
 const AUTH_SESSION_BACKUP_KEY = "bb_native_auth_session_backup";
 const pendingWrites = new Set<Promise<unknown>>();
+let nativePersistenceQueue: Promise<unknown> = Promise.resolve();
 
 type NativeAuthSessionBackup = {
   key: string;
@@ -104,6 +105,13 @@ function trackNativeWrite(write: Promise<unknown>) {
   void write.finally(() => pendingWrites.delete(write));
 }
 
+function serializeNativePersistence<T>(operation: () => Promise<T>): Promise<T> {
+  if (!isNativeApp()) return operation();
+  const run = nativePersistenceQueue.then(operation, operation);
+  nativePersistenceQueue = run.catch(() => undefined);
+  return run;
+}
+
 export async function flushNativePersistenceWrites() {
   if (!isNativeApp() || pendingWrites.size === 0) return;
   await Promise.allSettled([...pendingWrites]);
@@ -111,10 +119,12 @@ export async function flushNativePersistenceWrites() {
 
 export async function hydrateNativePersistence() {
   if (!isNativeApp()) return;
+  return serializeNativePersistence(async () => {
   try {
     const authBackup = await readAuthSessionBackup();
     if (authBackup) {
       localStorage.setItem(authBackup.key, authBackup.value);
+      await Preferences.set({ key: authBackup.key, value: authBackup.value });
       await rememberKey(authBackup.key);
     }
 
@@ -129,7 +139,12 @@ export async function hydrateNativePersistence() {
       if (key === AUTH_SESSION_BACKUP_KEY) continue;
       const { value } = await Preferences.get({ key });
       if (value == null) {
-        localStorage.removeItem(key);
+        if (authBackup?.key === key) {
+          localStorage.setItem(key, authBackup.value);
+          await Preferences.set({ key, value: authBackup.value });
+        } else {
+          localStorage.removeItem(key);
+        }
       } else {
         localStorage.setItem(key, value);
         await saveAuthSessionBackup(key, value);
@@ -139,10 +154,12 @@ export async function hydrateNativePersistence() {
   } catch (error) {
     console.warn("Native persistence hydration failed", error);
   }
+  });
 }
 
 export async function hasNativePersistedAuthSession(): Promise<boolean> {
   if (!isNativeApp()) return false;
+  return serializeNativePersistence(async () => {
   try {
     const authBackup = await readAuthSessionBackup();
     if (authBackup?.value) return true;
@@ -160,6 +177,7 @@ export async function hasNativePersistedAuthSession(): Promise<boolean> {
     return false;
   }
   return false;
+  });
 }
 
 export function installNativePersistenceMirror() {
@@ -175,24 +193,24 @@ export function installNativePersistenceMirror() {
   Storage.prototype.setItem = function setItem(key: string, value: string) {
     originalSetItem.call(this, key, value);
     if (this === storage && shouldPersistKey(key)) {
-      trackNativeWrite(writePersistedKey(key, value));
+      trackNativeWrite(serializeNativePersistence(() => writePersistedKey(key, value)));
     }
   };
 
   Storage.prototype.removeItem = function removeItem(key: string) {
     originalRemoveItem.call(this, key);
     if (this === storage && shouldPersistKey(key)) {
-      trackNativeWrite(removePersistedKey(key));
+      trackNativeWrite(serializeNativePersistence(() => removePersistedKey(key)));
     }
   };
 
   Storage.prototype.clear = function clear() {
     if (this === storage) {
-      trackNativeWrite((async () => {
+      trackNativeWrite(serializeNativePersistence(async () => {
         const keys = await readPersistedKeyList();
         await Promise.all(keys.map((key) => Preferences.remove({ key })));
         await Preferences.remove({ key: KEY_LIST });
-      })());
+      }));
     }
     originalClear.call(this);
   };
@@ -210,6 +228,7 @@ export function installNativePersistenceLifecycleFlush() {
 
 export async function syncNativePersistenceFromLocalStorage() {
   if (!isNativeApp()) return;
+  return serializeNativePersistence(async () => {
   await flushNativePersistenceWrites();
   const previousKeys = await readPersistedKeyList();
   const keys: string[] = [];
@@ -243,10 +262,12 @@ export async function syncNativePersistenceFromLocalStorage() {
         return isAuthStorageKey(key);
       }), ...keys])];
   await Preferences.set({ key: KEY_LIST, value: JSON.stringify(nextKeys) });
+  });
 }
 
 export async function persistAuthSessionToNative() {
   if (!isNativeApp()) return;
+  return serializeNativePersistence(async () => {
   await flushNativePersistenceWrites();
   const authKeys: string[] = [];
   for (let index = 0; index < localStorage.length; index += 1) {
@@ -263,12 +284,15 @@ export async function persistAuthSessionToNative() {
       if (value != null) await writePersistedKey(key, value);
     })
   );
-  await syncNativePersistenceFromLocalStorage();
+  const persistedKeys = await readPersistedKeyList();
+  await Preferences.set({ key: KEY_LIST, value: JSON.stringify([...new Set([...persistedKeys, ...authKeys])]) });
   await flushNativePersistenceWrites();
+  });
 }
 
 export async function clearNativePersistedAuthState() {
   if (!isNativeApp()) return;
+  return serializeNativePersistence(async () => {
   await flushNativePersistenceWrites();
   const persistedKeys = await readPersistedKeyList();
   const authKeys = persistedKeys.filter((key) => {
@@ -277,6 +301,7 @@ export async function clearNativePersistedAuthState() {
   await Promise.all(authKeys.map((key) => Preferences.remove({ key })));
   await Preferences.remove({ key: AUTH_SESSION_BACKUP_KEY });
   await Preferences.set({ key: KEY_LIST, value: JSON.stringify(persistedKeys.filter((key) => !authKeys.includes(key))) });
+  });
 }
 
 export async function getNativePersistenceDiagnostics() {
@@ -290,6 +315,7 @@ export async function getNativePersistenceDiagnostics() {
     };
   }
 
+  return serializeNativePersistence(async () => {
   try {
     const [listedKeys, authBackup, preferences] = await Promise.all([
       readPersistedKeyList(),
@@ -318,4 +344,5 @@ export async function getNativePersistenceDiagnostics() {
       error: error instanceof Error ? error.message : "Native Preferences did not respond.",
     };
   }
+  });
 }

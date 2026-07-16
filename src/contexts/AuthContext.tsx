@@ -15,6 +15,7 @@ import {
 import { isNative } from "@/lib/biometric";
 
 export const EXPLICIT_LOGOUT_KEY = "bb_explicit_logout";
+let existingSessionRestorePromise: Promise<Session | null> | null = null;
 
 export function clearPersistedAuthState(markLoggedOut = true) {
   try {
@@ -101,6 +102,8 @@ export async function prepareFreshLoginState() {
 }
 
 export async function getExistingSessionUnlessLoggedOut() {
+  if (existingSessionRestorePromise) return existingSessionRestorePromise;
+  existingSessionRestorePromise = (async () => {
   try {
     if (isNative()) await hydrateNativePersistence();
     let { data } = await supabase.auth.getSession();
@@ -122,6 +125,12 @@ export async function getExistingSessionUnlessLoggedOut() {
     return data.session ?? null;
   } catch {
     return null;
+  }
+  })();
+  try {
+    return await existingSessionRestorePromise;
+  } finally {
+    existingSessionRestorePromise = null;
   }
 }
 

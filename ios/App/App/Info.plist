@@ -26,6 +26,10 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Use Face ID to securely unlock bye bye diabetes.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Read your Apple Health step count to update your movement progress automatically.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Allow bye bye diabetes to connect with Apple Health.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
