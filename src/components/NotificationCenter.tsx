@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchUnreadCount, subscribeToNotifications } from "@/lib/notificationService";
+import { playNotificationSound } from "@/lib/soundEngine";
+import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
 import AttentionBadge from "@/components/attention/AttentionBadge";
 
 /**
@@ -14,11 +16,15 @@ export default function NotificationCenter({ unreadCount: controlledCount }: { u
   const count = controlledCount ?? unreadCount;
 
   useEffect(() => {
-    if (controlledCount != null) return;
     if (!user) return;
-    fetchUnreadCount(user.id).then(setUnreadCount);
+    if (controlledCount == null) fetchUnreadCount(user.id).then(setUnreadCount);
     const unsub = subscribeToNotifications(user.id, () => {
-      fetchUnreadCount(user.id).then(setUnreadCount);
+      if (controlledCount == null) fetchUnreadCount(user.id).then(setUnreadCount);
+      // Play the BBDO signature sound on any new notification, regardless of
+      // whether the notifications panel is currently mounted.
+      void getNotificationSoundSettings().then((s) => {
+        if (s.enabled) playNotificationSound(s.variant);
+      });
     });
     return unsub;
   }, [controlledCount, user]);
