@@ -212,6 +212,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.error("sendWelcomeNotification failed", error);
             });
           }, 0);
+          // Register for native push (APNs / FCM) once we know who the user is.
+          // No-op on web. Silent on failure — user can retry from Notification Settings.
+          if (isNativePushSupported()) {
+            setTimeout(() => { void registerNativePush(newUid); }, 800);
+          }
         }
         prevUserId.current = newUid;
       }
