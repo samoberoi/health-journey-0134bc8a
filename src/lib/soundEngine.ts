@@ -4,16 +4,33 @@
 let audioCtx: AudioContext | null = null;
 let isMuted = false;
 let masterVolume = 1;
+let unlockBound = false;
 
 function getCtx(): AudioContext {
-  if (!audioCtx) audioCtx = new AudioContext();
+  if (!audioCtx) {
+    const Ctor: typeof AudioContext =
+      (window as any).AudioContext || (window as any).webkitAudioContext;
+    audioCtx = new Ctor();
+  }
+  // Browsers/iOS require a user gesture before audio plays. If the context is
+  // suspended, kick a resume — safe to call repeatedly. A global one-time
+  // pointer/touch handler below also unlocks it on the first interaction.
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume().catch(() => {});
+  }
   return audioCtx;
 }
 
-/** Multiplies all sound gains. 0..1. Persisted so the whole app respects volume. */
-export function setMasterVolume(v: number) {
-  masterVolume = Math.max(0, Math.min(1, v));
-  localStorage.setItem("bbdSoundVolume", String(masterVolume));
+/** Attach a one-time listener that unlocks WebAudio on the first user gesture. */
+export function bindAudioUnlock() {
+  if (unlockBound || typeof window === "undefined") return;
+  unlockBound = true;
+  const unlock = () => {
+    try { getCtx(); } catch { /* ignore */ }
+  };
+  ["pointerdown", "touchstart", "keydown", "click"].forEach((evt) =>
+    window.addEventListener(evt, unlock, { once: false, passive: true })
+  );
 }
 
 export function getMasterVolume(): number {
