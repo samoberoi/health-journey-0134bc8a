@@ -19,7 +19,7 @@ import {
 import logoImg from "@/assets/logo.png";
 import AuthHeroCarousel from "@/components/AuthHeroCarousel";
 import { toast } from "sonner";
-import { syncNativePersistenceFromLocalStorage } from "@/lib/nativePersistence";
+import { flushNativePersistenceWrites, syncNativePersistenceFromLocalStorage } from "@/lib/nativePersistence";
 
 const DEFAULT_OTP = "111111";
 
@@ -49,6 +49,7 @@ export default function Auth() {
 
   const persistNativeSession = async () => {
     try {
+      await flushNativePersistenceWrites();
       await syncNativePersistenceFromLocalStorage();
     } catch {
       /* native storage may be unavailable in preview */
