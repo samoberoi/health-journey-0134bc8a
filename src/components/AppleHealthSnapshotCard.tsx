@@ -7,6 +7,10 @@ import {
 import {
   canUseAppleHealthSteps, fetchAppleHealthSnapshot, type HealthSnapshot,
 } from "@/lib/appleHealth";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  saveHealthSnapshot, fetchLatestHealthSnapshot, type StoredHealthSnapshot,
+} from "@/lib/healthSnapshotService";
 
 function Tile({
   icon: Icon, label, value, sub,
@@ -25,26 +29,58 @@ function Tile({
   );
 }
 
+function formatSyncedAt(iso?: string) {
+  if (!iso) return null;
+  try {
+    const d = new Date(iso);
+    const now = Date.now();
+    const diffMin = Math.round((now - d.getTime()) / 60_000);
+    if (diffMin < 1) return "Synced just now";
+    if (diffMin < 60) return `Synced ${diffMin} min ago`;
+    const diffHr = Math.round(diffMin / 60);
+    if (diffHr < 24) return `Synced ${diffHr}h ago`;
+    return `Synced ${d.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
+  } catch {
+    return null;
+  }
+}
+
 export default function AppleHealthSnapshotCard() {
-  const enabled = canUseAppleHealthSteps();
+  const { user } = useAuth();
+  const isNative = canUseAppleHealthSteps();
   const [snap, setSnap] = useState<HealthSnapshot | null>(null);
+  const [syncedAt, setSyncedAt] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
-    if (!enabled) return;
+    if (!user) return;
     setLoading(true);
     try {
-      const s = await fetchAppleHealthSnapshot();
-      setSnap(s);
+      if (isNative) {
+        // Read live from HealthKit, persist to DB, and update UI.
+        const live = await fetchAppleHealthSnapshot();
+        if (live) {
+          setSnap(live);
+          setSyncedAt(new Date().toISOString());
+          void saveHealthSnapshot(user.id, live);
+          return;
+        }
+      }
+      // Web (or native failed): fall back to the last synced snapshot from DB.
+      const stored: StoredHealthSnapshot | null = await fetchLatestHealthSnapshot(user.id);
+      if (stored) {
+        setSnap(stored);
+        setSyncedAt(stored.synced_at);
+      }
     } finally {
       setLoading(false);
     }
-  }, [enabled]);
+  }, [isNative, user]);
 
   useEffect(() => { void load(); }, [load]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!user) return;
     const sub = CapApp.addListener("appStateChange", ({ isActive }) => {
       if (isActive) void load();
     });
@@ -54,11 +90,13 @@ export default function AppleHealthSnapshotCard() {
       document.removeEventListener("visibilitychange", onVis);
       void sub.then((s) => s.remove());
     };
-  }, [enabled, load]);
+  }, [load, user]);
 
-  if (!enabled) return null;
+  if (!user) return null;
 
   const km = snap?.distanceMeters ? (snap.distanceMeters / 1000).toFixed(2) : null;
+  const syncedLabel = formatSyncedAt(syncedAt);
+  const hasAnyData = snap && Object.values(snap).some((v) => v != null && v !== "");
 
   return (
     <motion.div
@@ -70,7 +108,7 @@ export default function AppleHealthSnapshotCard() {
       <div className="mb-3 flex items-center justify-between">
         <div>
           <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-foreground">
-            Apple Health
+            Apple Health {!isNative && "· from your iPhone"}
           </p>
           <p className="text-sm font-black text-foreground">Today's snapshot</p>
         </div>
@@ -85,51 +123,59 @@ export default function AppleHealthSnapshotCard() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <Tile
-          icon={Flame}
-          label="Active kcal"
-          value={snap?.activeCalories != null ? snap.activeCalories.toLocaleString("en-IN") : "—"}
-        />
-        <Tile
-          icon={Route}
-          label="Distance"
-          value={km ? `${km} km` : "—"}
-        />
-        <Tile
-          icon={Timer}
-          label="Exercise"
-          value={snap?.exerciseMinutes != null ? `${snap.exerciseMinutes} min` : "—"}
-        />
-        <Tile
-          icon={Moon}
-          label="Sleep"
-          value={snap?.sleepHours ? `${snap.sleepHours.toFixed(1)} h` : "—"}
-        />
-        <Tile
-          icon={HeartPulse}
-          label="Resting HR"
-          value={snap?.restingHeartRate ? `${snap.restingHeartRate} bpm` : "—"}
-        />
-        <Tile
-          icon={Activity}
-          label="HRV"
-          value={snap?.hrvMs ? `${snap.hrvMs} ms` : "—"}
-        />
-        <Tile
-          icon={Scale}
-          label="Weight"
-          value={snap?.weightKg ? `${snap.weightKg.toFixed(1)} kg` : "—"}
-        />
-        <Tile
-          icon={Droplet}
-          label="Glucose"
-          value={snap?.glucoseMgDl ? `${snap.glucoseMgDl} mg/dL` : "—"}
-        />
-      </div>
+      {!hasAnyData && !loading ? (
+        <p className="rounded-2xl border border-dashed border-border bg-background/60 px-3 py-4 text-center text-[12px] font-medium text-muted-foreground">
+          {isNative
+            ? "No Apple Health data yet. Allow permissions in the Health app."
+            : "Open the app on your iPhone once to sync your Apple Health vitals here."}
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          <Tile
+            icon={Flame}
+            label="Active kcal"
+            value={snap?.activeCalories != null ? snap.activeCalories.toLocaleString("en-IN") : "—"}
+          />
+          <Tile
+            icon={Route}
+            label="Distance"
+            value={km ? `${km} km` : "—"}
+          />
+          <Tile
+            icon={Timer}
+            label="Exercise"
+            value={snap?.exerciseMinutes != null ? `${snap.exerciseMinutes} min` : "—"}
+          />
+          <Tile
+            icon={Moon}
+            label="Sleep"
+            value={snap?.sleepHours ? `${snap.sleepHours.toFixed(1)} h` : "—"}
+          />
+          <Tile
+            icon={HeartPulse}
+            label="Resting HR"
+            value={snap?.restingHeartRate ? `${snap.restingHeartRate} bpm` : "—"}
+          />
+          <Tile
+            icon={Activity}
+            label="HRV"
+            value={snap?.hrvMs ? `${snap.hrvMs} ms` : "—"}
+          />
+          <Tile
+            icon={Scale}
+            label="Weight"
+            value={snap?.weightKg ? `${snap.weightKg.toFixed(1)} kg` : "—"}
+          />
+          <Tile
+            icon={Droplet}
+            label="Glucose"
+            value={snap?.glucoseMgDl ? `${snap.glucoseMgDl} mg/dL` : "—"}
+          />
+        </div>
+      )}
 
       <p className="mt-3 text-[10px] leading-snug text-muted-foreground">
-        Data syncs automatically from your iPhone, Apple Watch and connected apps.
+        {syncedLabel ?? "Data syncs automatically from your iPhone, Apple Watch and connected apps."}
       </p>
     </motion.div>
   );
