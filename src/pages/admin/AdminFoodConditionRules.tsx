@@ -14,19 +14,25 @@ import { useConfirm } from "@/components/ConfirmProvider";
 import { logAudit } from "@/lib/auditLog";
 import ExportCsvButton from "@/components/admin/ExportCsvButton";
 import ImportCsvButton from "@/components/admin/ImportCsvButton";
-import { Plus, Pencil, Trash2, Search, HeartPulse, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, HeartPulse, Check, ChevronsUpDown, Settings2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
 type Action = "avoid" | "limit" | "encourage";
-type ConditionKey =
-  | "hypothyroid" | "hyperthyroid" | "pcos" | "ckd"
-  | "uric_acid"   | "fatty_liver" | "iron_deficiency";
+
+interface Condition {
+  id: string;
+  key: string;
+  label: string;
+  emoji: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
 
 interface Rule {
   id: string;
-  condition_key: ConditionKey;
+  condition_key: string;
   action: Action;
   name_pattern: string;
   filter_id: string | null;
@@ -39,24 +45,14 @@ interface Rule {
 interface FilterRow { id: string; name: string; slug: string; }
 interface FoodOption { id: string; name: string; }
 
-const CONDITIONS: { key: ConditionKey; label: string; emoji: string }[] = [
-  { key: "hypothyroid",     label: "Hypothyroidism",  emoji: "🦋" },
-  { key: "hyperthyroid",    label: "Hyperthyroidism", emoji: "🦋" },
-  { key: "pcos",            label: "PCOS",            emoji: "🌸" },
-  { key: "ckd",             label: "Kidney Disease",  emoji: "🫘" },
-  { key: "uric_acid",       label: "High Uric Acid",  emoji: "🧪" },
-  { key: "fatty_liver",     label: "Fatty Liver",     emoji: "🫀" },
-  { key: "iron_deficiency", label: "Iron Deficiency", emoji: "🩸" },
-];
-
 const ACTIONS: { value: Action; label: string; cls: string }[] = [
   { value: "avoid",     label: "Avoid",     cls: "bg-destructive/10 text-destructive border-destructive/30" },
   { value: "limit",     label: "Limit",     cls: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
   { value: "encourage", label: "Encourage", cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
 ];
 
-const emptyForm = (): Omit<Rule, "id" | "updated_at"> => ({
-  condition_key: "hypothyroid",
+const emptyRuleForm = (defaultKey: string): Omit<Rule, "id" | "updated_at"> => ({
+  condition_key: defaultKey,
   action: "avoid",
   name_pattern: "",
   filter_id: null,
@@ -65,37 +61,60 @@ const emptyForm = (): Omit<Rule, "id" | "updated_at"> => ({
   is_active: true,
 });
 
+const emptyConditionForm = (): Omit<Condition, "id"> => ({
+  key: "",
+  label: "",
+  emoji: "",
+  sort_order: 100,
+  is_active: true,
+});
+
 export default function AdminFoodConditionRules() {
   const confirm = useConfirm();
+  const [conditions, setConditions] = useState<Condition[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [filters, setFilters] = useState<FilterRow[]>([]);
   const [foods, setFoods] = useState<FoodOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [conditionFilter, setConditionFilter] = useState<"all" | ConditionKey>("all");
+  const [conditionFilter, setConditionFilter] = useState<string>("all");
   const [actionFilter, setActionFilter] = useState<"all" | Action>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Rule | null>(null);
-  const [form, setForm] = useState(emptyForm());
+  const [form, setForm] = useState(emptyRuleForm("hypothyroid"));
   const [foodPickerOpen, setFoodPickerOpen] = useState(false);
+
+  // Condition manager state
+  const [condMgrOpen, setCondMgrOpen] = useState(false);
+  const [condEditing, setCondEditing] = useState<Condition | null>(null);
+  const [condForm, setCondForm] = useState(emptyConditionForm());
+  const [condDialogOpen, setCondDialogOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
-    const [rRes, fRes, foodRes] = await Promise.all([
+    const [cRes, rRes, fRes, foodRes] = await Promise.all([
+      (supabase as any).from("food_conditions").select("*").order("sort_order").order("label"),
       supabase.from("food_condition_rules").select("*").order("condition_key").order("priority", { ascending: false }),
       supabase.from("food_filters").select("id,name,slug").order("name"),
       supabase.from("food_items").select("id,name").order("name"),
     ]);
+    const conds = ((cRes.data as any[]) || []) as Condition[];
+    setConditions(conds);
     setRules(((rRes.data as any[]) || []) as Rule[]);
     setFilters(((fRes.data as any[]) || []) as FilterRow[]);
     setFoods(((foodRes.data as any[]) || []) as FoodOption[]);
     setLoading(false);
+    // Ensure form default key is valid
+    if (conds.length && !conds.some((c) => c.key === form.condition_key)) {
+      setForm((f) => ({ ...f, condition_key: conds[0].key }));
+    }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   const filterById = useMemo(() => new Map(filters.map((f) => [f.id, f])), [filters]);
-  const conditionByKey = useMemo(() => new Map(CONDITIONS.map((c) => [c.key, c])), []);
+  const conditionByKey = useMemo(() => new Map(conditions.map((c) => [c.key, c])), [conditions]);
+  const activeConditions = useMemo(() => conditions.filter((c) => c.is_active), [conditions]);
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -116,7 +135,11 @@ export default function AdminFoodConditionRules() {
     return map;
   }, [rules]);
 
-  const openNew = () => { setEditing(null); setForm(emptyForm()); setDialogOpen(true); };
+  const openNew = () => {
+    setEditing(null);
+    setForm(emptyRuleForm(activeConditions[0]?.key || "hypothyroid"));
+    setDialogOpen(true);
+  };
   const openEdit = (r: Rule) => {
     setEditing(r);
     setForm({
@@ -159,7 +182,6 @@ export default function AdminFoodConditionRules() {
       title: "Delete rule?",
       description: `Remove "${r.name_pattern}" for ${conditionByKey.get(r.condition_key)?.label}?`,
       confirmText: "Delete",
-      
     });
     if (!ok) return;
     const { error } = await supabase.from("food_condition_rules").delete().eq("id", r.id);
@@ -175,6 +197,69 @@ export default function AdminFoodConditionRules() {
     load();
   };
 
+  // ---------- Condition CRUD ----------
+  const openNewCondition = () => {
+    setCondEditing(null);
+    setCondForm(emptyConditionForm());
+    setCondDialogOpen(true);
+  };
+  const openEditCondition = (c: Condition) => {
+    setCondEditing(c);
+    setCondForm({ key: c.key, label: c.label, emoji: c.emoji || "", sort_order: c.sort_order, is_active: c.is_active });
+    setCondDialogOpen(true);
+  };
+  const slugify = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  const handleSaveCondition = async () => {
+    const key = slugify(condForm.key || condForm.label);
+    if (!key) { toast.error("Key is required"); return; }
+    if (!condForm.label.trim()) { toast.error("Label is required"); return; }
+    const payload = {
+      key,
+      label: condForm.label.trim(),
+      emoji: (condForm.emoji || "").trim() || null,
+      sort_order: Number(condForm.sort_order) || 100,
+      is_active: condForm.is_active,
+    };
+    if (condEditing) {
+      // If key changed, cascade-update existing rules to new key
+      const keyChanged = condEditing.key !== key;
+      const { error } = await (supabase as any).from("food_conditions").update(payload).eq("id", condEditing.id);
+      if (error) { toast.error(error.message); return; }
+      if (keyChanged) {
+        const { error: rErr } = await supabase.from("food_condition_rules")
+          .update({ condition_key: key }).eq("condition_key", condEditing.key);
+        if (rErr) { toast.error(`Rules re-key failed: ${rErr.message}`); return; }
+      }
+      logAudit({ module: "Diet", action: "update", target_type: "condition", target_id: condEditing.id, target_label: payload.label });
+      toast.success("Condition updated");
+    } else {
+      const { error } = await (supabase as any).from("food_conditions").insert(payload);
+      if (error) { toast.error(error.message); return; }
+      logAudit({ module: "Diet", action: "create", target_type: "condition", target_label: payload.label });
+      toast.success("Condition created");
+    }
+    setCondDialogOpen(false);
+    load();
+  };
+  const handleDeleteCondition = async (c: Condition) => {
+    const usageCount = countsByCondition[c.key] || 0;
+    if (usageCount > 0) {
+      toast.error(`Cannot delete — ${usageCount} rule${usageCount > 1 ? "s" : ""} still reference this condition. Reassign or delete those rules first.`);
+      return;
+    }
+    const ok = await confirm({
+      title: "Delete condition?",
+      description: `Remove "${c.label}" from the list? This cannot be undone.`,
+      confirmText: "Delete",
+    });
+    if (!ok) return;
+    const { error } = await (supabase as any).from("food_conditions").delete().eq("id", c.id);
+    if (error) { toast.error(error.message); return; }
+    logAudit({ module: "Diet", action: "delete", target_type: "condition", target_id: c.id, target_label: c.label });
+    toast.success("Condition deleted");
+    load();
+  };
+
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -185,12 +270,15 @@ export default function AdminFoodConditionRules() {
           </h2>
           <p className="text-muted-foreground text-sm">
             Tag foods to auto-flag <b>avoid</b>, <b>limit</b>, or <b>encourage</b> for users with specific
-            clinical conditions. {rules.length} total rules.
+            clinical conditions. {rules.length} total rules · {conditions.length} conditions.
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setCondMgrOpen(true)}>
+            <Settings2 className="w-4 h-4 mr-2" />Manage Conditions
+          </Button>
           <ExportCsvButton filename="food_condition_rules" rows={rules as any} />
-<ImportCsvButton table="food_condition_rules" onImported={() => window.location.reload()} />
+          <ImportCsvButton table="food_condition_rules" onImported={() => window.location.reload()} />
           <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Add Rule</Button>
         </div>
       </div>
@@ -205,13 +293,13 @@ export default function AdminFoodConditionRules() {
         >
           All · {rules.length}
         </button>
-        {CONDITIONS.map((c) => (
+        {conditions.map((c) => (
           <button
             key={c.key}
             onClick={() => setConditionFilter(c.key)}
             className={`px-3 py-1.5 rounded-full text-sm border transition ${
               conditionFilter === c.key ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-muted"
-            }`}
+            } ${c.is_active ? "" : "opacity-60"}`}
           >
             {c.emoji} {c.label} · {countsByCondition[c.key] || 0}
           </button>
@@ -285,7 +373,7 @@ export default function AdminFoodConditionRules() {
         </Table>
       </div>
 
-      {/* Edit dialog */}
+      {/* Edit rule dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -295,10 +383,10 @@ export default function AdminFoodConditionRules() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Condition *</Label>
-                <Select value={form.condition_key} onValueChange={(v) => setForm((f) => ({ ...f, condition_key: v as ConditionKey }))}>
+                <Select value={form.condition_key} onValueChange={(v) => setForm((f) => ({ ...f, condition_key: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {CONDITIONS.map((c) => (
+                    {activeConditions.map((c) => (
                       <SelectItem key={c.key} value={c.key}>{c.emoji} {c.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -368,7 +456,6 @@ export default function AdminFoodConditionRules() {
               </p>
             </div>
 
-
             <div>
               <Label>Scope to filter (optional)</Label>
               <Select
@@ -412,6 +499,131 @@ export default function AdminFoodConditionRules() {
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSave}>{editing ? "Update" : "Create"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Conditions dialog */}
+      <Dialog open={condMgrOpen} onOpenChange={setCondMgrOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Manage Conditions</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-sm text-muted-foreground">
+              Add, edit, or remove clinical conditions. A condition in use by any rule cannot be deleted.
+            </p>
+            <Button size="sm" onClick={openNewCondition}><Plus className="w-4 h-4 mr-1" />Add Condition</Button>
+          </div>
+          <div className="rounded-xl border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Condition</TableHead>
+                  <TableHead>Key</TableHead>
+                  <TableHead className="text-center">Order</TableHead>
+                  <TableHead className="text-center">Rules</TableHead>
+                  <TableHead className="text-center">Active</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {conditions.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center py-6 text-muted-foreground">No conditions yet</TableCell></TableRow>
+                ) : conditions.map((c) => {
+                  const uses = countsByCondition[c.key] || 0;
+                  return (
+                    <TableRow key={c.id} className={c.is_active ? "" : "opacity-60"}>
+                      <TableCell><Badge variant="outline">{c.emoji} {c.label}</Badge></TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{c.key}</TableCell>
+                      <TableCell className="text-center">{c.sort_order}</TableCell>
+                      <TableCell className="text-center">{uses}</TableCell>
+                      <TableCell className="text-center">
+                        <Switch
+                          checked={c.is_active}
+                          onCheckedChange={async () => {
+                            const { error } = await (supabase as any).from("food_conditions").update({ is_active: !c.is_active }).eq("id", c.id);
+                            if (error) { toast.error(error.message); return; }
+                            load();
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => openEditCondition(c)}><Pencil className="w-4 h-4" /></Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteCondition(c)}
+                          disabled={uses > 0}
+                          title={uses > 0 ? `In use by ${uses} rule(s)` : "Delete"}
+                        >
+                          <Trash2 className={cn("w-4 h-4", uses > 0 ? "text-muted-foreground" : "text-destructive")} />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Condition create/edit dialog */}
+      <Dialog open={condDialogOpen} onOpenChange={setCondDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{condEditing ? "Edit Condition" : "Add Condition"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Label *</Label>
+              <Input
+                value={condForm.label}
+                onChange={(e) => setCondForm((f) => ({ ...f, label: e.target.value }))}
+                placeholder="e.g. Insulin Resistance"
+              />
+            </div>
+            <div>
+              <Label>Key {condEditing ? "" : "(auto from label if empty)"}</Label>
+              <Input
+                value={condForm.key}
+                onChange={(e) => setCondForm((f) => ({ ...f, key: e.target.value }))}
+                placeholder="insulin_resistance"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Lowercase, snake_case identifier used internally. Renaming will re-key all existing rules.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Emoji</Label>
+                <Input
+                  value={condForm.emoji || ""}
+                  onChange={(e) => setCondForm((f) => ({ ...f, emoji: e.target.value }))}
+                  placeholder="🩸"
+                />
+              </div>
+              <div>
+                <Label>Sort order</Label>
+                <Input
+                  type="number"
+                  value={condForm.sort_order}
+                  onChange={(e) => setCondForm((f) => ({ ...f, sort_order: Number(e.target.value) }))}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={condForm.is_active}
+                onCheckedChange={(v) => setCondForm((f) => ({ ...f, is_active: v }))}
+              />
+              <Label>Active</Label>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setCondDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveCondition}>{condEditing ? "Update" : "Create"}</Button>
           </div>
         </DialogContent>
       </Dialog>
