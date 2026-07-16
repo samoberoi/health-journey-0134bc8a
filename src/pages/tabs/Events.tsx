@@ -11,6 +11,8 @@ import {
   type EventRegistrationRow,
 } from "@/lib/eventsService";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import EventPaymentModal from "@/components/events/EventPaymentModal";
 
 type SubTab = "discover" | "mine";
 
