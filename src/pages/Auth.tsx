@@ -19,7 +19,7 @@ import {
 import logoImg from "@/assets/logo.png";
 import AuthHeroCarousel from "@/components/AuthHeroCarousel";
 import { toast } from "sonner";
-import { flushNativePersistenceWrites, syncNativePersistenceFromLocalStorage } from "@/lib/nativePersistence";
+import { persistAuthSessionToNative } from "@/lib/nativePersistence";
 
 const DEFAULT_OTP = "111111";
 
@@ -49,8 +49,7 @@ export default function Auth() {
 
   const persistNativeSession = async () => {
     try {
-      await flushNativePersistenceWrites();
-      await syncNativePersistenceFromLocalStorage();
+      await persistAuthSessionToNative();
     } catch {
       /* native storage may be unavailable in preview */
     }
@@ -283,6 +282,8 @@ export default function Auth() {
         .eq("user_id", user.id);
       if (error) console.error("Failed to save name/email:", error);
     }
+
+    await persistNativeSession();
 
     setLoading(false);
     navigate("/setup/purpose");

@@ -1,5 +1,16 @@
 import UIKit
 import Capacitor
+import AparajitaCapacitorBiometricAuth
+import CapacitorApp
+import CapacitorPreferences
+
+class BBDOBridgeViewController: CAPBridgeViewController {
+    override open func capacitorDidLoad() {
+        bridge?.registerPluginType(BiometricAuthNative.self)
+        bridge?.registerPluginType(AppPlugin.self)
+        bridge?.registerPluginType(PreferencesPlugin.self)
+    }
+}
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
