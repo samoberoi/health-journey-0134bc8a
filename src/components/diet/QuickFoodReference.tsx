@@ -133,7 +133,17 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
   );
   const [ruleMap, setRuleMap] = useState<Map<string, FoodRuleHit>>(new Map());
   const [hideSkipped, setHideSkipped] = useState(true);
-  const [actionFilter, setActionFilter] = useState<ActionKey | null>(null);
+  // Multi-select action filter for the education area. All three on by default.
+  const [actionKeys, setActionKeys] = useState<Set<ActionKey>>(
+    new Set<ActionKey>(["avoid", "limit", "encourage"]),
+  );
+  const toggleAction = (k: ActionKey) => {
+    setActionKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      return next;
+    });
+  };
   const [showAllDiets, setShowAllDiets] = useState(false);
 
   // Load user's diet preference + auto-select conditions from profile.
