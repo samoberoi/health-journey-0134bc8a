@@ -69,3 +69,37 @@ export async function fetchLatestHealthSnapshot(userId: string): Promise<StoredH
     glucoseAt: r.glucose_at ?? undefined,
   };
 }
+
+/** Fetch a range of snapshot rows (default last 30 days), oldest first. */
+export async function fetchHealthSnapshotRange(
+  userId: string,
+  days = 30,
+): Promise<StoredHealthSnapshot[]> {
+  if (!userId) return [];
+  const since = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from("apple_health_snapshots" as any)
+    .select("*")
+    .eq("user_id", userId)
+    .gte("date", since)
+    .order("date", { ascending: true });
+  if (error) {
+    console.warn("fetchHealthSnapshotRange failed", error);
+    return [];
+  }
+  return ((data ?? []) as any[]).map((r) => ({
+    date: r.date,
+    synced_at: r.synced_at,
+    steps: r.steps ?? undefined,
+    activeCalories: r.active_calories ?? undefined,
+    distanceMeters: r.distance_meters ?? undefined,
+    exerciseMinutes: r.exercise_minutes ?? undefined,
+    restingHeartRate: r.resting_heart_rate ?? undefined,
+    hrvMs: r.hrv_ms ?? undefined,
+    sleepHours: r.sleep_hours != null ? Number(r.sleep_hours) : undefined,
+    weightKg: r.weight_kg != null ? Number(r.weight_kg) : undefined,
+    weightAt: r.weight_at ?? undefined,
+    glucoseMgDl: r.glucose_mg_dl ?? undefined,
+    glucoseAt: r.glucose_at ?? undefined,
+  }));
+}
