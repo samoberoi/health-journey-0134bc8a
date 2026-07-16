@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchUnreadCount, subscribeToNotifications } from "@/lib/notificationService";
-import { playCriticalHealthAlert, playNotificationSound, setMasterVolume } from "@/lib/soundEngine";
+import { playNotificationSound } from "@/lib/soundEngine";
 import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
-import { sendLocalHealthAlert } from "@/lib/healthAlerts";
+import { fireRealtimeHealthNotificationAlert } from "@/lib/healthAlerts";
 import AttentionBadge from "@/components/attention/AttentionBadge";
 
 /**
@@ -26,9 +26,7 @@ export default function NotificationCenter({ unreadCount: controlledCount }: { u
       void getNotificationSoundSettings().then((s) => {
         if (!s.enabled) return;
         if (notification.type === "health_alert") {
-          setMasterVolume(1);
-          playCriticalHealthAlert();
-          void sendLocalHealthAlert(notification.title, notification.body);
+          fireRealtimeHealthNotificationAlert(notification);
         } else {
           playNotificationSound(s.variant);
         }

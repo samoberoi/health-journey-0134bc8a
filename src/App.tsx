@@ -16,6 +16,10 @@ import { ProfileSyncProvider } from "@/components/ProfileSyncProvider";
 import { ConfirmProvider } from "@/components/ConfirmProvider";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import AutoTranslator from "@/components/AutoTranslator";
+import { subscribeToNotifications } from "@/lib/notificationService";
+import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
+import { playNotificationSound } from "@/lib/soundEngine";
+import { fireRealtimeHealthNotificationAlert } from "@/lib/healthAlerts";
 
 import Splash from "./pages/Splash";
 import LanguageSelect from "./pages/LanguageSelect";
@@ -99,6 +103,27 @@ function NativeSessionRedirect() {
       navigate("/home", { replace: true });
     }
   }, [loading, location.pathname, navigate, ready, session]);
+
+  return null;
+}
+
+function GlobalRealtimeAlerts() {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+    const unsub = subscribeToNotifications(user.id, (notification) => {
+      void getNotificationSoundSettings().then((settings) => {
+        if (!settings.enabled) return;
+        if (notification.type === "health_alert") {
+          fireRealtimeHealthNotificationAlert(notification);
+        } else {
+          playNotificationSound(settings.variant);
+        }
+      });
+    });
+    return unsub;
+  }, [user]);
 
   return null;
 }
@@ -211,6 +236,7 @@ const App = () => (
                   <BiometricGate>
                     <NativeAuthStartupGate>
                       <NativeSessionRedirect />
+                      <GlobalRealtimeAlerts />
                       <AnimatedRoutes />
                     </NativeAuthStartupGate>
                   </BiometricGate>

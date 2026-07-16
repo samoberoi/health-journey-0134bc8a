@@ -12,8 +12,8 @@ import {
   type AppNotification,
 } from "@/lib/notificationService";
 import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
-import { playCriticalHealthAlert, playNotificationSound, setMasterVolume } from "@/lib/soundEngine";
-import { sendLocalHealthAlert } from "@/lib/healthAlerts";
+import { playNotificationSound, setMasterVolume } from "@/lib/soundEngine";
+import { fireRealtimeHealthNotificationAlert } from "@/lib/healthAlerts";
 
 const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
   supplement_reminder: { icon: Pill, color: "text-purple-500", bg: "bg-purple-500/10" },
@@ -80,9 +80,7 @@ export default function NotificationsPanel({ onClose, embedded = false }: Notifi
       getNotificationSoundSettings().then((s) => {
         if (!s.enabled) return;
         if (n.type === "health_alert") {
-          setMasterVolume(1);
-          playCriticalHealthAlert();
-          void sendLocalHealthAlert(n.title, n.body);
+          fireRealtimeHealthNotificationAlert(n);
         } else {
           setMasterVolume(s.volume);
           playNotificationSound(s.variant);

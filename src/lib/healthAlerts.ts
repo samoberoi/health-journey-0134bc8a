@@ -21,6 +21,12 @@ export type HealthAlertLog = {
   weight_kg?: number | null;
 };
 
+export type RealtimeHealthNotification = {
+  id?: string;
+  title: string;
+  body: string;
+};
+
 type HealthAlertResult = {
   level: "critical" | "alert" | "ok";
   title: string;
@@ -28,6 +34,7 @@ type HealthAlertResult = {
 };
 
 let localChannelReady = false;
+const playedRealtimeAlertIds = new Set<string>();
 
 export function evaluateHealthAlert(log: Partial<HealthAlertLog>, prevWeight?: number | null): HealthAlertResult | null {
   if (log.log_type === "weight" && log.weight_kg != null) {
@@ -144,6 +151,17 @@ export async function sendLocalHealthAlert(title: string, body: string): Promise
     console.warn("local health alert failed", err);
     return false;
   }
+}
+
+export function fireRealtimeHealthNotificationAlert(notification: RealtimeHealthNotification) {
+  const key = notification.id ?? `${notification.title}:${notification.body}`;
+  if (playedRealtimeAlertIds.has(key)) return;
+  playedRealtimeAlertIds.add(key);
+  window.setTimeout(() => playedRealtimeAlertIds.delete(key), 30_000);
+
+  setMasterVolume(1);
+  playCriticalHealthAlert();
+  void sendLocalHealthAlert(notification.title, notification.body);
 }
 
 export async function fireHealthMetricFeedback(
