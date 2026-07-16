@@ -663,7 +663,8 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
       <div className={embedded ? "flex-1 pb-6" : "flex-1 overflow-y-auto pb-24"}>
         <div className={embedded ? "max-w-3xl mx-auto px-1 py-3" : "max-w-3xl mx-auto px-4 py-4"}>
           {activeConditions.length > 0 && (
-            <div className="mb-3 rounded-2xl border border-[var(--bbdo-blue)]/25 bg-[var(--bbdo-blue)]/[0.06] p-3">
+            <div className="mb-3 rounded-2xl border border-[var(--bbdo-blue)]/25 bg-gradient-to-br from-[var(--bbdo-blue)]/[0.06] to-white p-3">
+              {/* Header row */}
               <div className="flex items-start gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-[var(--bbdo-blue)]/12 flex items-center justify-center shrink-0">
                   <ShieldAlert className="w-4 h-4 text-[var(--bbdo-blue)]" strokeWidth={2.2} />
@@ -672,23 +673,9 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
                   <p className="text-[10px] font-bold tracking-[0.16em] uppercase text-[var(--bbdo-blue)]">
                     Personalised for your health
                   </p>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {activeConditions.map((c) => (
-                      <span
-                        key={c.key}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white border border-[var(--bbdo-blue)]/20 text-[10.5px] font-bold text-foreground"
-                      >
-                        {c.label}
-                      </span>
-                    ))}
-                  </div>
-                  {skippedCount > 0 && (
-                    <p className="text-[11px] text-muted-foreground mt-1.5 leading-snug">
-                      {hideSkipped
-                        ? `${skippedCount} food${skippedCount === 1 ? "" : "s"} auto-hidden. Tap a food to see why.`
-                        : `${skippedCount} food${skippedCount === 1 ? "" : "s"} flagged — shown with a red "Skip" badge.`}
-                    </p>
-                  )}
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                    Tap a condition or action to focus. All on by default.
+                  </p>
                 </div>
                 {skippedCount > 0 && (
                   <button
@@ -700,27 +687,104 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
                   </button>
                 )}
               </div>
+
+              {/* Condition chips (from profile, all on by default, tappable) */}
+              <div className="mt-2.5 overflow-x-auto scrollbar-hide">
+                <div className="flex gap-1.5 min-w-max">
+                  {conditionCatalog
+                    .filter((c) => profileConditionKeys.has(c.key))
+                    .map((c) => {
+                      const active = conditionKeys.has(c.key);
+                      const Icon = CONDITION_ICONS[c.key] ?? ShieldAlert;
+                      return (
+                        <button
+                          key={c.key}
+                          onClick={() => toggleCondition(c.key)}
+                          aria-pressed={active}
+                          className={`shrink-0 h-8 px-3 rounded-full text-[11.5px] font-bold border transition-all active:scale-[0.97] flex items-center gap-1.5 ${
+                            active
+                              ? "bg-[var(--bbdo-blue)] text-white border-[var(--bbdo-blue)] shadow-sm shadow-[var(--bbdo-blue)]/25"
+                              : "bg-white text-foreground border-border hover:border-[var(--bbdo-blue)]/40"
+                          }`}
+                        >
+                          {c.emoji ? (
+                            <span className="text-[13px] leading-none">{c.emoji}</span>
+                          ) : (
+                            <Icon className="w-3 h-3" strokeWidth={2.4} />
+                          )}
+                          {c.label}
+                          {active && <Check className="w-3 h-3" strokeWidth={2.8} />}
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Action toggles: Avoid / Limit / Encourage — multi-select, all on by default */}
+              <div className="mt-2 flex gap-1.5">
+                {(Object.keys(ACTION_META) as ActionKey[]).map((k) => {
+                  const meta = ACTION_META[k];
+                  const active = actionKeys.has(k);
+                  // Count items across the currently-selected conditions
+                  let count = 0;
+                  conditionBreakdown.forEach((b) => {
+                    if (!conditionKeys.has(b.condition.key)) return;
+                    count += b[k].length;
+                  });
+                  return (
+                    <button
+                      key={k}
+                      onClick={() => toggleAction(k)}
+                      aria-pressed={active}
+                      className={`flex-1 h-9 px-3 rounded-xl text-[12px] font-black border transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 ${
+                        active ? meta.activeCls : `${meta.bgCls} ${meta.textCls} opacity-60 hover:opacity-80`
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${active ? "bg-white/90" : meta.dot}`} />
+                      {meta.label}
+                      <span className={`text-[10px] font-bold ${active ? "opacity-80" : "opacity-70"}`}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {skippedCount > 0 && (
+                <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
+                  {hideSkipped
+                    ? `${skippedCount} food${skippedCount === 1 ? "" : "s"} auto-hidden from the list below. Tap a food to see why.`
+                    : `${skippedCount} food${skippedCount === 1 ? "" : "s"} flagged — shown with a red "Skip" badge.`}
+                </p>
+              )}
             </div>
           )}
 
-          {/* Per-condition food breakdown: Avoid / Limit / Encourage.
-              Renders one card per active condition so users know what to watch
-              for BEFORE they land on Best-for-you. */}
+          {/* Per-condition food breakdown, filtered by the chips + action toggles above. */}
           {conditionBreakdown.length > 0 && (
             <div className="mb-4 space-y-3">
-              {conditionBreakdown.map(({ condition, avoid, limit, encourage }) => {
-                if (!avoid.length && !limit.length && !encourage.length) return null;
-                return (
-                  <ConditionBreakdownCard
-                    key={condition.key}
-                    condition={condition}
-                    avoid={avoid}
-                    limit={limit}
-                    encourage={encourage}
-                    onOpen={(it) => setOpenItem(it)}
-                  />
-                );
-              })}
+              {conditionBreakdown
+                .filter((b) => conditionKeys.has(b.condition.key))
+                .map(({ condition, avoid, limit, encourage }) => {
+                  const buckets = { avoid, limit, encourage };
+                  // Skip cards with nothing in any *selected* action.
+                  const totalVisible =
+                    (actionKeys.has("avoid") ? avoid.length : 0) +
+                    (actionKeys.has("limit") ? limit.length : 0) +
+                    (actionKeys.has("encourage") ? encourage.length : 0);
+                  if (totalVisible === 0) return null;
+                  return (
+                    <ConditionBreakdownCard
+                      key={condition.key}
+                      condition={condition}
+                      avoid={actionKeys.has("avoid") ? buckets.avoid : []}
+                      limit={actionKeys.has("limit") ? buckets.limit : []}
+                      encourage={actionKeys.has("encourage") ? buckets.encourage : []}
+                      visibleActions={actionKeys}
+                      onOpen={(it) => setOpenItem(it)}
+                    />
+                  );
+                })}
             </div>
           )}
 
