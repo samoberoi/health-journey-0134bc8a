@@ -700,6 +700,28 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
               </div>
             </div>
           )}
+
+          {/* Per-condition food breakdown: Avoid / Limit / Encourage.
+              Renders one card per active condition so users know what to watch
+              for BEFORE they land on Best-for-you. */}
+          {conditionBreakdown.length > 0 && (
+            <div className="mb-4 space-y-3">
+              {conditionBreakdown.map(({ condition, avoid, limit, encourage }) => {
+                if (!avoid.length && !limit.length && !encourage.length) return null;
+                return (
+                  <ConditionBreakdownCard
+                    key={condition.key}
+                    condition={condition}
+                    avoid={avoid}
+                    limit={limit}
+                    encourage={encourage}
+                    onOpen={(it) => setOpenItem(it)}
+                  />
+                );
+              })}
+            </div>
+          )}
+
           {/* Section heading */}
           {!isGlobalSort && activeFilterObj ? (
             <motion.div
