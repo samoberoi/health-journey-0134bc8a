@@ -66,8 +66,10 @@ export function deriveActiveConditions(
   deep: Record<string, any> | null | undefined,
   metaMap: Record<string, { label: string; emoji: string }> = FALLBACK_META,
   uricAcidThreshold = 7.0,
+  clinical: Record<string, any> | null | undefined = null,
 ): ActiveCondition[] {
-  if (!deep) return [];
+  const d = deep || {};
+  const c = clinical || {};
   const out: ActiveCondition[] = [];
   const seen = new Set<string>();
   const push = (key: ConditionKey) => {
@@ -78,20 +80,44 @@ export function deriveActiveConditions(
   };
 
   // Thyroid → hypo vs hyper
-  const tt = String(deep.thyroidType || "").toLowerCase();
-  const t  = String(deep.thyroid || "").toLowerCase();
+  const tt = String(d.thyroidType || "").toLowerCase();
+  const t  = String(d.thyroid || "").toLowerCase();
   if (tt === "hypothyroid" || t === "hypothyroid") push("hypothyroid");
   else if (tt === "hyperthyroid" || t === "hyperthyroid") push("hyperthyroid");
   else if (t === "yes") push("hypothyroid"); // safest default when type unknown
 
-  if (String(deep.pcos || "").toLowerCase() === "yes") push("pcos");
-  if (String(deep.kidneyDisease || "").toLowerCase() === "yes") push("ckd");
-  if (String(deep.kidneyStones || "").toLowerCase() === "yes") push("kidney_stone");
-  if (String(deep.fattyLiver || "").toLowerCase() === "yes") push("fatty_liver");
-  if (String(deep.ironDeficiency || "").toLowerCase() === "yes") push("iron_deficiency");
+  if (String(d.pcos || "").toLowerCase() === "yes") push("pcos");
+  if (String(d.kidneyDisease || "").toLowerCase() === "yes") push("ckd");
+  if (String(d.kidneyStones || "").toLowerCase() === "yes") push("kidney_stone");
+  if (String(d.fattyLiver || "").toLowerCase() === "yes") push("fatty_liver");
+  if (String(d.ironDeficiency || "").toLowerCase() === "yes") push("iron_deficiency");
 
-  const ua = Number(deep.uricAcid);
+  const ua = Number(d.uricAcid);
   if (Number.isFinite(ua) && ua >= uricAcidThreshold) push("uric_acid");
+
+  // Hypertension lives in clinical.hasHypertension (profile toggle).
+  if (c.hasHypertension === true || String(c.hasHypertension || "").toLowerCase() === "yes") {
+    push("hypertension");
+  }
+
+  // Generic fallback: for any condition key configured in the admin catalog
+  // that we haven't already handled, try to auto-detect it against the profile
+  // JSON so newly-added conditions light up without a code change.
+  const truthy = (v: any) =>
+    v === true ||
+    v === 1 ||
+    ["yes", "true", "1", "y"].includes(String(v || "").toLowerCase());
+  const camel = (s: string) => s.replace(/_([a-z])/g, (_, ch) => ch.toUpperCase());
+  for (const key of Object.keys(metaMap)) {
+    if (seen.has(key)) continue;
+    const k1 = key;
+    const k2 = camel(key);
+    const has =
+      truthy(d[k1]) || truthy(d[k2]) ||
+      truthy(c[k1]) || truthy(c[k2]) ||
+      truthy(c[`has${k2.charAt(0).toUpperCase()}${k2.slice(1)}`]);
+    if (has) push(key);
+  }
 
   return out;
 }
