@@ -20,6 +20,7 @@
     "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.4.1",
     "@capacitor/ios": "^8.4.1",
+    "@capacitor/preferences": "^8.0.1",
     "@fontsource/epilogue": "^5.2.8",
     "@fontsource/montserrat": "^5.2.8",
     "@fontsource/urbanist": "^5.2.7",
