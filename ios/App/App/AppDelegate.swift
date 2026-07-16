@@ -1,8 +1,78 @@
 import UIKit
 import Capacitor
+import HealthKit
 import AparajitaCapacitorBiometricAuth
 import AppPlugin
 import PreferencesPlugin
+
+@objc(BBDOHealthKitPlugin)
+public class BBDOHealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "BBDOHealthKitPlugin"
+    public let jsName = "BBDOHealthKit"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "requestAuthorization", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getTodayStepCount", returnType: CAPPluginReturnPromise)
+    ]
+
+    private let healthStore = HKHealthStore()
+
+    @objc func isAvailable(_ call: CAPPluginCall) {
+        call.resolve(["available": HKHealthStore.isHealthDataAvailable()])
+    }
+
+    @objc func requestAuthorization(_ call: CAPPluginCall) {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            call.reject("Apple Health is not available on this device", "healthkitUnavailable")
+            return
+        }
+        guard let stepType = HKObjectType.quantityType(forIdentifier: .stepCount) else {
+            call.reject("Step count is not available", "stepTypeUnavailable")
+            return
+        }
+
+        healthStore.requestAuthorization(toShare: [], read: [stepType]) { success, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    call.reject(error.localizedDescription, "authorizationFailed")
+                    return
+                }
+                call.resolve(["granted": success])
+            }
+        }
+    }
+
+    @objc func getTodayStepCount(_ call: CAPPluginCall) {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            call.reject("Apple Health is not available on this device", "healthkitUnavailable")
+            return
+        }
+        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else {
+            call.reject("Step count is not available", "stepTypeUnavailable")
+            return
+        }
+
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: Date())
+        let now = Date()
+        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
+        let query = HKStatisticsQuery(quantityType: stepType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    call.reject(error.localizedDescription, "stepQueryFailed")
+                    return
+                }
+                let steps = result?.sumQuantity()?.doubleValue(for: HKUnit.count()) ?? 0
+                call.resolve([
+                    "steps": Int(steps.rounded()),
+                    "startDate": ISO8601DateFormatter().string(from: startOfDay),
+                    "endDate": ISO8601DateFormatter().string(from: now)
+                ])
+            }
+        }
+        healthStore.execute(query)
+    }
+}
 
 @objc(BBDOBridgeViewController)
 class BBDOBridgeViewController: CAPBridgeViewController {
@@ -10,6 +80,7 @@ class BBDOBridgeViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(BiometricAuthNative())
         bridge?.registerPluginInstance(AppPlugin())
         bridge?.registerPluginInstance(PreferencesPlugin())
+        bridge?.registerPluginInstance(BBDOHealthKitPlugin())
     }
 }
 
