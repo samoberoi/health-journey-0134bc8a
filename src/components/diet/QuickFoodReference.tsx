@@ -140,9 +140,12 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
     (async () => {
       const [dietRes, profRes] = await Promise.all([
         supabase.from("user_diet_profiles").select("diet_preference").eq("user_id", user.id).maybeSingle(),
-        supabase.from("profiles").select("deep_profiling").eq("user_id", user.id).maybeSingle(),
+        supabase.from("profiles").select("deep_profiling, lifestyle").eq("user_id", user.id).maybeSingle(),
       ]);
-      const pref = normalizePref(dietRes.data?.diet_preference as string);
+      const lifestyleDiet = (profRes.data as any)?.lifestyle?.diet as string | undefined;
+      const pref =
+        normalizePref(dietRes.data?.diet_preference as string) ??
+        normalizePref(lifestyleDiet);
       if (pref) { setProfilePref(pref); setDiet(pref); }
       const conds = deriveActiveConditions((profRes.data as any)?.deep_profiling);
       if (conds.length) setConditionKeys(new Set(conds.map((c) => c.key)));
