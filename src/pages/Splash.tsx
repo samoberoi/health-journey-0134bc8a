@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import logoImg from "@/assets/logo.png";
 import { setPhase } from "@/lib/musicEngine";
+import { supabase } from "@/integrations/supabase/client";
+import { EXPLICIT_LOGOUT_KEY } from "@/contexts/AuthContext";
 
 /**
  * Minimal, modern splash.
