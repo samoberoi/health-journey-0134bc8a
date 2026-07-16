@@ -110,8 +110,11 @@ export async function registerNativePushWithToast(userId: string) {
     return;
   }
   const res = await registerNativePush(userId);
-  if (res.ok) toast.success("Push notifications enabled");
-  else if (res.reason === "permission_denied")
+  if (res.ok) {
+    toast.success("Push notifications enabled");
+  } else if (res.reason === "permission_denied") {
     toast.error("Permission denied — enable notifications in iOS Settings.");
-  else toast.error(`Push setup failed: ${res.reason}`);
+  } else {
+    toast.error(`Push setup failed: ${res.reason}`);
+  }
 }
