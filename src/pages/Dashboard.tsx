@@ -33,9 +33,9 @@ import { useAttentionCounts } from "@/hooks/useAttentionCounts";
 import AttentionBadge from "@/components/attention/AttentionBadge";
 
 
-export type Tab = "home" | "habits" | "exercise" | "fasting" | "supplements" | "videos" | "community" | "consult" | "labs" | "diet" | "messages";
+export type Tab = "home" | "habits" | "exercise" | "fasting" | "supplements" | "videos" | "community" | "consult" | "labs" | "diet" | "messages" | "events";
 
-const VALID_TABS: Tab[] = ["home", "habits", "exercise", "fasting", "supplements", "videos", "community", "consult", "labs", "diet", "messages"];
+const VALID_TABS: Tab[] = ["home", "habits", "exercise", "fasting", "supplements", "videos", "community", "consult", "labs", "diet", "messages", "events"];
 
 function isTab(value: string | null): value is Tab {
   return value != null && VALID_TABS.includes(value as Tab);
@@ -53,6 +53,7 @@ const navIcons: Record<Tab, React.ElementType> = {
   labs: FlaskConical,
   diet: Avocado,
   messages: MessageCircle,
+  events: CalendarDays,
 };
 
 const navLabelOverrides: Partial<Record<Tab, string>> = {
@@ -63,6 +64,7 @@ const navLabelOverrides: Partial<Record<Tab, string>> = {
   videos: "Stress and Yoga",
   labs: "Lab Tests",
   messages: "Messages",
+  events: "Events",
 };
 
 export default function Dashboard() {
