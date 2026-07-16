@@ -284,7 +284,8 @@ export async function persistAuthSessionToNative() {
       if (value != null) await writePersistedKey(key, value);
     })
   );
-  await syncNativePersistenceFromLocalStorage();
+  const persistedKeys = await readPersistedKeyList();
+  await Preferences.set({ key: KEY_LIST, value: JSON.stringify([...new Set([...persistedKeys, ...authKeys])]) });
   await flushNativePersistenceWrites();
   });
 }
