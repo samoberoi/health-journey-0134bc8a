@@ -9,7 +9,8 @@ import {
   getNativePersistenceDiagnostics,
   hasNativePersistedAuthSession,
   hydrateNativePersistence,
-  persistAuthSessionToNative,
+  persistSupabaseSessionToNative,
+  readNativeSessionTokens,
   syncNativePersistenceFromLocalStorage,
 } from "@/lib/nativePersistence";
 import { isNative } from "@/lib/biometric";
@@ -78,12 +79,12 @@ function readStoredSessionTokens(): { access_token: string; refresh_token: strin
 async function recoverNativeStoredSession(): Promise<Session | null> {
   if (!isNative()) return null;
   await hydrateNativePersistence();
-  const tokens = readStoredSessionTokens();
+  const tokens = (await readNativeSessionTokens()) ?? readStoredSessionTokens();
   if (!tokens) return null;
   try {
     const { data, error } = await supabase.auth.setSession(tokens);
     if (error || !data.session) return null;
-    await persistAuthSessionToNative();
+    await persistSupabaseSessionToNative(data.session);
     return data.session;
   } catch {
     return null;
@@ -118,7 +119,7 @@ export async function getExistingSessionUnlessLoggedOut() {
     }
     if (data.session) {
       localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
-      if (isNative()) void persistAuthSessionToNative();
+      if (isNative()) void persistSupabaseSessionToNative(data.session);
       return data.session;
     }
     if (localStorage.getItem(EXPLICIT_LOGOUT_KEY) === "1") return null;
@@ -159,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const applySession = useCallback((nextSession: Session | null) => {
     setSession(nextSession);
     prevUserId.current = nextSession?.user?.id ?? null;
-    if (nextSession) void persistAuthSessionToNative();
+    if (nextSession) void persistSupabaseSessionToNative(nextSession);
     else void syncNativePersistenceFromLocalStorage();
   }, []);
 

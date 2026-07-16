@@ -1,9 +1,84 @@
 import UIKit
 import Capacitor
 import HealthKit
+import LocalAuthentication
 import AparajitaCapacitorBiometricAuth
 import AppPlugin
 import PreferencesPlugin
+
+@objc(BBDOBiometricsPlugin)
+public class BBDOBiometricsPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "BBDOBiometricsPlugin"
+    public let jsName = "BBDOBiometrics"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "check", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "authenticate", returnType: CAPPluginReturnPromise)
+    ]
+
+    private func label(for type: LABiometryType) -> String {
+        switch type {
+        case .faceID:
+            return "Face ID"
+        case .touchID:
+            return "Touch ID"
+        default:
+            return "Face ID / Touch ID"
+        }
+    }
+
+    private func typeName(for type: LABiometryType) -> String {
+        switch type {
+        case .faceID:
+            return "faceId"
+        case .touchID:
+            return "touchId"
+        default:
+            return "none"
+        }
+    }
+
+    @objc func check(_ call: CAPPluginCall) {
+        let context = LAContext()
+        var authError: NSError?
+        let canUseDeviceAuth = context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &authError)
+
+        var biometricError: NSError?
+        let canUseBiometrics = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &biometricError)
+        let biometryType = context.biometryType
+
+        call.resolve([
+            "available": canUseDeviceAuth,
+            "biometryAvailable": canUseBiometrics,
+            "deviceSecure": canUseDeviceAuth,
+            "biometryType": typeName(for: biometryType),
+            "label": label(for: biometryType),
+            "code": canUseDeviceAuth ? "available" : (authError?.code.description ?? "unavailable"),
+            "reason": canUseDeviceAuth ? "Device authentication is available." : (authError?.localizedDescription ?? "Device authentication is unavailable.")
+        ])
+    }
+
+    @objc func authenticate(_ call: CAPPluginCall) {
+        let reason = call.getString("reason") ?? "Unlock bye bye diabetes"
+        let context = LAContext()
+        context.localizedFallbackTitle = "Use Passcode"
+
+        var error: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
+            call.reject(error?.localizedDescription ?? "Device authentication is unavailable", "unavailable")
+            return
+        }
+
+        context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, authError in
+            DispatchQueue.main.async {
+                if success {
+                    call.resolve(["success": true])
+                } else {
+                    call.reject(authError?.localizedDescription ?? "Authentication failed", "authenticationFailed")
+                }
+            }
+        }
+    }
+}
 
 @objc(BBDOHealthKitPlugin)
 public class BBDOHealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -77,6 +152,8 @@ public class BBDOHealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
 @objc(BBDOBridgeViewController)
 class BBDOBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
+        super.capacitorDidLoad()
+        bridge?.registerPluginInstance(BBDOBiometricsPlugin())
         bridge?.registerPluginInstance(BiometricAuthNative())
         bridge?.registerPluginInstance(AppPlugin())
         bridge?.registerPluginInstance(PreferencesPlugin())

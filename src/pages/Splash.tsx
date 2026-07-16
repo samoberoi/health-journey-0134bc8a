@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import logoImg from "@/assets/logo.png";
 import { setPhase } from "@/lib/musicEngine";
-import { getExistingSessionUnlessLoggedOut } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 /**
  * Minimal, modern splash.
@@ -18,38 +18,49 @@ import { getExistingSessionUnlessLoggedOut } from "@/contexts/AuthContext";
  */
 export default function Splash() {
   const navigate = useNavigate();
+  const { ready, session } = useAuth();
   const [gone, setGone] = useState(false);
+  const [minimumSplashDone, setMinimumSplashDone] = useState(false);
 
   useEffect(() => {
     setPhase("reality");
-    const tExit = setTimeout(() => setGone(true), 2200);
-    const tNav = setTimeout(async () => {
+    try {
+      if (!localStorage.getItem("bb_language")) {
+        localStorage.setItem("bb_language", "en");
+      }
+    } catch {
+      /* ignore */
+    }
+    const tExit = window.setTimeout(() => setGone(true), 2200);
+    const tReady = window.setTimeout(() => setMinimumSplashDone(true), 2800);
+    return () => {
+      window.clearTimeout(tExit);
+      window.clearTimeout(tReady);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!minimumSplashDone || !ready) return;
+    if (session) {
+      navigate("/home", { replace: true });
+      return;
+    }
+    navigate("/reality-hook", { replace: true });
+  }, [minimumSplashDone, navigate, ready, session]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const failSafe = window.setTimeout(() => {
       try {
-        if (!localStorage.getItem("bb_language")) {
-          localStorage.setItem("bb_language", "en");
-        }
+        setMinimumSplashDone(true);
       } catch {
         /* ignore */
       }
-      // If the user is already signed in (and hasn't explicitly logged out),
-      // skip the entire onboarding funnel and go straight to the app.
-      // BiometricGate will then prompt for Face ID before revealing content.
-      try {
-        const session = await getExistingSessionUnlessLoggedOut();
-        if (session) {
-          navigate("/home", { replace: true });
-          return;
-        }
-      } catch {
-        /* fall through to onboarding */
-      }
-      navigate("/reality-hook");
-    }, 2800);
+    }, 4000);
     return () => {
-      clearTimeout(tExit);
-      clearTimeout(tNav);
+      window.clearTimeout(failSafe);
     };
-  }, [navigate]);
+  }, [ready]);
 
   const EASE = [0.22, 1, 0.36, 1] as const;
 

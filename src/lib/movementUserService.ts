@@ -95,16 +95,31 @@ export async function fetchUserBadges(userId: string): Promise<UserMovementBadge
 
 // --- Daily steps log (stored on health_logs with log_type = 'steps') ---
 
+function localDateString(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function localDayBoundsIso(dateIso = localDateString()) {
+  const [year, month, day] = dateIso.split("-").map(Number);
+  const start = new Date(year, (month || 1) - 1, day || 1, 0, 0, 0, 0);
+  const end = new Date(year, (month || 1) - 1, day || 1, 23, 59, 59, 999);
+  return { startIso: start.toISOString(), endIso: end.toISOString() };
+}
+
 export async function logTodaySteps(userId: string, steps: number, dateIso?: string) {
-  const date = dateIso || new Date().toISOString().slice(0, 10);
+  const date = dateIso || localDateString();
+  const { startIso, endIso } = localDayBoundsIso(date);
   // Look for an existing log today
   const { data: existingRaw } = await supabase
     .from("health_logs")
     .select("id, logged_at, steps_count" as any)
     .eq("user_id", userId)
     .eq("log_type", "steps" as any)
-    .gte("logged_at", `${date}T00:00:00.000Z`)
-    .lte("logged_at", `${date}T23:59:59.999Z`)
+    .gte("logged_at", startIso)
+    .lte("logged_at", endIso)
     .order("logged_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -133,6 +148,7 @@ export async function logTodaySteps(userId: string, steps: number, dateIso?: str
 export async function fetchStepsHistory(userId: string, days = 14): Promise<{ date: string; steps: number }[]> {
   const since = new Date();
   since.setDate(since.getDate() - days + 1);
+  since.setHours(0, 0, 0, 0);
   const { data, error } = await supabase
     .from("health_logs")
     .select("logged_at, steps_count" as any)
@@ -143,28 +159,29 @@ export async function fetchStepsHistory(userId: string, days = 14): Promise<{ da
   if (error) throw error;
   const byDate: Record<string, number> = {};
   for (const r of ((data as any) || [])) {
-    const d = String(r.logged_at).slice(0, 10);
+    const d = localDateString(new Date(String(r.logged_at)));
     byDate[d] = Math.max(byDate[d] || 0, Number(r.steps_count || 0));
   }
   const out: { date: string; steps: number }[] = [];
   for (let i = 0; i < days; i++) {
     const d = new Date(since);
     d.setDate(since.getDate() + i);
-    const iso = d.toISOString().slice(0, 10);
+    const iso = localDateString(d);
     out.push({ date: iso, steps: byDate[iso] || 0 });
   }
   return out;
 }
 
 export async function fetchTodaySteps(userId: string): Promise<number> {
-  const date = new Date().toISOString().slice(0, 10);
+  const date = localDateString();
+  const { startIso, endIso } = localDayBoundsIso(date);
   const { data } = await supabase
     .from("health_logs")
     .select("steps_count" as any)
     .eq("user_id", userId)
     .eq("log_type", "steps" as any)
-    .gte("logged_at", `${date}T00:00:00.000Z`)
-    .lte("logged_at", `${date}T23:59:59.999Z`)
+    .gte("logged_at", startIso)
+    .lte("logged_at", endIso)
     .order("logged_at", { ascending: false })
     .limit(1)
     .maybeSingle();

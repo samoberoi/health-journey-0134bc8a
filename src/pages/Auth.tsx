@@ -19,7 +19,7 @@ import {
 import logoImg from "@/assets/logo.png";
 import AuthHeroCarousel from "@/components/AuthHeroCarousel";
 import { toast } from "sonner";
-import { persistAuthSessionToNative } from "@/lib/nativePersistence";
+import { persistSupabaseSessionToNative } from "@/lib/nativePersistence";
 
 const DEFAULT_OTP = "111111";
 
@@ -47,9 +47,9 @@ export default function Auth() {
   const email = `${phone}@bbd.app`;
   const password = `bbd_${phone}_secure`;
 
-  const persistNativeSession = async () => {
+  const persistNativeSession = async (session?: { access_token?: string; refresh_token?: string } | null) => {
     try {
-      await persistAuthSessionToNative();
+      await persistSupabaseSessionToNative(session);
     } catch {
       /* native storage may be unavailable in preview */
     }
@@ -105,7 +105,7 @@ export default function Auth() {
       });
 
       if (signInData?.user) {
-        await persistNativeSession();
+        await persistNativeSession(signInData.session);
         // Check if this is an admin
         const isAdmin = await isAdminUser(signInData.user.id);
         if (isAdmin) {
@@ -184,7 +184,7 @@ export default function Auth() {
           setStep("otp");
           return;
         }
-        await persistNativeSession();
+        await persistNativeSession(newSessionData.session);
 
         const signedInNewUser = newSessionData.user;
 
@@ -267,7 +267,7 @@ export default function Auth() {
     if (!user) {
       const { data: sessionData } = await supabase.auth.signInWithPassword({ email, password });
       user = sessionData.user;
-      if (user) await persistNativeSession();
+      if (user) await persistNativeSession(sessionData.session);
     }
     if (!user) {
       setLoading(false);
@@ -283,7 +283,8 @@ export default function Auth() {
       if (error) console.error("Failed to save name/email:", error);
     }
 
-    await persistNativeSession();
+    const { data: currentSessionData } = await supabase.auth.getSession();
+    await persistNativeSession(currentSessionData.session);
 
     setLoading(false);
     navigate("/setup/purpose");

@@ -6,12 +6,19 @@ const KEY_LIST = "bb_native_persisted_keys";
 const LAST_HYDRATED_KEY = "bb_native_last_hydrated_at";
 const EXPLICIT_LOGOUT_STORAGE_KEY = "bb_explicit_logout";
 const AUTH_SESSION_BACKUP_KEY = "bb_native_auth_session_backup";
+const AUTH_TOKENS_BACKUP_KEY = "bb_native_auth_tokens_backup";
 const pendingWrites = new Set<Promise<unknown>>();
 let nativePersistenceQueue: Promise<unknown> = Promise.resolve();
 
 type NativeAuthSessionBackup = {
   key: string;
   value: string;
+  savedAt: number;
+};
+
+type NativeAuthTokensBackup = {
+  access_token: string;
+  refresh_token: string;
   savedAt: number;
 };
 
@@ -30,7 +37,7 @@ function shouldPersistKey(key: string) {
 
 function isAuthStorageKey(key: string) {
   const lower = key.toLowerCase();
-  return key.startsWith("sb-") || lower.includes("supabase");
+  return key.startsWith("sb-") || lower.includes("supabase") || key === AUTH_TOKENS_BACKUP_KEY;
 }
 
 function parseAuthBackup(value: string | null): NativeAuthSessionBackup | null {
@@ -48,6 +55,50 @@ function parseAuthBackup(value: string | null): NativeAuthSessionBackup | null {
     /* ignore corrupt native backup */
   }
   return null;
+}
+
+function parseAuthTokensBackup(value: string | null): NativeAuthTokensBackup | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as Partial<NativeAuthTokensBackup>;
+    if (typeof parsed.access_token === "string" && typeof parsed.refresh_token === "string") {
+      return {
+        access_token: parsed.access_token,
+        refresh_token: parsed.refresh_token,
+        savedAt: typeof parsed.savedAt === "number" ? parsed.savedAt : 0,
+      };
+    }
+  } catch {
+    /* ignore corrupt token backup */
+  }
+  return null;
+}
+
+async function saveAuthTokensBackup(tokens: { access_token?: string; refresh_token?: string } | null | undefined) {
+  if (!tokens?.access_token || !tokens?.refresh_token) return;
+  const backup: NativeAuthTokensBackup = {
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+    savedAt: Date.now(),
+  };
+  await Preferences.set({ key: AUTH_TOKENS_BACKUP_KEY, value: JSON.stringify(backup) });
+  await rememberKey(AUTH_TOKENS_BACKUP_KEY);
+}
+
+export async function readNativeSessionTokens(): Promise<{ access_token: string; refresh_token: string } | null> {
+  if (!isNativeApp()) return null;
+  return serializeNativePersistence(async () => {
+    try {
+      const { value } = await Preferences.get({ key: AUTH_TOKENS_BACKUP_KEY });
+      const backup = parseAuthTokensBackup(value);
+      if (backup?.access_token && backup.refresh_token) {
+        return { access_token: backup.access_token, refresh_token: backup.refresh_token };
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  });
 }
 
 async function saveAuthSessionBackup(key: string, value: string) {
@@ -136,7 +187,7 @@ export async function hydrateNativePersistence() {
     ]);
 
     for (const key of keys) {
-      if (key === AUTH_SESSION_BACKUP_KEY) continue;
+      if (key === AUTH_SESSION_BACKUP_KEY || key === AUTH_TOKENS_BACKUP_KEY) continue;
       const { value } = await Preferences.get({ key });
       if (value == null) {
         if (authBackup?.key === key) {
@@ -273,7 +324,7 @@ export async function persistAuthSessionToNative() {
   for (let index = 0; index < localStorage.length; index += 1) {
     const key = localStorage.key(index);
     if (!key) continue;
-    if (isAuthStorageKey(key)) {
+    if (isAuthStorageKey(key) && key !== AUTH_TOKENS_BACKUP_KEY) {
       authKeys.push(key);
     }
   }
@@ -290,6 +341,34 @@ export async function persistAuthSessionToNative() {
   });
 }
 
+export async function persistSupabaseSessionToNative(
+  session: { access_token?: string; refresh_token?: string } | null | undefined
+) {
+  if (!isNativeApp()) return;
+  return serializeNativePersistence(async () => {
+  await flushNativePersistenceWrites();
+  await saveAuthTokensBackup(session);
+  const authKeys: string[] = [];
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (!key) continue;
+    if (isAuthStorageKey(key) && key !== AUTH_TOKENS_BACKUP_KEY) {
+      authKeys.push(key);
+    }
+  }
+
+  await Promise.all(
+    authKeys.map(async (key) => {
+      const value = localStorage.getItem(key);
+      if (value != null) await writePersistedKey(key, value);
+    })
+  );
+  const persistedKeys = await readPersistedKeyList();
+  await Preferences.set({ key: KEY_LIST, value: JSON.stringify([...new Set([...persistedKeys, AUTH_TOKENS_BACKUP_KEY, ...authKeys])]) });
+  await flushNativePersistenceWrites();
+  });
+}
+
 export async function clearNativePersistedAuthState() {
   if (!isNativeApp()) return;
   return serializeNativePersistence(async () => {
@@ -300,6 +379,7 @@ export async function clearNativePersistedAuthState() {
   });
   await Promise.all(authKeys.map((key) => Preferences.remove({ key })));
   await Preferences.remove({ key: AUTH_SESSION_BACKUP_KEY });
+  await Preferences.remove({ key: AUTH_TOKENS_BACKUP_KEY });
   await Preferences.set({ key: KEY_LIST, value: JSON.stringify(persistedKeys.filter((key) => !authKeys.includes(key))) });
   });
 }
@@ -317,19 +397,23 @@ export async function getNativePersistenceDiagnostics() {
 
   return serializeNativePersistence(async () => {
   try {
-    const [listedKeys, authBackup, preferences] = await Promise.all([
+    const [listedKeys, authBackup, tokenBackup, preferences] = await Promise.all([
       readPersistedKeyList(),
       readAuthSessionBackup(),
+      Preferences.get({ key: AUTH_TOKENS_BACKUP_KEY }),
       Preferences.keys(),
     ]);
+    const parsedTokenBackup = parseAuthTokensBackup(tokenBackup.value);
     const persistedAuthKeys = new Set([
       ...listedKeys.filter(isAuthStorageKey),
       ...preferences.keys.filter(isAuthStorageKey),
       ...(authBackup?.key ? [authBackup.key] : []),
+      ...(parsedTokenBackup ? [AUTH_TOKENS_BACKUP_KEY] : []),
     ]);
     return {
       native: true,
       hasAuthBackup: Boolean(authBackup?.value),
+      hasTokenBackup: Boolean(parsedTokenBackup?.access_token && parsedTokenBackup.refresh_token),
       persistedAuthKeys: persistedAuthKeys.size,
       preferenceKeys: preferences.keys.length,
       hydratedAt: localStorage.getItem(LAST_HYDRATED_KEY),
@@ -338,6 +422,7 @@ export async function getNativePersistenceDiagnostics() {
     return {
       native: true,
       hasAuthBackup: false,
+      hasTokenBackup: false,
       persistedAuthKeys: 0,
       preferenceKeys: 0,
       hydratedAt: localStorage.getItem(LAST_HYDRATED_KEY),

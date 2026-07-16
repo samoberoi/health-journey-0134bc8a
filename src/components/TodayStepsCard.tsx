@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { App as CapApp } from "@capacitor/app";
 import { motion } from "framer-motion";
 import { Footprints, Plus, ChevronRight, Flame, RefreshCw, Watch } from "lucide-react";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ export default function TodayStepsCard({ onOpenMovement }: { onOpenMovement?: ()
   const [val, setVal] = useState("");
   const [saving, setSaving] = useState(false);
   const [syncingHealth, setSyncingHealth] = useState(false);
+  const [healthSyncError, setHealthSyncError] = useState<string | null>(null);
   const healthStepsAvailable = canUseAppleHealthSteps();
 
   const load = useCallback(async () => {
@@ -35,29 +37,56 @@ export default function TodayStepsCard({ onOpenMovement }: { onOpenMovement?: ()
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
+
+  const syncHealthSteps = useCallback(async (showToast = false) => {
+    if (!user) return;
+    setSyncingHealth(true);
+    setHealthSyncError(null);
+    try {
+      const steps = await syncTodayStepsFromAppleHealth();
+      if (steps == null) {
+        const message = "Apple Health is not available on this iPhone";
+        setHealthSyncError(message);
+        if (showToast) toast.error(message);
+        return;
+      }
+      await logTodaySteps(user.id, steps);
+      if (showToast) toast.success(`Synced ${steps.toLocaleString("en-IN")} Apple Health steps`);
+      window.dispatchEvent(new CustomEvent("health-log-saved"));
+      await load();
+    } catch (error: any) {
+      const message = error?.message || "Couldn't sync Apple Health steps";
+      setHealthSyncError(message);
+      if (showToast) toast.error(message);
+      console.warn("Apple Health steps sync failed", error);
+    } finally {
+      setSyncingHealth(false);
+    }
+  }, [load, user]);
+
   useEffect(() => {
     if (!user || !healthStepsAvailable) return;
-    let cancelled = false;
     const sync = async () => {
-      setSyncingHealth(true);
-      try {
-        const steps = await syncTodayStepsFromAppleHealth();
-        if (!cancelled && steps != null) {
-          await logTodaySteps(user.id, steps);
-          window.dispatchEvent(new CustomEvent("health-log-saved"));
-          await load();
-        }
-      } catch (error) {
-        console.warn("Apple Health steps sync failed", error);
-      } finally {
-        if (!cancelled) setSyncingHealth(false);
-      }
+      await syncHealthSteps(false);
     };
     void sync();
-    return () => {
-      cancelled = true;
+  }, [healthStepsAvailable, syncHealthSteps, user]);
+
+  useEffect(() => {
+    if (!user || !healthStepsAvailable) return;
+    const sub = CapApp.addListener("appStateChange", ({ isActive }) => {
+      if (isActive) void syncHealthSteps(false);
+    });
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void syncHealthSteps(false);
     };
-  }, [healthStepsAvailable, load, user]);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      void sub.then((s) => s.remove());
+    };
+  }, [healthStepsAvailable, syncHealthSteps, user]);
+
   useEffect(() => {
     const handler = () => load();
     window.addEventListener("health-log-saved", handler);
@@ -89,23 +118,7 @@ export default function TodayStepsCard({ onOpenMovement }: { onOpenMovement?: ()
   };
 
   const handleHealthSync = async () => {
-    if (!user) return;
-    setSyncingHealth(true);
-    try {
-      const steps = await syncTodayStepsFromAppleHealth();
-      if (steps == null) {
-        toast.error("Apple Health is not available on this device");
-        return;
-      }
-      await logTodaySteps(user.id, steps);
-      toast.success(`Synced ${steps.toLocaleString("en-IN")} Apple Health steps`);
-      window.dispatchEvent(new CustomEvent("health-log-saved"));
-      await load();
-    } catch (error: any) {
-      toast.error(error?.message || "Couldn't sync Apple Health steps");
-    } finally {
-      setSyncingHealth(false);
-    }
+    await syncHealthSteps(true);
   };
 
   return (
@@ -158,22 +171,29 @@ export default function TodayStepsCard({ onOpenMovement }: { onOpenMovement?: ()
       </div>
 
       {healthStepsAvailable ? (
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-border bg-background px-3 py-2.5">
-          <div className="flex min-w-0 items-center gap-2">
-            <Watch className="h-4 w-4 shrink-0 text-primary" />
-            <p className="truncate text-[12px] font-semibold text-muted-foreground">
-              Apple Health steps sync automatically
-            </p>
+        <div className="mt-4 rounded-2xl border border-border bg-background px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <Watch className="h-4 w-4 shrink-0 text-primary" />
+              <p className="truncate text-[12px] font-semibold text-muted-foreground">
+                Apple Health steps sync automatically
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleHealthSync}
+              disabled={syncingHealth}
+              aria-label="Sync Apple Health steps"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-primary disabled:opacity-60"
+            >
+              <RefreshCw className={`h-4 w-4 ${syncingHealth ? "animate-spin" : ""}`} />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleHealthSync}
-            disabled={syncingHealth}
-            aria-label="Sync Apple Health steps"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-primary disabled:opacity-60"
-          >
-            <RefreshCw className={`h-4 w-4 ${syncingHealth ? "animate-spin" : ""}`} />
-          </button>
+          {healthSyncError && (
+            <p className="mt-2 text-[11px] font-medium leading-snug text-destructive">
+              {healthSyncError}
+            </p>
+          )}
         </div>
       ) : (
         <div className="mt-4 flex gap-2">
