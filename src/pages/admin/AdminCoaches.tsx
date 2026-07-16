@@ -265,8 +265,12 @@ export default function AdminCoaches() {
                 className="w-full flex items-center justify-between p-4 text-left"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
-                    <span className="text-emerald-500 font-bold text-sm">{coach.name.charAt(0)}</span>
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 overflow-hidden">
+                    {(coach as any).avatar_url ? (
+                      <img src={(coach as any).avatar_url} alt={coach.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-emerald-500 font-bold text-sm">{coach.name.charAt(0)}</span>
+                    )}
                   </div>
                   <div className="min-w-0">
                     <p className="text-foreground font-semibold text-sm truncate">{coach.name}</p>
