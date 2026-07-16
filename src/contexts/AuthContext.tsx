@@ -6,9 +6,12 @@ import { clearUser } from "@/lib/userStore";
 import { sendWelcomeNotification } from "@/lib/notificationService";
 import {
   clearNativePersistedAuthState,
+  hasNativePersistedAuthSession,
+  hydrateNativePersistence,
   persistAuthSessionToNative,
   syncNativePersistenceFromLocalStorage,
 } from "@/lib/nativePersistence";
+import { isNative } from "@/lib/biometric";
 
 export const EXPLICIT_LOGOUT_KEY = "bb_explicit_logout";
 
@@ -56,7 +59,13 @@ export async function prepareFreshLoginState() {
 
 export async function getExistingSessionUnlessLoggedOut() {
   try {
-    const { data } = await supabase.auth.getSession();
+    if (isNative()) await hydrateNativePersistence();
+    let { data } = await supabase.auth.getSession();
+    if (!data.session && isNative() && await hasNativePersistedAuthSession()) {
+      await hydrateNativePersistence();
+      const retry = await supabase.auth.getSession();
+      data = retry.data;
+    }
     if (data.session) {
       localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
       return data.session;
@@ -132,7 +141,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    (async () => {
+      let { data: { session } } = await supabase.auth.getSession();
+      if (!session && isNative() && await hasNativePersistedAuthSession()) {
+        await hydrateNativePersistence();
+        const retry = await supabase.auth.getSession();
+        session = retry.data.session;
+      }
       if (localStorage.getItem(EXPLICIT_LOGOUT_KEY) === "1") {
         if (session) {
           localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
@@ -158,6 +173,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }, 0);
       }
+    })().catch((error) => {
+      console.error("Initial auth restore failed", error);
+      applySession(null);
+      setLoading(false);
+      setReady(true);
     });
 
     return () => subscription.unsubscribe();
