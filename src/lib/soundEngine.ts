@@ -33,6 +33,12 @@ export function bindAudioUnlock() {
   );
 }
 
+/** Multiplies all sound gains. 0..1. Persisted so the whole app respects volume. */
+export function setMasterVolume(v: number) {
+  masterVolume = Math.max(0, Math.min(1, v));
+  localStorage.setItem("bbdSoundVolume", String(masterVolume));
+}
+
 export function getMasterVolume(): number {
   const stored = localStorage.getItem("bbdSoundVolume");
   if (stored !== null) {
