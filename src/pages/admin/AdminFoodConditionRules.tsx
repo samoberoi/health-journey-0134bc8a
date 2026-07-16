@@ -601,9 +601,49 @@ export default function AdminFoodConditionRules() {
                 Lowercase, snake_case identifier used internally. Renaming will re-key all existing rules.
               </p>
             </div>
+            <div>
+              <Label>Icon image</Label>
+              <div className="flex items-center gap-3 mt-1">
+                <div className="w-14 h-14 rounded-lg border border-border bg-muted/30 flex items-center justify-center overflow-hidden">
+                  {condForm.icon_url ? (
+                    <img src={condForm.icon_url} alt="" className="w-full h-full object-contain" />
+                  ) : condForm.emoji ? (
+                    <span className="text-2xl">{condForm.emoji}</span>
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground">No icon</span>
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const ext = (file.name.split(".").pop() || "png").toLowerCase();
+                      const key = slugify(condForm.key || condForm.label) || `cond-${Date.now()}`;
+                      const path = `${key}-${Date.now()}.${ext}`;
+                      const { error } = await supabase.storage.from("condition-icons").upload(path, file, { upsert: true, contentType: file.type });
+                      if (error) { toast.error(error.message); return; }
+                      const { data } = supabase.storage.from("condition-icons").getPublicUrl(path);
+                      setCondForm((f) => ({ ...f, icon_url: data.publicUrl }));
+                      toast.success("Icon uploaded");
+                    }}
+                  />
+                  {condForm.icon_url && (
+                    <Button variant="ghost" size="sm" onClick={() => setCondForm((f) => ({ ...f, icon_url: null }))}>
+                      Remove icon
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Recommended: square PNG on transparent background, at least 256×256.
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Emoji</Label>
+                <Label>Emoji (fallback)</Label>
                 <Input
                   value={condForm.emoji || ""}
                   onChange={(e) => setCondForm((f) => ({ ...f, emoji: e.target.value }))}
@@ -619,6 +659,7 @@ export default function AdminFoodConditionRules() {
                 />
               </div>
             </div>
+
             <div className="flex items-center gap-2">
               <Switch
                 checked={condForm.is_active}
