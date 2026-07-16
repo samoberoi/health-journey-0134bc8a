@@ -13,7 +13,7 @@ import {
 } from "./dietTypes";
 import {
   type ActiveCondition, type FoodRuleHit, type ConditionRuleRow, type ConditionKey,
-  deriveActiveConditions, fetchConditionRules, buildFoodRuleMap,
+  deriveActiveConditions, fetchConditionRules, buildFoodRuleMap, fetchFoodConditions,
 } from "@/lib/foodConditionRules";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -29,30 +29,22 @@ const CONDITION_ICONS: Record<string, LucideIcon> = {
   hyperthyroid: HeartPulse,
   pcos: Flower2,
   ckd: Activity,
+  kidney_stone: Activity,
   uric_acid: FlaskConical,
   fatty_liver: HeartPulse,
   iron_deficiency: Droplet,
 };
 
-// All health conditions the user can filter by, shown as a togglable chip row.
-// Auto-selected from profile deep_profiling; users can turn any on/off manually.
-const CONDITION_CHOICES: { key: ConditionKey; label: string; short: string }[] = [
-  { key: "hypothyroid",     label: "Hypothyroidism",   short: "Thyroid" },
-  { key: "pcos",            label: "PMOS",             short: "PMOS" },
-  { key: "ckd",             label: "Kidney Disease",   short: "Kidney" },
-  { key: "uric_acid",       label: "High Uric Acid",   short: "Uric acid" },
-  { key: "fatty_liver",     label: "Fatty Liver",      short: "Fatty liver" },
-  { key: "iron_deficiency", label: "Iron Deficiency",  short: "Iron" },
-];
-
-const CONDITION_META_BY_KEY: Record<ConditionKey, { label: string; emoji: string }> = {
-  hypothyroid:     { label: "Hypothyroidism",   emoji: "🦋" },
-  hyperthyroid:    { label: "Hyperthyroidism",  emoji: "🦋" },
-  pcos:            { label: "PMOS",             emoji: "🌸" },
-  ckd:             { label: "Kidney Disease",   emoji: "🫘" },
-  uric_acid:       { label: "High Uric Acid",   emoji: "🧪" },
-  fatty_liver:     { label: "Fatty Liver",      emoji: "🫀" },
-  iron_deficiency: { label: "Iron Deficiency",  emoji: "🩸" },
+// Short labels for the chip row. Anything not listed falls back to the DB label.
+const CONDITION_SHORT: Record<string, string> = {
+  hypothyroid: "Thyroid",
+  hyperthyroid: "Hyperthyroid",
+  pcos: "PCOS",
+  ckd: "Kidney",
+  kidney_stone: "Kidney stones",
+  uric_acid: "Uric acid",
+  fatty_liver: "Fatty liver",
+  iron_deficiency: "Iron",
 };
 
 const PRESETS: { key: PresetKey; label: string; Icon: typeof Sparkles; tint: string }[] = [
@@ -117,37 +109,52 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
   // Sub-category chip inside a preset. null = grouped by category.
   const [presetCategory, setPresetCategory] = useState<string | null>(null);
 
-  // Active clinical conditions derived from profile (thyroid, PMOS, CKD, uric acid,
-  // fatty liver, iron deficiency). Rules from food_condition_rules DB then map
-  // foods → avoid / limit / encourage with a reason we surface on each card.
+  // Master list of conditions from public.food_conditions (admin-managed).
+  // Drives the chip row + label/emoji map so UI never drifts from backend.
+  const [conditionCatalog, setConditionCatalog] = useState<
+    { key: string; label: string; emoji: string; sort_order: number }[]
+  >([]);
+  const conditionMetaMap = useMemo(
+    () =>
+      Object.fromEntries(
+        conditionCatalog.map((c) => [c.key, { label: c.label, emoji: c.emoji }]),
+      ) as Record<string, { label: string; emoji: string }>,
+    [conditionCatalog],
+  );
+
   // Manually-selected condition keys. Auto-populated from profile deep_profiling
   // on first load; the user can then toggle any chip on/off.
   const [conditionKeys, setConditionKeys] = useState<Set<ConditionKey>>(new Set());
   const [conditionsSynced, setConditionsSynced] = useState(false);
   const activeConditions: ActiveCondition[] = useMemo(
-    () => Array.from(conditionKeys).map((k) => ({ key: k, ...CONDITION_META_BY_KEY[k] })),
-    [conditionKeys],
+    () =>
+      Array.from(conditionKeys).map((k) => {
+        const meta = conditionMetaMap[k] ?? { label: k, emoji: "" };
+        return { key: k, label: meta.label, emoji: meta.emoji };
+      }),
+    [conditionKeys, conditionMetaMap],
   );
   const [ruleMap, setRuleMap] = useState<Map<string, FoodRuleHit>>(new Map());
   const [hideSkipped, setHideSkipped] = useState(true);
-  // Collapse the diet chip row to just the user's own preference by default.
-  // A vegan user shouldn't see "Non-veg" staring at them; they can expand if curious.
   const [showAllDiets, setShowAllDiets] = useState(false);
 
   // Load user's diet preference + auto-select conditions from profile.
   useEffect(() => {
     if (!user || conditionsSynced) return;
     (async () => {
-      const [dietRes, profRes] = await Promise.all([
+      const [dietRes, profRes, catalog] = await Promise.all([
         supabase.from("user_diet_profiles").select("diet_preference").eq("user_id", user.id).maybeSingle(),
         supabase.from("profiles").select("deep_profiling, lifestyle").eq("user_id", user.id).maybeSingle(),
+        fetchFoodConditions(),
       ]);
+      setConditionCatalog(catalog);
+      const metaMap = Object.fromEntries(catalog.map((c) => [c.key, { label: c.label, emoji: c.emoji }]));
       const lifestyleDiet = (profRes.data as any)?.lifestyle?.diet as string | undefined;
       const pref =
         normalizePref(dietRes.data?.diet_preference as string) ??
         normalizePref(lifestyleDiet);
       if (pref) { setProfilePref(pref); setDiet(pref); }
-      const conds = deriveActiveConditions((profRes.data as any)?.deep_profiling);
+      const conds = deriveActiveConditions((profRes.data as any)?.deep_profiling, metaMap);
       if (conds.length) setConditionKeys(new Set(conds.map((c) => c.key)));
       setConditionsSynced(true);
     })();
@@ -197,14 +204,68 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Raw rules for the currently-active conditions (used for the breakdown card).
+  const [conditionRules, setConditionRules] = useState<ConditionRuleRow[]>([]);
+
   // Rebuild the food → rule map whenever conditions or the catalog change.
   useEffect(() => {
     (async () => {
-      if (!activeConditions.length || !items.length) { setRuleMap(new Map()); return; }
+      if (!activeConditions.length || !items.length) {
+        setRuleMap(new Map());
+        setConditionRules([]);
+        return;
+      }
       const rules = await fetchConditionRules(activeConditions.map((c) => c.key));
+      setConditionRules(rules);
       setRuleMap(buildFoodRuleMap(items, rules, activeConditions));
     })();
   }, [activeConditions, items]);
+
+  // Per-condition breakdown: for each active condition, group matched foods by action.
+  // Used by the "For your <condition>: avoid / limit / encourage" card.
+  const conditionBreakdown = useMemo(() => {
+    if (!activeConditions.length || !conditionRules.length || !items.length) {
+      return [] as {
+        condition: ActiveCondition;
+        avoid: { item: FoodItem; reason: string }[];
+        limit: { item: FoodItem; reason: string }[];
+        encourage: { item: FoodItem; reason: string }[];
+      }[];
+    }
+    return activeConditions.map((cond) => {
+      const rulesForCond = conditionRules.filter((r) => r.condition_key === cond.key);
+      const buckets: Record<
+        ConditionAction,
+        { item: FoodItem; reason: string }[]
+      > = { avoid: [], limit: [], encourage: [] };
+      const seen: Record<ConditionAction, Set<string>> = {
+        avoid: new Set(), limit: new Set(), encourage: new Set(),
+      };
+      for (const item of items) {
+        const hay = `${item.name} ${item.alt_name || ""}`.toLowerCase();
+        // Strongest action for THIS condition on this item.
+        let best: { action: ConditionAction; reason: string; priority: number } | null = null;
+        for (const rule of rulesForCond) {
+          if (rule.filter_id && rule.filter_id !== item.filter_id) continue;
+          if (!hay.includes(rule.name_pattern.toLowerCase())) continue;
+          const rank = { avoid: 3, limit: 2, encourage: 1 }[rule.action];
+          const bestRank = best ? { avoid: 3, limit: 2, encourage: 1 }[best.action] : -1;
+          if (rank > bestRank || (rank === bestRank && rule.priority > (best?.priority ?? -1))) {
+            best = { action: rule.action, reason: rule.reason, priority: rule.priority };
+          }
+        }
+        if (best && !seen[best.action].has(item.id)) {
+          seen[best.action].add(item.id);
+          buckets[best.action].push({ item, reason: best.reason });
+        }
+      }
+      return { condition: cond, ...buckets };
+    });
+  }, [activeConditions, conditionRules, items]);
+
+  // Import ConditionAction type locally for the memo above.
+  type ConditionAction = "avoid" | "limit" | "encourage";
+
 
 
   const activeFilterObj = useMemo(
@@ -261,10 +322,19 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
         (it.alt_name || "").toLowerCase().includes(q),
       );
     }
-    // Health-condition filter: hide items whose strongest rule action is "avoid"
-    // (e.g. hypothyroid user won't see raw broccoli, CKD user won't see banana).
-    if (hideSkipped && ruleMap.size) {
-      list = list.filter((it) => ruleMap.get(it.id)?.action !== "avoid");
+    // Health-condition filter.
+    // - "Best for you" is stricter: never show avoid OR limit for the active conditions.
+    // - Other views: hide only avoid when hideSkipped is on; limits still appear so
+    //   users can see them (they will be dimmed / labelled by the row itself).
+    if (ruleMap.size) {
+      if (preset === "best") {
+        list = list.filter((it) => {
+          const a = ruleMap.get(it.id)?.action;
+          return a !== "avoid" && a !== "limit";
+        });
+      } else if (hideSkipped) {
+        list = list.filter((it) => ruleMap.get(it.id)?.action !== "avoid");
+      }
     }
     const giScore = (it: FoodItem) => avgOf(it.gi_min, it.gi_max) ?? 999;
     const carbScore = (it: FoodItem) => avgOf(it.carbs_min, it.carbs_max) ?? 999;
@@ -524,9 +594,10 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
             <span className="shrink-0 text-[9.5px] font-bold tracking-[0.14em] uppercase text-muted-foreground pr-1">
               Health filter
             </span>
-            {CONDITION_CHOICES.map((c) => {
+            {conditionCatalog.map((c) => {
               const active = conditionKeys.has(c.key);
               const Icon = CONDITION_ICONS[c.key] ?? ShieldAlert;
+              const short = CONDITION_SHORT[c.key] ?? c.label;
               return (
                 <button
                   key={c.key}
@@ -539,7 +610,7 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
                   aria-pressed={active}
                 >
                   <Icon className="w-3 h-3" strokeWidth={2.4} />
-                  {c.short}
+                  {short}
                   {active && <Check className="w-3 h-3" strokeWidth={2.6} />}
                 </button>
               );
@@ -629,6 +700,28 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
               </div>
             </div>
           )}
+
+          {/* Per-condition food breakdown: Avoid / Limit / Encourage.
+              Renders one card per active condition so users know what to watch
+              for BEFORE they land on Best-for-you. */}
+          {conditionBreakdown.length > 0 && (
+            <div className="mb-4 space-y-3">
+              {conditionBreakdown.map(({ condition, avoid, limit, encourage }) => {
+                if (!avoid.length && !limit.length && !encourage.length) return null;
+                return (
+                  <ConditionBreakdownCard
+                    key={condition.key}
+                    condition={condition}
+                    avoid={avoid}
+                    limit={limit}
+                    encourage={encourage}
+                    onOpen={(it) => setOpenItem(it)}
+                  />
+                );
+              })}
+            </div>
+          )}
+
           {/* Section heading */}
           {!isGlobalSort && activeFilterObj ? (
             <motion.div
@@ -1026,3 +1119,89 @@ function shortName(name: string): string {
     .replace("Dairy Products", "Dairy")
     .replace("Other Add-ons", "Add-ons");
 }
+
+function ConditionBreakdownCard({
+  condition,
+  avoid,
+  limit,
+  encourage,
+  onOpen,
+}: {
+  condition: ActiveCondition;
+  avoid: { item: FoodItem; reason: string }[];
+  limit: { item: FoodItem; reason: string }[];
+  encourage: { item: FoodItem; reason: string }[];
+  onOpen: (item: FoodItem) => void;
+}) {
+  const [expanded, setExpanded] = useState<"avoid" | "limit" | "encourage" | null>(
+    avoid.length ? "avoid" : limit.length ? "limit" : "encourage",
+  );
+
+  const tabs = [
+    { key: "avoid" as const,     label: "Avoid",     items: avoid,     tint: "text-rose-700 bg-rose-500/10 border-rose-500/30" },
+    { key: "limit" as const,     label: "Limit",     items: limit,     tint: "text-amber-700 bg-amber-500/10 border-amber-500/30" },
+    { key: "encourage" as const, label: "Encourage", items: encourage, tint: "text-emerald-700 bg-emerald-500/10 border-emerald-500/30" },
+  ];
+
+  const active = tabs.find((t) => t.key === expanded) ?? tabs[0];
+
+  return (
+    <div className="rounded-2xl border border-border bg-white overflow-hidden">
+      <div className="px-3.5 py-2.5 bg-muted/40 border-b border-border flex items-center gap-2">
+        {condition.emoji && <span className="text-base leading-none">{condition.emoji}</span>}
+        <div className="flex-1 min-w-0">
+          <p className="text-[9.5px] font-bold tracking-[0.14em] uppercase text-muted-foreground">
+            For your condition
+          </p>
+          <p className="text-sm font-black text-foreground truncate">{condition.label}</p>
+        </div>
+      </div>
+      <div className="flex gap-1.5 px-3.5 pt-2.5">
+        {tabs.map((t) => {
+          const isActive = t.key === expanded;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setExpanded(isActive ? null : t.key)}
+              className={`shrink-0 h-8 px-3 rounded-full text-[11px] font-bold border transition-colors active:scale-[0.98] flex items-center gap-1.5 ${
+                isActive
+                  ? "bg-foreground text-background border-foreground"
+                  : `bg-white border-border ${t.tint.split(" ").find((c) => c.startsWith("text-")) || ""}`
+              }`}
+            >
+              {t.label}
+              <span className={`text-[9.5px] font-black ${isActive ? "opacity-70" : "text-muted-foreground"}`}>
+                {t.items.length}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {expanded && active.items.length > 0 && (
+        <div className="px-3.5 py-2.5 flex flex-wrap gap-1.5">
+          {active.items.slice(0, 24).map(({ item, reason }) => (
+            <button
+              key={item.id}
+              onClick={() => onOpen(item)}
+              title={reason}
+              className={`h-7 px-2.5 rounded-full text-[11px] font-bold border transition-colors active:scale-[0.98] ${active.tint}`}
+            >
+              {item.name}
+            </button>
+          ))}
+          {active.items.length > 24 && (
+            <span className="h-7 px-2 flex items-center text-[10.5px] font-bold text-muted-foreground">
+              +{active.items.length - 24} more
+            </span>
+          )}
+        </div>
+      )}
+      {expanded && active.items.length === 0 && (
+        <div className="px-3.5 py-3 text-[11px] text-muted-foreground">
+          No foods flagged for {active.label.toLowerCase()}.
+        </div>
+      )}
+    </div>
+  );
+}
+

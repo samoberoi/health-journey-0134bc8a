@@ -12,14 +12,13 @@ import type { FoodItem } from "@/components/diet/dietTypes";
 
 export type ConditionAction = "avoid" | "limit" | "encourage";
 
-export type ConditionKey =
-  | "hypothyroid"
-  | "hyperthyroid"
-  | "pcos"
-  | "ckd"
-  | "uric_acid"
-  | "fatty_liver"
-  | "iron_deficiency";
+/**
+ * Condition keys are strings sourced from the `food_conditions` table in the DB.
+ * Historically we hardcoded a union of keys here; that led to UI/DB drift (e.g.
+ * "PMOS" vs "pcos"). The UI now fetches labels/emojis from the DB and passes a
+ * meta map into deriveActiveConditions.
+ */
+export type ConditionKey = string;
 
 export interface ActiveCondition {
   key: ConditionKey;
@@ -43,11 +42,14 @@ export interface ConditionRuleRow {
   priority: number;
 }
 
-const CONDITION_META: Record<ConditionKey, { label: string; emoji: string }> = {
+// Fallback labels used only if the DB fetch fails. UI should prefer the meta
+// map fetched from food_conditions.
+const FALLBACK_META: Record<string, { label: string; emoji: string }> = {
   hypothyroid:     { label: "Hypothyroidism",   emoji: "🦋" },
   hyperthyroid:    { label: "Hyperthyroidism",  emoji: "🦋" },
-  pcos:            { label: "PMOS",             emoji: "🌸" },
+  pcos:            { label: "PCOS",             emoji: "🌸" },
   ckd:             { label: "Kidney Disease",   emoji: "🫘" },
+  kidney_stone:    { label: "Kidney Stones",    emoji: "🪨" },
   uric_acid:       { label: "High Uric Acid",   emoji: "🧪" },
   fatty_liver:     { label: "Fatty Liver",      emoji: "🫀" },
   iron_deficiency: { label: "Iron Deficiency",  emoji: "🩸" },
@@ -55,13 +57,25 @@ const CONDITION_META: Record<ConditionKey, { label: string; emoji: string }> = {
 
 const RANK: Record<ConditionAction, number> = { avoid: 3, limit: 2, encourage: 1 };
 
+/**
+ * Derive which condition keys apply to a user's deep-profiling record.
+ * The `metaMap` is typically fetched from `public.food_conditions` so labels
+ * and emojis stay in sync with the admin console.
+ */
 export function deriveActiveConditions(
   deep: Record<string, any> | null | undefined,
+  metaMap: Record<string, { label: string; emoji: string }> = FALLBACK_META,
   uricAcidThreshold = 7.0,
 ): ActiveCondition[] {
   if (!deep) return [];
   const out: ActiveCondition[] = [];
-  const push = (key: ConditionKey) => out.push({ key, ...CONDITION_META[key] });
+  const seen = new Set<string>();
+  const push = (key: ConditionKey) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    const meta = metaMap[key] ?? FALLBACK_META[key] ?? { label: key, emoji: "" };
+    out.push({ key, label: meta.label, emoji: meta.emoji });
+  };
 
   // Thyroid → hypo vs hyper
   const tt = String(deep.thyroidType || "").toLowerCase();
@@ -72,6 +86,7 @@ export function deriveActiveConditions(
 
   if (String(deep.pcos || "").toLowerCase() === "yes") push("pcos");
   if (String(deep.kidneyDisease || "").toLowerCase() === "yes") push("ckd");
+  if (String(deep.kidneyStones || "").toLowerCase() === "yes") push("kidney_stone");
   if (String(deep.fattyLiver || "").toLowerCase() === "yes") push("fatty_liver");
   if (String(deep.ironDeficiency || "").toLowerCase() === "yes") push("iron_deficiency");
 
@@ -135,11 +150,33 @@ export function buildFoodRuleMap(
   return map;
 }
 
-export async function loadUserActiveConditions(userId: string): Promise<ActiveCondition[]> {
+/**
+ * Fetch the master list of health conditions the admin has configured.
+ * Consumers use this to build the "Health filter" chip row and label map,
+ * so UI stays in sync with backend edits (no hardcoded "PMOS" mismatches).
+ */
+export async function fetchFoodConditions(): Promise<
+  { key: string; label: string; emoji: string; sort_order: number }[]
+> {
   const { data } = await supabase
-    .from("profiles")
-    .select("deep_profiling")
-    .eq("user_id", userId)
-    .maybeSingle();
-  return deriveActiveConditions((data as any)?.deep_profiling);
+    .from("food_conditions")
+    .select("key,label,emoji,sort_order,is_active")
+    .eq("is_active", true)
+    .order("sort_order");
+  return ((data as any[]) || []).map((r) => ({
+    key: r.key,
+    label: r.label,
+    emoji: r.emoji || "",
+    sort_order: r.sort_order ?? 100,
+  }));
 }
+
+export async function loadUserActiveConditions(userId: string): Promise<ActiveCondition[]> {
+  const [profRes, conds] = await Promise.all([
+    supabase.from("profiles").select("deep_profiling").eq("user_id", userId).maybeSingle(),
+    fetchFoodConditions(),
+  ]);
+  const metaMap = Object.fromEntries(conds.map((c) => [c.key, { label: c.label, emoji: c.emoji }]));
+  return deriveActiveConditions((profRes.data as any)?.deep_profiling, metaMap);
+}
+
