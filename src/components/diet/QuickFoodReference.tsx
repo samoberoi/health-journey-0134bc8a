@@ -137,28 +137,58 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
   const [showAllDiets, setShowAllDiets] = useState(false);
 
   // Load user's diet preference + auto-select conditions from profile.
+  // Re-runs whenever the profiles row changes (realtime), so toggling a
+  // condition in Edit Profile lights up the chip immediately.
   useEffect(() => {
-    if (!user || conditionsSynced) return;
-    (async () => {
+    if (!user) return;
+    let cancelled = false;
+
+    const syncFromProfile = async () => {
       const [dietRes, profRes, catalog] = await Promise.all([
         supabase.from("user_diet_profiles").select("diet_preference").eq("user_id", user.id).maybeSingle(),
-        supabase.from("profiles").select("deep_profiling, lifestyle").eq("user_id", user.id).maybeSingle(),
+        supabase.from("profiles").select("deep_profiling, lifestyle, clinical").eq("user_id", user.id).maybeSingle(),
         fetchFoodConditions(),
       ]);
+      if (cancelled) return;
       setConditionCatalog(catalog);
       const metaMap = Object.fromEntries(catalog.map((c) => [c.key, { label: c.label, emoji: c.emoji }]));
-      const lifestyleDiet = (profRes.data as any)?.lifestyle?.diet as string | undefined;
+      const profRow: any = profRes.data;
+      const lifestyleDiet = profRow?.lifestyle?.diet as string | undefined;
       const pref =
         normalizePref(dietRes.data?.diet_preference as string) ??
         normalizePref(lifestyleDiet);
       if (pref) { setProfilePref(pref); setDiet(pref); }
-      const conds = deriveActiveConditions((profRes.data as any)?.deep_profiling, metaMap);
+      const conds = deriveActiveConditions(profRow?.deep_profiling, metaMap, 7.0, profRow?.clinical);
       const profileKeys = new Set(conds.map((c) => c.key));
       setProfileConditionKeys(profileKeys);
-      if (conds.length) setConditionKeys(new Set(profileKeys));
+      // Preserve any manual toggles the user has made this session; add newly-enabled keys.
+      setConditionKeys((prev) => {
+        if (!conditionsSynced) return new Set(profileKeys);
+        const next = new Set(prev);
+        profileKeys.forEach((k) => next.add(k));
+        // Drop keys the user no longer has flagged in profile.
+        Array.from(next).forEach((k) => { if (!profileKeys.has(k)) next.delete(k); });
+        return next;
+      });
       setConditionsSynced(true);
-    })();
-  }, [user, conditionsSynced]);
+    };
+
+    void syncFromProfile();
+
+    const channel = supabase
+      .channel(`qfr-profile-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `user_id=eq.${user.id}` },
+        () => { void syncFromProfile(); },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const toggleCondition = (key: ConditionKey) => {
     setConditionKeys((prev) => {
