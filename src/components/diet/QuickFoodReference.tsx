@@ -121,6 +121,8 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
   // on first load; the user can then toggle any chip on/off.
   const [conditionKeys, setConditionKeys] = useState<Set<ConditionKey>>(new Set());
   const [conditionsSynced, setConditionsSynced] = useState(false);
+  // Keys of conditions the user actually has (from profile). Only these show as chips.
+  const [profileConditionKeys, setProfileConditionKeys] = useState<Set<string>>(new Set());
   const activeConditions: ActiveCondition[] = useMemo(
     () =>
       Array.from(conditionKeys).map((k) => {
@@ -151,7 +153,9 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
         normalizePref(lifestyleDiet);
       if (pref) { setProfilePref(pref); setDiet(pref); }
       const conds = deriveActiveConditions((profRes.data as any)?.deep_profiling, metaMap);
-      if (conds.length) setConditionKeys(new Set(conds.map((c) => c.key)));
+      const profileKeys = new Set(conds.map((c) => c.key));
+      setProfileConditionKeys(profileKeys);
+      if (conds.length) setConditionKeys(new Set(profileKeys));
       setConditionsSynced(true);
     })();
   }, [user, conditionsSynced]);
@@ -585,10 +589,11 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
 
 
 
-        {/* Health-condition filter — dynamic from public.food_conditions.
-            Chips use DB label directly so admin edits (e.g. "Kidney Stone" vs
-            "Kidney Disease") show up here in real time. Three action toggles
-            below the box let users filter foods by Avoid / Limit / Encourage. */}
+        {/* Health-condition filter — only shows conditions the user has enabled
+            in their profile (deep_profiling). Chips, labels, and emojis are read
+            live from public.food_conditions so admin edits appear in real time.
+            If the user has no conditions flagged, the whole box is hidden. */}
+        {profileConditionKeys.size > 0 && (
         <div className="px-4 pb-2 pt-1 max-w-3xl mx-auto">
           <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-white to-muted/30 p-2.5">
             <div className="flex items-center justify-between gap-2 px-1 pb-1.5">
@@ -612,7 +617,7 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
                 {conditionCatalog.length === 0 && (
                   <span className="text-[11px] text-muted-foreground italic px-1">Loading conditions…</span>
                 )}
-                {conditionCatalog.map((c) => {
+                {conditionCatalog.filter((c) => profileConditionKeys.has(c.key)).map((c) => {
                   const active = conditionKeys.has(c.key);
                   const Icon = CONDITION_ICONS[c.key] ?? ShieldAlert;
                   return (
@@ -671,6 +676,7 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
             </div>
           )}
         </div>
+        )}
 
 
 
