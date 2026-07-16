@@ -285,7 +285,7 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
   };
 
   // A preset takes over the whole surface (cross-category), same effect as global sort.
-  const isGlobalSort = preset !== null || sort !== "recommended" || search.trim().length > 0;
+  const isGlobalSort = preset !== null || sort !== "recommended" || search.trim().length > 0 || actionFilter !== null;
 
   // Effective sort key — presets imply a natural sort.
   const effectiveSort: SortKey =
