@@ -94,10 +94,27 @@ public class BBDOHealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "requestAuthorization", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getTodayStepCount", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "getTodayStepCount", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getHealthSnapshot", returnType: CAPPluginReturnPromise)
     ]
 
     private let healthStore = HKHealthStore()
+
+    private func readTypes() -> Set<HKObjectType> {
+        var types = Set<HKObjectType>()
+        let ids: [HKQuantityTypeIdentifier] = [
+            .stepCount, .activeEnergyBurned, .distanceWalkingRunning,
+            .appleExerciseTime, .bodyMass, .restingHeartRate,
+            .heartRateVariabilitySDNN, .bloodGlucose
+        ]
+        for id in ids {
+            if let t = HKQuantityType.quantityType(forIdentifier: id) { types.insert(t) }
+        }
+        if let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
+            types.insert(sleep)
+        }
+        return types
+    }
 
     @objc func isAvailable(_ call: CAPPluginCall) {
         bbdoNativeLog("BBDOHealthKit.isAvailable invoked")
@@ -110,12 +127,7 @@ public class BBDOHealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("Apple Health is not available on this device", "healthkitUnavailable")
             return
         }
-        guard let stepType = HKObjectType.quantityType(forIdentifier: .stepCount) else {
-            call.reject("Step count is not available", "stepTypeUnavailable")
-            return
-        }
-
-        healthStore.requestAuthorization(toShare: [], read: [stepType]) { success, error in
+        healthStore.requestAuthorization(toShare: [], read: readTypes()) { success, error in
             DispatchQueue.main.async {
                 if let error = error {
                     call.reject(error.localizedDescription, "authorizationFailed")
@@ -137,8 +149,7 @@ public class BBDOHealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
 
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: Date())
+        let startOfDay = Calendar.current.startOfDay(for: Date())
         let now = Date()
         let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
         let query = HKStatisticsQuery(quantityType: stepType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, error in
@@ -156,6 +167,114 @@ public class BBDOHealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
         healthStore.execute(query)
+    }
+
+    // MARK: - Snapshot
+
+    private func sumToday(_ id: HKQuantityTypeIdentifier, unit: HKUnit, completion: @escaping (Double) -> Void) {
+        guard let type = HKQuantityType.quantityType(forIdentifier: id) else { completion(0); return }
+        let start = Calendar.current.startOfDay(for: Date())
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: Date(), options: .strictStartDate)
+        let q = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, _ in
+            completion(result?.sumQuantity()?.doubleValue(for: unit) ?? 0)
+        }
+        healthStore.execute(q)
+    }
+
+    private func mostRecent(_ id: HKQuantityTypeIdentifier, unit: HKUnit, completion: @escaping (Double?, Date?) -> Void) {
+        guard let type = HKQuantityType.quantityType(forIdentifier: id) else { completion(nil, nil); return }
+        let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        let q = HKSampleQuery(sampleType: type, predicate: nil, limit: 1, sortDescriptors: [sort]) { _, samples, _ in
+            if let s = samples?.first as? HKQuantitySample {
+                completion(s.quantity.doubleValue(for: unit), s.endDate)
+            } else {
+                completion(nil, nil)
+            }
+        }
+        healthStore.execute(q)
+    }
+
+    private func lastNightSleepHours(completion: @escaping (Double) -> Void) {
+        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { completion(0); return }
+        let cal = Calendar.current
+        let now = Date()
+        // Window: yesterday 18:00 → today 12:00
+        var comps = cal.dateComponents([.year, .month, .day], from: now)
+        comps.hour = 12
+        let noonToday = cal.date(from: comps) ?? now
+        let start = cal.date(byAdding: .hour, value: -18, to: noonToday) ?? now
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: noonToday, options: [])
+        let q = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
+            var seconds: TimeInterval = 0
+            for s in (samples as? [HKCategorySample]) ?? [] {
+                let val = s.value
+                let isAsleep: Bool
+                if #available(iOS 16.0, *) {
+                    isAsleep = val == HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue
+                        || val == HKCategoryValueSleepAnalysis.asleepCore.rawValue
+                        || val == HKCategoryValueSleepAnalysis.asleepDeep.rawValue
+                        || val == HKCategoryValueSleepAnalysis.asleepREM.rawValue
+                } else {
+                    isAsleep = val == HKCategoryValueSleepAnalysis.asleep.rawValue
+                }
+                if isAsleep {
+                    seconds += s.endDate.timeIntervalSince(s.startDate)
+                }
+            }
+            completion(seconds / 3600.0)
+        }
+        healthStore.execute(q)
+    }
+
+    @objc func getHealthSnapshot(_ call: CAPPluginCall) {
+        bbdoNativeLog("BBDOHealthKit.getHealthSnapshot invoked")
+        guard HKHealthStore.isHealthDataAvailable() else {
+            call.reject("Apple Health is not available on this device", "healthkitUnavailable")
+            return
+        }
+
+        let group = DispatchGroup()
+        var result: [String: Any] = [:]
+
+        group.enter()
+        sumToday(.stepCount, unit: .count()) { v in result["steps"] = Int(v.rounded()); group.leave() }
+        group.enter()
+        sumToday(.activeEnergyBurned, unit: .kilocalorie()) { v in result["activeCalories"] = Int(v.rounded()); group.leave() }
+        group.enter()
+        sumToday(.distanceWalkingRunning, unit: HKUnit.meter()) { v in result["distanceMeters"] = Int(v.rounded()); group.leave() }
+        group.enter()
+        sumToday(.appleExerciseTime, unit: .minute()) { v in result["exerciseMinutes"] = Int(v.rounded()); group.leave() }
+
+        group.enter()
+        mostRecent(.bodyMass, unit: HKUnit.gramUnit(with: .kilo)) { v, d in
+            if let v = v { result["weightKg"] = v }
+            if let d = d { result["weightAt"] = ISO8601DateFormatter().string(from: d) }
+            group.leave()
+        }
+        group.enter()
+        mostRecent(.restingHeartRate, unit: HKUnit.count().unitDivided(by: .minute())) { v, d in
+            if let v = v { result["restingHeartRate"] = Int(v.rounded()) }
+            if let d = d { result["restingHeartRateAt"] = ISO8601DateFormatter().string(from: d) }
+            group.leave()
+        }
+        group.enter()
+        mostRecent(.heartRateVariabilitySDNN, unit: HKUnit.secondUnit(with: .milli)) { v, d in
+            if let v = v { result["hrvMs"] = Int(v.rounded()) }
+            if let d = d { result["hrvAt"] = ISO8601DateFormatter().string(from: d) }
+            group.leave()
+        }
+        group.enter()
+        mostRecent(.bloodGlucose, unit: HKUnit(from: "mg/dL")) { v, d in
+            if let v = v { result["glucoseMgDl"] = Int(v.rounded()) }
+            if let d = d { result["glucoseAt"] = ISO8601DateFormatter().string(from: d) }
+            group.leave()
+        }
+        group.enter()
+        lastNightSleepHours { hours in result["sleepHours"] = (hours * 10).rounded() / 10.0; group.leave() }
+
+        group.notify(queue: .main) {
+            call.resolve(result)
+        }
     }
 }
 
