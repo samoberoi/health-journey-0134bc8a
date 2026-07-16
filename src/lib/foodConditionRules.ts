@@ -95,9 +95,10 @@ export function deriveActiveConditions(
   const ua = Number(d.uricAcid);
   if (Number.isFinite(ua) && ua >= uricAcidThreshold) push("uric_acid");
 
-  // Hypertension lives in clinical.hasHypertension (profile toggle).
+  // Hypertension lives in clinical.hasHypertension. The admin catalog stores
+  // this condition under the key `high_bp`, so we push that key (matches rules).
   if (c.hasHypertension === true || String(c.hasHypertension || "").toLowerCase() === "yes") {
-    push("hypertension");
+    push("high_bp");
   }
 
   // Generic fallback: for any condition key configured in the admin catalog
