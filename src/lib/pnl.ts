@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export type PnlRow = {
-  source: "subscription" | "yoga";
+  source: "subscription" | "yoga" | "event";
   ref_id: string;
   occurred_at: string;
   user_id: string;
