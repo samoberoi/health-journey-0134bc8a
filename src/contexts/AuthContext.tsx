@@ -4,7 +4,11 @@ import type { Session, User } from "@supabase/supabase-js";
 import { logAudit } from "@/lib/auditLog";
 import { clearUser } from "@/lib/userStore";
 import { sendWelcomeNotification } from "@/lib/notificationService";
-import { syncNativePersistenceFromLocalStorage } from "@/lib/nativePersistence";
+import {
+  clearNativePersistedAuthState,
+  persistAuthSessionToNative,
+  syncNativePersistenceFromLocalStorage,
+} from "@/lib/nativePersistence";
 
 export const EXPLICIT_LOGOUT_KEY = "bb_explicit_logout";
 
@@ -34,14 +38,19 @@ export function clearPersistedAuthState(markLoggedOut = true) {
   }
 }
 
+async function clearAllPersistedAuthState(markLoggedOut = true) {
+  clearPersistedAuthState(markLoggedOut);
+  await clearNativePersistedAuthState();
+}
+
 export async function prepareFreshLoginState() {
-  clearPersistedAuthState(true);
+  await clearAllPersistedAuthState(true);
   try {
     await supabase.auth.signOut({ scope: "local" });
   } catch {
     /* local session may already be gone */
   } finally {
-    clearPersistedAuthState(true);
+    await clearAllPersistedAuthState(true);
   }
 }
 
@@ -96,7 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setSession(session);
         setLoading(false);
-        void syncNativePersistenceFromLocalStorage();
+        if (session) void persistAuthSessionToNative();
+        else void syncNativePersistenceFromLocalStorage();
         const newUid = session?.user?.id ?? null;
         if (event === "SIGNED_IN" && newUid && prevUserId.current !== newUid) {
           logAudit({ module: "Auth", action: "login", target_type: "user", target_id: newUid });
@@ -128,7 +138,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       prevUserId.current = session?.user?.id ?? null;
       setLoading(false);
-      void syncNativePersistenceFromLocalStorage();
+      if (session) void persistAuthSessionToNative();
+      else void syncNativePersistenceFromLocalStorage();
       const uid = session?.user?.id;
       if (uid) {
         setTimeout(() => {
@@ -149,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await supabase.auth.signOut({ scope: "global" });
     } finally {
-      clearPersistedAuthState();
+      await clearAllPersistedAuthState();
       prevUserId.current = null;
       setSession(null);
       setLoading(false);
