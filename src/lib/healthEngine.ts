@@ -55,6 +55,7 @@ export interface DeepProfilingData {
   pcos?: string; // no, yes, unsure  (labelled "PMOS" in the UI)
   uricAcid?: number; // mg/dL, most recent known reading
   kidneyDisease?: string; // no, yes, unsure
+  kidneyStones?: string; // no, yes
   ironDeficiency?: string; // no, yes, unsure
   stressLevel?: string; // low, moderate, high
   bellyFat?: boolean;
