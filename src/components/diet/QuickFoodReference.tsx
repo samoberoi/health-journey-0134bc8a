@@ -131,6 +131,7 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
   );
   const [ruleMap, setRuleMap] = useState<Map<string, FoodRuleHit>>(new Map());
   const [hideSkipped, setHideSkipped] = useState(true);
+  const [actionFilter, setActionFilter] = useState<ActionKey | null>(null);
   const [showAllDiets, setShowAllDiets] = useState(false);
 
   // Load user's diet preference + auto-select conditions from profile.
