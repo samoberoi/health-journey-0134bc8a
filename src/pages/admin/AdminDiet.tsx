@@ -154,6 +154,7 @@ export default function AdminDiet() {
   const [editing, setEditing] = useState<Item | null>(null);
   const [creating, setCreating] = useState(false);
   const [editingFilter, setEditingFilter] = useState<Filter | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [recFilter, setRecFilter] = useState<"all" | Recommendation>("all");
