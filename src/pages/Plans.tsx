@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Check, ChevronRight, Star, Loader2, ShieldCheck } from "lucide-react";
+import { Check, ChevronRight, Star, Loader2, ShieldCheck, AlertTriangle } from "lucide-react";
 import SoundToggle from "@/components/SoundToggle";
 import { setPhase } from "@/lib/musicEngine";
 import {
@@ -13,7 +13,13 @@ import {
   type BillingCycle,
   type PackageWithPricing,
 } from "@/lib/packageService";
-import { fetchActiveSubscription, normalizePlanKey } from "@/lib/subscriptionService";
+import {
+  fetchActiveSubscription,
+  fetchLatestSubscription,
+  isSubscriptionExpired,
+  normalizePlanKey,
+  type Subscription,
+} from "@/lib/subscriptionService";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
@@ -27,22 +33,28 @@ export default function Plans() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPlanKey, setCurrentPlanKey] = useState<string | null>(null);
+  const [expiredSub, setExpiredSub] = useState<Subscription | null>(null);
 
   useEffect(() => {
     setPhase("power");
     (async () => {
-      const [data, sub] = await Promise.all([
+      const [data, activeSub, latestSub] = await Promise.all([
         fetchPackagesWithPricing({ onlyEnabled: true }),
         user ? fetchActiveSubscription(user.id) : Promise.resolve(null),
+        user ? fetchLatestSubscription(user.id) : Promise.resolve(null),
       ]);
       const visible = data.filter((p) => p.show_in_onboarding !== false);
       setPkgs(visible);
-      const activeKey = normalizePlanKey(sub?.plan_id);
+      const activeKey = normalizePlanKey(activeSub?.plan_id);
       setCurrentPlanKey(activeKey);
-      // Preselect: first non-current popular plan, else first non-current plan
+      const expired = !activeSub && isSubscriptionExpired(latestSub) ? latestSub : null;
+      setExpiredSub(expired);
+      // Preselect: previously held plan if expired, else popular, else first
+      const previousKey = normalizePlanKey(expired?.plan_id);
+      const previous = previousKey ? visible.find((p) => p.plan_key === previousKey) : null;
       const popular = visible.find((p) => p.accent === "popular" && p.plan_key !== activeKey);
       const firstUpgrade = visible.find((p) => p.plan_key !== activeKey);
-      const pick = popular ?? firstUpgrade ?? null;
+      const pick = previous ?? popular ?? firstUpgrade ?? null;
       if (pick) setSelectedId(pick.id);
       setLoading(false);
     })();
@@ -93,9 +105,27 @@ export default function Plans() {
       <SoundToggle />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col flex-1">
         <div className="mb-5">
-          <span className="text-xs font-medium text-primary uppercase tracking-widest">Choose Your Path</span>
-          <h1 className="text-3xl font-black text-foreground mt-1">Pick your<br />reset plan</h1>
+          <span className="text-xs font-medium text-primary uppercase tracking-widest">
+            {expiredSub ? "Renew Access" : "Choose Your Path"}
+          </span>
+          <h1 className="text-3xl font-black text-foreground mt-1">
+            {expiredSub ? (<>Your plan<br />has expired</>) : (<>Pick your<br />reset plan</>)}
+          </h1>
         </div>
+
+        {expiredSub && (
+          <div className="mb-5 rounded-2xl p-4 border border-destructive/40 bg-destructive/10 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 shrink-0 text-destructive mt-0.5" strokeWidth={2} />
+            <div className="min-w-0">
+              <p className="text-foreground font-bold text-sm leading-tight">
+                {expiredSub.plan_name} expired on {new Date(expiredSub.expires_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+              </p>
+              <p className="text-muted-foreground text-xs mt-1 leading-snug">
+                Renew a plan below to restore full access to your dashboard, coach, and tracking.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Billing cycle selector */}
         <div className="liquid-glass rounded-2xl p-1 grid grid-cols-4 gap-1 mb-5">
@@ -224,7 +254,7 @@ export default function Plans() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          {currentPlanKey ? "Upgrade Plan" : "Start My Journey"} <ChevronRight className="w-5 h-5" strokeWidth={1.5} />
+          {expiredSub ? "Renew Plan" : currentPlanKey ? "Upgrade Plan" : "Start My Journey"} <ChevronRight className="w-5 h-5" strokeWidth={1.5} />
         </motion.button>
         
       </motion.div>
