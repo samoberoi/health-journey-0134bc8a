@@ -12,7 +12,10 @@ import {
   ExternalLink,
   Play,
   Filter,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
+import { uploadExerciseThumbnail, fileToDataUrl } from "@/lib/exerciseThumbnailService";
 import { toast } from "@/hooks/use-toast";
 import { logAudit } from "@/lib/auditLog";
 import ExportCsvButton from "@/components/admin/ExportCsvButton";
