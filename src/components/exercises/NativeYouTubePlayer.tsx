@@ -35,6 +35,7 @@ export default function NativeYouTubePlayer({
     try {
       const width = Math.max(320, Math.round(window.innerWidth || 390));
       const height = Math.max(180, Math.round(width * 9 / 16));
+      const YoutubePlayer = await loadYoutubePlayer();
       await YoutubePlayer.initialize({
         playerId: playerIdRef.current,
         videoId,
