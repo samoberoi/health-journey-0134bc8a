@@ -100,12 +100,54 @@ export async function createPost(
  * signed URL usable as <img src>. Files are namespaced under the user's id
  * so per-user RLS policies apply.
  */
+const MAX_DIMENSION = 1600;
+const JPEG_QUALITY = 0.8;
+
+function loadImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Failed to read image")); };
+    img.src = url;
+  });
+}
+
+async function compressImage(file: File): Promise<Blob> {
+  // Skip GIFs (animation) — but hard-cap size
+  if (file.type === "image/gif") return file;
+  try {
+    const img = await loadImage(file);
+    const w0 = img.naturalWidth;
+    const h0 = img.naturalHeight;
+    const scale = Math.min(1, MAX_DIMENSION / Math.max(w0, h0));
+    const w = Math.round(w0 * scale);
+    const h = Math.round(h0 * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, w, h);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY),
+    );
+    if (!blob) return file;
+    // If compression actually made it bigger (rare, tiny images), keep original
+    return blob.size < file.size ? blob : blob;
+  } catch {
+    return file;
+  }
+}
+
 export async function uploadCommunityImage(userId: string, file: File): Promise<string | null> {
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const compressed = await compressImage(file);
+  const contentType = compressed.type || "image/jpeg";
+  const ext = contentType.includes("jpeg") ? "jpg" : contentType.includes("png") ? "png" : contentType.includes("gif") ? "gif" : "jpg";
   const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error: upErr } = await supabase.storage
     .from("community-images")
-    .upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type || undefined });
+    .upload(path, compressed, { cacheControl: "3600", upsert: false, contentType });
   if (upErr) return null;
   // 10-year signed URL (private bucket, but readable by any authenticated user via RLS).
   const { data, error } = await supabase.storage
