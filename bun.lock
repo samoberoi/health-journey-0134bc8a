@@ -14,6 +14,7 @@
         "@capacitor/preferences": "^8.0.1",
         "@capacitor/push-notifications": "^8.1.2",
         "@capawesome/capacitor-badge": "^8.0.2",
+        "@capgo/capacitor-youtube-player": "^8.2.14",
         "@fontsource/epilogue": "^5.2.8",
         "@fontsource/montserrat": "^5.2.8",
         "@fontsource/urbanist": "^5.2.7",
@@ -131,6 +132,8 @@
     "@capacitor/push-notifications": ["@capacitor/push-notifications@8.1.2", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@capacitor/push-notifications/-/push-notifications-8.1.2.tgz", { "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-TQl4XxqJfNF+KbSYBFMXYYT5WXUaleVKXlByhh/8+KySMVNjp+l5OqAUoGe/sY1IAnGXEuUeCjA/WLZEVvGwrA=="],
 
     "@capawesome/capacitor-badge": ["@capawesome/capacitor-badge@8.0.2", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@capawesome/capacitor-badge/-/capacitor-badge-8.0.2.tgz", { "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-4ZnRyFvViaokupdrOi3OkoBurH+23hnxni+PYq5C1ObNLYbhty/WK8BzMtndCv0S47XjGBLjQ9DJsYj3JDVxGQ=="],
+
+    "@capgo/capacitor-youtube-player": ["@capgo/capacitor-youtube-player@8.2.14", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@capgo/capacitor-youtube-player/-/capacitor-youtube-player-8.2.14.tgz", { "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-Nml/GPe8QqjOisshyYm6p15Ml2oP0Qh9DwI93d25rxj3q0y1HG8+fUOKU0EmCj7i2ehQwPYLsqwN8/DotG+dSA=="],
 
     "@cspotcode/source-map-support": ["@cspotcode/source-map-support@0.8.1", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@cspotcode/source-map-support/-/source-map-support-0.8.1.tgz", { "dependencies": { "@jridgewell/trace-mapping": "0.3.9" } }, "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw=="],
 
