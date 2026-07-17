@@ -7,6 +7,7 @@ import { Fab } from "@/components/ui/Fab";
 import SoundToggle from "@/components/SoundToggle";
 import { setPhase } from "@/lib/musicEngine";
 import { getExistingSessionUnlessLoggedOut } from "@/contexts/AuthContext";
+import { resolvePostAuthRoute } from "@/lib/accessControl";
 
 type SymptomItem = { text: string; icon: AppIconName };
 
@@ -28,7 +29,8 @@ export default function RealityHook() {
   const goToLogin = async () => {
     const existingSession = await getExistingSessionUnlessLoggedOut();
     if (existingSession) {
-      navigate("/home", { replace: true });
+      const route = await resolvePostAuthRoute(existingSession.user.id, { missingProfileRoute: null });
+      navigate(route ?? "/auth", { replace: true });
       return;
     }
     navigate("/auth", { replace: true });
