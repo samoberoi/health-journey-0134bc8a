@@ -115,7 +115,7 @@ export default function AppleHealthSnapshotCard() {
       <div className="mb-3 flex items-center justify-between">
         <div>
           <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-foreground">
-            Apple Health {!isNative && "· from your iPhone"}
+            {healthSourceLabel()} {!isNative && `· from your ${phoneLabel()}`}
           </p>
           <p className="text-sm font-black text-foreground">Today's snapshot</p>
         </div>
@@ -123,7 +123,7 @@ export default function AppleHealthSnapshotCard() {
           type="button"
           onClick={() => void load()}
           disabled={loading}
-          aria-label="Refresh Apple Health"
+          aria-label={`Refresh ${healthSourceLabel()}`}
           className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-primary disabled:opacity-60"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -133,8 +133,8 @@ export default function AppleHealthSnapshotCard() {
       {!hasAnyData && !loading ? (
         <p className="rounded-2xl border border-dashed border-border bg-background/60 px-3 py-4 text-center text-[12px] font-medium text-muted-foreground">
           {isNative
-            ? "No Apple Health data yet. Allow permissions in the Health app."
-            : "Open the app on your iPhone once to sync your Apple Health vitals here."}
+            ? `No ${healthSourceLabel()} data yet. Allow permissions in the Health app.`
+            : `Open the app on your ${phoneLabel()} once to sync your ${healthSourceLabel()} vitals here.`}
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-2">
