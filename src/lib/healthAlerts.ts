@@ -214,14 +214,23 @@ export async function fireHealthMetricFeedback(
     const isAlert = result.level === "alert" || result.level === "critical";
 
     if (isAlert) {
-      // Health alerts should be loud enough to test confidently.
-      const previousVolume = getMasterVolume();
-      setMasterVolume(Math.max(settings.volume ?? 0.8, result.level === "critical" ? 1 : 0.9));
-      playCriticalHealthAlert();
-      setTimeout(() => playNotificationSound(settings.variant), 520);
-      setTimeout(() => setMasterVolume(previousVolume), 1_800);
+      // Send native notifications first and isolate each side effect. A sound
+      // failure on iOS must never block APNs delivery for a critical alert.
+      void sendRemoteHealthPush(result.title, result.message).then((ok) => {
+        if (!ok) console.warn("remote health push was not accepted", result.title);
+      });
       void sendLocalHealthAlert(result.title, result.message);
-      void sendRemoteHealthPush(result.title, result.message);
+
+      try {
+        // Health alerts should be loud enough to test confidently.
+        const previousVolume = getMasterVolume();
+        setMasterVolume(Math.max(settings.volume ?? 0.8, result.level === "critical" ? 1 : 0.9));
+        playCriticalHealthAlert();
+        setTimeout(() => playNotificationSound(settings.variant), 520);
+        setTimeout(() => setMasterVolume(previousVolume), 1_800);
+      } catch (soundErr) {
+        console.warn("health alert sound failed", soundErr);
+      }
 
       if (opts.createInboxNotification !== false && log.user_id) {
         void createNotification({
