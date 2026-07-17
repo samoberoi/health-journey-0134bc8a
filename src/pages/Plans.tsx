@@ -33,22 +33,28 @@ export default function Plans() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPlanKey, setCurrentPlanKey] = useState<string | null>(null);
+  const [expiredSub, setExpiredSub] = useState<Subscription | null>(null);
 
   useEffect(() => {
     setPhase("power");
     (async () => {
-      const [data, sub] = await Promise.all([
+      const [data, activeSub, latestSub] = await Promise.all([
         fetchPackagesWithPricing({ onlyEnabled: true }),
         user ? fetchActiveSubscription(user.id) : Promise.resolve(null),
+        user ? fetchLatestSubscription(user.id) : Promise.resolve(null),
       ]);
       const visible = data.filter((p) => p.show_in_onboarding !== false);
       setPkgs(visible);
-      const activeKey = normalizePlanKey(sub?.plan_id);
+      const activeKey = normalizePlanKey(activeSub?.plan_id);
       setCurrentPlanKey(activeKey);
-      // Preselect: first non-current popular plan, else first non-current plan
+      const expired = !activeSub && isSubscriptionExpired(latestSub) ? latestSub : null;
+      setExpiredSub(expired);
+      // Preselect: previously held plan if expired, else popular, else first
+      const previousKey = normalizePlanKey(expired?.plan_id);
+      const previous = previousKey ? visible.find((p) => p.plan_key === previousKey) : null;
       const popular = visible.find((p) => p.accent === "popular" && p.plan_key !== activeKey);
       const firstUpgrade = visible.find((p) => p.plan_key !== activeKey);
-      const pick = popular ?? firstUpgrade ?? null;
+      const pick = previous ?? popular ?? firstUpgrade ?? null;
       if (pick) setSelectedId(pick.id);
       setLoading(false);
     })();
