@@ -26,6 +26,14 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Use Face ID to securely unlock BBDO.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>BBDO uses the camera so you can take a profile photo and share photos with the community.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>BBDO needs access to your photo library so you can pick a profile photo or share a photo with the community.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>BBDO saves photos you capture back to your photo library.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>BBDO may use the microphone if you record a video.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Read your steps, active calories, exercise, sleep, resting heart rate, HRV, weight and glucose from Apple Health to power your dashboard and trends.</string>
 	<key>NSHealthUpdateUsageDescription</key>
