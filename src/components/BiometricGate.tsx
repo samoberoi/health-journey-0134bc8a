@@ -12,6 +12,10 @@ import {
 } from "@/lib/biometric";
 import { Button } from "@/components/ui/button";
 
+function isAndroidNativeApp() {
+  return typeof navigator !== "undefined" && /android/i.test(navigator.userAgent);
+}
+
 /**
  * Native-only Face ID / biometric gate.
  * - Runs on iOS/Android automatically whenever an authenticated session exists.
@@ -31,7 +35,9 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
   const lastAuthAt = useRef<number>(0);
   const authenticatingRef = useRef(false);
 
-  const native = isNative();
+  // Android biometric plugin path is disabled for now because it is crashing
+  // the installed APK before users can reach the app. Keep iOS strict.
+  const native = isNative() && !isAndroidNativeApp();
   const startupShield = native && loading;
   const shouldGate = native && !loading && !!session;
   const gateVisible =
@@ -55,7 +61,7 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
     setBiometryChecked(true);
     // On Android, if biometry isn't enrolled/available, don't trap the user
     // behind the lock screen — just let them in. iOS keeps the strict gate.
-    const isAndroid = typeof navigator !== "undefined" && /android/i.test(navigator.userAgent);
+    const isAndroid = isAndroidNativeApp();
     if (!available && isAndroid) {
       authenticatingRef.current = false;
       setAuthenticating(false);

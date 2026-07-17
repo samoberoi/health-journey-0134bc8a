@@ -23,6 +23,7 @@ import { PushNotifications } from "@capacitor/push-notifications";
 import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
 import { playNotificationSound } from "@/lib/soundEngine";
 import { fireRealtimeHealthNotificationAlert } from "@/lib/healthAlerts";
+import { isNativePushSupported } from "@/lib/nativePush";
 
 import Splash from "./pages/Splash";
 import LanguageSelect from "./pages/LanguageSelect";
@@ -133,7 +134,7 @@ function GlobalRealtimeAlerts() {
     // Initial sync + refresh whenever the app returns to the foreground.
     void syncBadge();
     let appListener: { remove: () => void } | null = null;
-    if (isNative()) {
+    if (isNativePushSupported()) {
       void CapApp.addListener("appStateChange", (state) => {
         if (state.isActive) {
           // Clear the OS notification tray and resync badge to the real count.
