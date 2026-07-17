@@ -12,7 +12,10 @@ import {
   ExternalLink,
   Play,
   Filter,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
+import { uploadExerciseThumbnail, fileToDataUrl } from "@/lib/exerciseThumbnailService";
 import { toast } from "@/hooks/use-toast";
 import { logAudit } from "@/lib/auditLog";
 import ExportCsvButton from "@/components/admin/ExportCsvButton";
@@ -105,6 +108,10 @@ export default function AdminExercises() {
   const [isNew, setIsNew] = useState(false);
   const [form, setForm] = useState<EditForm | null>(null);
   const [saving, setSaving] = useState(false);
+  const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const [thumbPreview, setThumbPreview] = useState<string | null>(null);
+  const [thumbUploading, setThumbUploading] = useState(false);
+  const thumbInputRef = useRef<HTMLInputElement | null>(null);
 
   const [editingBadge, setEditingBadge] = useState<ExerciseBadge | null>(null);
   const [badgeForm, setBadgeForm] = useState<Partial<ExerciseBadge> | null>(null);
@@ -190,12 +197,29 @@ export default function AdminExercises() {
     setIsNew(false);
     setEditing(e);
     setForm(toForm(e));
+    setThumbFile(null);
+    setThumbPreview(null);
   }
 
   function closeEdit() {
     setEditing(null);
     setForm(null);
     setIsNew(false);
+    setThumbFile(null);
+    setThumbPreview(null);
+  }
+
+  function onSelectThumbFile(file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please upload an image.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      toast({ title: "Too large", description: "Max 3MB.", variant: "destructive" });
+      return;
+    }
+    setThumbFile(file);
+    fileToDataUrl(file).then((url) => setThumbPreview(url));
   }
 
   async function save() {
@@ -206,6 +230,17 @@ export default function AdminExercises() {
     }
     setSaving(true);
     try {
+      // Upload thumbnail (if user picked one) before saving row
+      let nextImageUrl: string | null = form.image_url?.trim() ? form.image_url.trim() : editing.image_url ?? null;
+      if (thumbFile) {
+        setThumbUploading(true);
+        try {
+          nextImageUrl = await uploadExerciseThumbnail(editing.id === "__new__" ? "new" : editing.id, thumbFile);
+        } finally {
+          setThumbUploading(false);
+        }
+      }
+
       const payload = {
         name: form.name.trim(),
         category_id: form.category_id,
@@ -214,7 +249,7 @@ export default function AdminExercises() {
         reps_duration: form.reps_duration.trim(),
         sets: form.sets.trim(),
         youtube_url: normalizeYoutubeUrl(form.youtube_url),
-        image_url: form.image_url.trim() || null,
+        image_url: nextImageUrl,
         icon: form.icon || "🏋️",
         instructions: form.instructions,
         benefits: form.benefits,
@@ -463,7 +498,7 @@ export default function AdminExercises() {
                     >
                       <img src={img} alt={e.name} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                      <span className="absolute top-1.5 left-1.5 text-lg drop-shadow">{e.icon}</span>
+                      
                       {yid && (
                         <a
                           href={e.youtube_url}
@@ -594,8 +629,7 @@ export default function AdminExercises() {
       <Dialog open={!!editing} onOpenChange={(o) => !o && closeEdit()}>
         <DialogContent className="max-w-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <span className="text-2xl">{form?.icon}</span>
+            <DialogTitle>
               {isNew ? "Add new exercise" : "Edit exercise"}
             </DialogTitle>
           </DialogHeader>
@@ -647,17 +681,69 @@ export default function AdminExercises() {
                     onChange={(e) => setForm({ ...form, sets: e.target.value })}
                   />
                 </div>
-                <div>
-                  <Label>Icon (emoji)</Label>
-                  <Input value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Image URL (optional)</Label>
-                  <Input
-                    value={form.image_url}
-                    placeholder="https://…"
-                    onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                  />
+                <div className="sm:col-span-2">
+                  <Label>Thumbnail</Label>
+                  <div className="mt-1 flex items-start gap-3">
+                    <div
+                      className="relative w-40 shrink-0 rounded-2xl overflow-hidden bg-muted border border-border"
+                      style={{ aspectRatio: "16 / 9" }}
+                    >
+                      {(thumbPreview || form.image_url) ? (
+                        <img
+                          src={thumbPreview || form.image_url}
+                          alt="Thumbnail preview"
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+                          <ImageIcon className="w-6 h-6" />
+                        </div>
+                      )}
+                      {thumbUploading && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <Loader2 className="w-5 h-5 text-white animate-spin" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <input
+                        ref={thumbInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) onSelectThumbFile(f);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => thumbInputRef.current?.click()}
+                      >
+                        <Upload className="w-4 h-4 mr-1" />
+                        {(thumbPreview || form.image_url) ? "Replace thumbnail" : "Upload thumbnail"}
+                      </Button>
+                      {(thumbPreview || form.image_url) && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => {
+                            setThumbFile(null);
+                            setThumbPreview(null);
+                            setForm({ ...form, image_url: "" });
+                          }}
+                        >
+                          <X className="w-4 h-4 mr-1" /> Remove
+                        </Button>
+                      )}
+                      <p className="text-[11px] text-muted-foreground">JPG, PNG or WEBP · up to 3MB · 16:9 recommended</p>
+                    </div>
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   <Label>YouTube Link</Label>
