@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDietTypes } from "@/hooks/useDietTypes";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ import {
 type CategorySlug = "sugar_spike" | "metabolic_essential" | "power_addon";
 type Recommendation = "avoid" | "limit" | "moderate" | "encourage";
 type GiBand = "low" | "low_med" | "medium" | "med_high" | "high";
-type DietType = "veg" | "vegan" | "non_veg" | "jain";
+type DietType = string;
 type ServingBasis = "per_100g" | "per_100ml" | "cooked" | "raw";
 
 interface Category { id: string; slug: CategorySlug; name: string; description: string | null; display_order: number; }
