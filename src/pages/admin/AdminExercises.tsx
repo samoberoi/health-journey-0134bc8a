@@ -629,8 +629,7 @@ export default function AdminExercises() {
       <Dialog open={!!editing} onOpenChange={(o) => !o && closeEdit()}>
         <DialogContent className="max-w-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <span className="text-2xl">{form?.icon}</span>
+            <DialogTitle>
               {isNew ? "Add new exercise" : "Edit exercise"}
             </DialogTitle>
           </DialogHeader>
