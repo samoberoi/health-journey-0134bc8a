@@ -88,13 +88,24 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
     (async () => {
       const YT = await loadYTAPI();
       if (cancelled || !hostRef.current) return;
+      // Capacitor apps run under `capacitor://localhost` (iOS) / `https://localhost` (Android).
+      // YouTube's IFrame API rejects those origins and throws Error 153 unless we point at the
+      // privacy-enhanced host and pass an https origin it accepts.
+      const isNative =
+        typeof window !== "undefined" &&
+        /^(capacitor|ionic):/i.test(window.location.protocol);
+      const embedOrigin = isNative ? "https://localhost" : window.location.origin;
       playerRef.current = new YT.Player(hostRef.current, {
         videoId: video.youtubeId,
+        host: "https://www.youtube-nocookie.com",
         playerVars: {
           rel: 0,
           modestbranding: 1,
           playsinline: 1,
           autoplay: 1,
+          enablejsapi: 1,
+          origin: embedOrigin,
+          widget_referrer: embedOrigin,
           start: restarted ? 0 : Math.floor(resumeFrom || 0),
         },
         events: {
