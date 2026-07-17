@@ -88,13 +88,10 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
     (async () => {
       const YT = await loadYTAPI();
       if (cancelled || !hostRef.current) return;
-      // Capacitor apps run under `capacitor://localhost` (iOS) / `https://localhost` (Android).
-      // YouTube's IFrame API rejects those origins and throws Error 153 unless we point at the
-      // privacy-enhanced host and pass an https origin it accepts.
-      const isNative =
-        typeof window !== "undefined" &&
-        /^(capacitor|ionic):/i.test(window.location.protocol);
-      const embedOrigin = isNative ? "https://localhost" : window.location.origin;
+      // With capacitor.config `server.hostname` + `https` schemes, both iOS and
+      // Android now serve the WebView from https://<hostname>/, so window.location.origin
+      // is already a valid https origin YouTube accepts. Use it directly.
+      const embedOrigin = window.location.origin;
       playerRef.current = new YT.Player(hostRef.current, {
         videoId: video.youtubeId,
         host: "https://www.youtube-nocookie.com",
@@ -113,6 +110,13 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
             const d = Number(e.target.getDuration?.() || 0);
             if (d > 0) saveDuration(video.youtubeId, d);
             lastPosRef.current = Number(e.target.getCurrentTime?.() || 0);
+          },
+          onError: (e: any) => {
+            // 101 / 150 / 153 = embed not allowed for this host. Fall back to
+            // opening the video in the system browser / YouTube app.
+            if ([101, 150, 153].includes(Number(e?.data))) {
+              try { window.open(video.youtubeUrl, "_blank"); } catch {}
+            }
           },
           onStateChange: (e: any) => {
             // 1 = playing, everything else stops the tick clock so seeking / pausing don't accrue time
