@@ -24,6 +24,27 @@ allprojects {
     }
 }
 
+// capacitor-health-connect (and some other Capacitor community plugins) default their
+// Kotlin jvmTarget to 21, which the Kotlin plugin bundled with AGP 8.13 doesn't accept.
+// Pin every subproject's Java + Kotlin JVM target to 17 to keep the build consistent.
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+            }
+        }
+        project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions {
+                jvmTarget = "17"
+            }
+        }
+    }
+}
+
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
