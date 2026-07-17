@@ -1,13 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Maximize2, Play, RotateCcw } from "lucide-react";
-// Dynamically imported to avoid bundling issues when the native plugin
-// isn't installed locally (e.g. before `npm install` on a fresh pull).
-const loadYoutubePlayer = async () => {
-  const mod = await import(
-    /* @vite-ignore */ "@capgo/capacitor-youtube-player"
-  );
-  return (mod as any).YoutubePlayer;
-};
+import { useMemo, useRef } from "react";
+import { Maximize2 } from "lucide-react";
+import { youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 type NativeYouTubePlayerProps = {
   videoId: string;
@@ -20,75 +13,46 @@ export default function NativeYouTubePlayer({
   videoId,
   title,
   start = 0,
-  autoOpen = true,
+  autoOpen: _autoOpen = true,
 }: NativeYouTubePlayerProps) {
-  const playerIdRef = useRef(`bbdo-native-${videoId}-${Date.now()}`);
-  const openedRef = useRef(false);
-  const [launching, setLaunching] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const playerSrc = useMemo(
+    () => youtubePlayerProxyUrl(videoId, { autoplay: true, start }),
+    [start, videoId],
+  );
 
-  const openPlayer = useCallback(async () => {
-    if (!videoId || launching) return;
-    setLaunching(true);
-    setFailed(false);
-
+  const enterFullscreen = () => {
+    const frame = iframeRef.current;
+    const requestFullscreen =
+      frame?.requestFullscreen ||
+      (frame as any)?.webkitRequestFullscreen ||
+      (frame as any)?.mozRequestFullScreen ||
+      (frame as any)?.msRequestFullscreen;
     try {
-      const width = Math.max(320, Math.round(window.innerWidth || 390));
-      const height = Math.max(180, Math.round(width * 9 / 16));
-      const YoutubePlayer = await loadYoutubePlayer();
-      await YoutubePlayer.initialize({
-        playerId: playerIdRef.current,
-        videoId,
-        playerSize: { width, height },
-        fullscreen: true,
-        privacyEnhanced: true,
-        autoplay: true,
-        playerVars: {
-          autoplay: 1,
-          controls: 1,
-          rel: 0,
-          modestbranding: 1,
-          playsinline: 0,
-          fs: 1,
-          start: Math.max(0, Math.floor(start || 0)),
-        },
-      } as any);
-      openedRef.current = true;
-    } catch (error) {
-      console.error("[native-youtube] player failed", error);
-      setFailed(true);
-    } finally {
-      setLaunching(false);
+      requestFullscreen?.call(frame);
+    } catch (_) {
+      // The embedded YouTube controls still expose fullscreen when the WebView allows it.
     }
-  }, [launching, start, videoId]);
-
-  useEffect(() => {
-    if (!autoOpen || openedRef.current) return;
-    openedRef.current = true;
-    void openPlayer();
-  }, [autoOpen, openPlayer]);
+  };
 
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background p-5 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground">
-        <Maximize2 className="h-6 w-6" />
-      </div>
-      <div className="space-y-1">
-        <p className="text-sm font-black text-foreground">{title}</p>
-        {failed ? (
-          <p className="text-xs font-semibold text-destructive">Player could not start. Try again.</p>
-        ) : (
-          <p className="text-xs font-semibold text-muted-foreground">Opening in the in-app fullscreen player.</p>
-        )}
-      </div>
+    <div className="absolute inset-0 bg-black">
+      <iframe
+        ref={iframeRef}
+        src={playerSrc}
+        title={title}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+        className="absolute inset-0 h-full w-full border-0"
+      />
       <button
         type="button"
-        onClick={openPlayer}
-        disabled={launching}
-        className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-black text-primary-foreground disabled:opacity-60"
+        onClick={enterFullscreen}
+        aria-label="Fullscreen"
+        className="absolute bottom-3 right-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow-lg backdrop-blur"
       >
-        {failed ? <RotateCcw className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-        {launching ? "Opening…" : failed ? "Retry" : "Play fullscreen"}
+        <Maximize2 className="h-4 w-4" />
       </button>
     </div>
   );
