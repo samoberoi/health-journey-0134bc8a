@@ -94,13 +94,12 @@ export default function NotificationsPanel({ onClose, embedded = false }: Notifi
   const visible = filter === "unread" ? items.filter((n) => !n.is_read) : items;
 
   const onItemClick = async (n: AppNotification) => {
+    // Notifications in the panel are read-only: tapping only marks them read,
+    // it does NOT navigate anywhere. (Previously action_url could route users
+    // to unintended pages like the profile.)
     if (!n.is_read) {
       await markRead(n.id);
       setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)));
-    }
-    if (n.action_url) {
-      onClose?.();
-      navigate(n.action_url);
     }
   };
 

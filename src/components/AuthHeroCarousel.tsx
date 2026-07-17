@@ -5,13 +5,14 @@ import meditation from "@/assets/auth-carousel/meditation.png.asset.json";
 import fasting from "@/assets/auth-carousel/fasting.png.asset.json";
 import activity from "@/assets/auth-carousel/activity.png.asset.json";
 import morningRitual from "@/assets/auth-carousel/morning-ritual.png.asset.json";
+import { resolveAssetUrl } from "@/lib/assetUrl";
 
 const SLIDES = [
-  { url: fasting.url, alt: "Fasting window — lemon water and morning light" },
-  { url: activity.url, alt: "Active walking outdoors" },
-  { url: meditation.url, alt: "Morning meditation and calm" },
-  { url: supplements.url, alt: "Daily supplement support" },
-  { url: morningRitual.url, alt: "Morning ritual — lemon water, coffee and mindful start" },
+  { url: resolveAssetUrl(fasting.url), alt: "Fasting window — lemon water and morning light" },
+  { url: resolveAssetUrl(activity.url), alt: "Active walking outdoors" },
+  { url: resolveAssetUrl(meditation.url), alt: "Morning meditation and calm" },
+  { url: resolveAssetUrl(supplements.url), alt: "Daily supplement support" },
+  { url: resolveAssetUrl(morningRitual.url), alt: "Morning ritual — lemon water, coffee and mindful start" },
 ];
 
 interface Props {
