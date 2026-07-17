@@ -16,7 +16,7 @@ import {
   accumulateWatched,
 } from "@/lib/videoProgressStore";
 import NativeYouTubePlayer from "@/components/exercises/NativeYouTubePlayer";
-import { isNativeMobileApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
+import { isNativeIOSApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 const VIDEO_ICON_MAP: Record<string, LucideIcon> = {
   Activity,
@@ -49,7 +49,7 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
   const [resumeFrom, setResumeFrom] = useState<number>(0);
   const [restarted, setRestarted] = useState(false);
   const [playerError, setPlayerError] = useState(false);
-  const [useNativePlayer] = useState(() => isNativeMobileApp());
+  const [useNativePlayer] = useState(() => isNativeIOSApp());
 
   // Read prior progress once on open — seed accumulator so resumes don't lose credit
   useEffect(() => {
@@ -223,7 +223,7 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
             )}
             {playerError && !useNativePlayer && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
-                <p className="text-sm font-bold text-white">This device blocked the in-app YouTube player. Please close and try again.</p>
+                <p className="text-sm font-bold text-white">Video is still loading. Please try once more.</p>
                 <button
                   onClick={handleRestart}
                   className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-black"

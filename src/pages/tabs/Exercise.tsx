@@ -27,7 +27,7 @@ import { EmptyState } from "@/components/shared";
 import SessionBreakdownCard from "@/components/shared/SessionBreakdownCard";
 import { getTodayExerciseMinutes } from "@/lib/yogaProgressService";
 import NativeYouTubePlayer from "@/components/exercises/NativeYouTubePlayer";
-import { isNativeMobileApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
+import { isNativeIOSApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 interface Props {
   packageKey: string | null;
@@ -61,7 +61,7 @@ function WatchModal({
   const videoId = extractYoutubeId(exercise.youtube_url);
   const [playerError, setPlayerError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
-  const [useNativePlayer] = useState(() => isNativeMobileApp());
+  const [useNativePlayer] = useState(() => isNativeIOSApp());
   const playerSrc = videoId ? youtubePlayerProxyUrl(videoId, { autoplay: true }) : "";
 
   const reportDelta = useCallback(
@@ -137,7 +137,7 @@ function WatchModal({
           ) : null}
           {playerError && !useNativePlayer && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
-              <p className="text-sm font-bold text-white">This device blocked the in-app YouTube player. Please close and try again.</p>
+              <p className="text-sm font-bold text-white">Video is still loading. Please try once more.</p>
               <button
                 onClick={() => {
                   setPlayerError(false);

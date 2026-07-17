@@ -339,6 +339,125 @@ public class BBDOHealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 }
 
+final class BBDOYouTubePlayerViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
+    private let videoId: String
+    private let videoTitle: String
+    private let start: Int
+    private var webView: WKWebView?
+
+    init(videoId: String, title: String, start: Int) {
+        self.videoId = videoId
+        self.videoTitle = title
+        self.start = max(0, start)
+        super.init(nibName: nil, bundle: nil)
+        modalPresentationStyle = .fullScreen
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .black
+
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        config.allowsAirPlayForMediaPlayback = true
+        config.mediaTypesRequiringUserActionForPlayback = []
+        if #available(iOS 15.4, *) {
+            config.preferences.isElementFullscreenEnabled = true
+        }
+
+        let player = WKWebView(frame: .zero, configuration: config)
+        player.translatesAutoresizingMaskIntoConstraints = false
+        player.backgroundColor = .black
+        player.isOpaque = false
+        player.navigationDelegate = self
+        player.uiDelegate = self
+        view.addSubview(player)
+        webView = player
+
+        let closeButton = UIButton(type: .system)
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        closeButton.setTitle("✕", for: .normal)
+        closeButton.titleLabel?.font = UIFont.systemFont(ofSize: 24, weight: .bold)
+        closeButton.tintColor = .white
+        closeButton.backgroundColor = UIColor.black.withAlphaComponent(0.55)
+        closeButton.layer.cornerRadius = 22
+        closeButton.addTarget(self, action: #selector(closePlayer), for: .touchUpInside)
+        view.addSubview(closeButton)
+
+        NSLayoutConstraint.activate([
+            player.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            player.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            player.topAnchor.constraint(equalTo: view.topAnchor),
+            player.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            closeButton.widthAnchor.constraint(equalToConstant: 44),
+            closeButton.heightAnchor.constraint(equalToConstant: 44),
+            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+            closeButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -12)
+        ])
+
+        loadVideo()
+    }
+
+    private func loadVideo() {
+        guard var components = URLComponents(string: "https://www.youtube.com/embed/\(videoId)") else { return }
+        components.queryItems = [
+            URLQueryItem(name: "autoplay", value: "1"),
+            URLQueryItem(name: "controls", value: "1"),
+            URLQueryItem(name: "rel", value: "0"),
+            URLQueryItem(name: "modestbranding", value: "1"),
+            URLQueryItem(name: "playsinline", value: "0"),
+            URLQueryItem(name: "fs", value: "1"),
+            URLQueryItem(name: "start", value: String(start)),
+            URLQueryItem(name: "origin", value: "https://app.byebyediabetes.com"),
+            URLQueryItem(name: "widget_referrer", value: "https://app.byebyediabetes.com")
+        ]
+        guard let url = components.url else { return }
+        var request = URLRequest(url: url)
+        request.setValue("https://app.byebyediabetes.com/", forHTTPHeaderField: "Referer")
+        request.setValue("https://app.byebyediabetes.com", forHTTPHeaderField: "Origin")
+        webView?.load(request)
+    }
+
+    @objc private func closePlayer() {
+        webView?.stopLoading()
+        webView = nil
+        dismiss(animated: true)
+    }
+}
+
+@objc(BBDOYouTubePlayerPlugin)
+public class BBDOYouTubePlayerPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "BBDOYouTubePlayerPlugin"
+    public let jsName = "BBDOYouTubePlayer"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "open", returnType: CAPPluginReturnPromise)
+    ]
+
+    @objc func open(_ call: CAPPluginCall) {
+        guard let videoId = call.getString("videoId"), videoId.range(of: "^[A-Za-z0-9_-]{11}$", options: .regularExpression) != nil else {
+            call.reject("Invalid YouTube video id", "invalidVideoId")
+            return
+        }
+        let title = call.getString("title") ?? "Video"
+        let start = call.getInt("start") ?? 0
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, let presenter = self.bridge?.viewController else {
+                call.reject("Player is unavailable", "playerUnavailable")
+                return
+            }
+            let player = BBDOYouTubePlayerViewController(videoId: videoId, title: title, start: start)
+            presenter.present(player, animated: true) {
+                call.resolve(["opened": true])
+            }
+        }
+    }
+}
+
 @objc(BBDONativeAuthStorePlugin)
 public class BBDONativeAuthStorePlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "BBDONativeAuthStorePlugin"
@@ -427,6 +546,7 @@ class BBDOBridgeViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(BBDOBiometricsPlugin())
         bridge?.registerPluginInstance(BBDONativeAuthStorePlugin())
         bridge?.registerPluginInstance(BBDOHealthKitPlugin())
+        bridge?.registerPluginInstance(BBDOYouTubePlayerPlugin())
         bbdoNativeLog("Custom native plugins registered")
     }
 }
