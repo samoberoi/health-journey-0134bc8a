@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  X, Check, Ban, Sparkles, ShieldAlert, ExternalLink, RotateCcw,
+  X, Check, Ban, Sparkles, ShieldAlert, RotateCcw,
   Activity, Brain, CircleDot, Dumbbell, Flower2, Lock, Moon, Move3D, Sun, Target, Triangle, Wind,
   type LucideIcon,
 } from "lucide-react";
@@ -15,7 +15,7 @@ import {
   resetProgress,
   accumulateWatched,
 } from "@/lib/videoProgressStore";
-import { isNativeIOSApp, isYoutubePlayerMessage, openYouTubeExternal, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
+import { isNativeIOSApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 const VIDEO_ICON_MAP: Record<string, LucideIcon> = {
   Activity,
@@ -48,7 +48,7 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
   const [resumeFrom, setResumeFrom] = useState<number>(0);
   const [restarted, setRestarted] = useState(false);
   const [playerError, setPlayerError] = useState(false);
-  const [useExternalPlayer] = useState(() => isNativeIOSApp());
+  const [useSimpleEmbed] = useState(() => isNativeIOSApp());
 
   // Read prior progress once on open — seed accumulator so resumes don't lose credit
   useEffect(() => {
@@ -65,6 +65,7 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
   const playerSrc = youtubePlayerProxyUrl(video.youtubeId, {
     autoplay: true,
     start: restarted ? 0 : resumeFrom,
+    simple: useSimpleEmbed,
   });
 
   const handleProgressSnapshot = (currentTime?: number, duration?: number) => {
@@ -95,14 +96,8 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (useExternalPlayer) return;
       if (event.source !== iframeRef.current?.contentWindow) return;
       if (!isYoutubePlayerMessage(event.data, video.youtubeId)) return;
-
-      if (event.data.type === "open") {
-        openYouTubeExternal(video.youtubeUrl);
-        return;
-      }
 
       if (event.data.type === "error") {
         setPlayerError(true);
@@ -147,7 +142,7 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
       lastTickRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [video.id, video.youtubeId, restarted, useExternalPlayer]);
+  }, [video.id, video.youtubeId, restarted]);
 
   const handleRestart = () => {
     resetProgress(video.id);
@@ -207,36 +202,24 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
           )}
 
           <div className="relative w-full bg-black" style={{ aspectRatio: "16 / 9" }}>
-            {useExternalPlayer ? (
+            <iframe
+              key={`${video.id}-${restarted}-${Math.floor(resumeFrom || 0)}-${useSimpleEmbed ? "simple" : "tracked"}`}
+              ref={iframeRef}
+              src={playerSrc}
+              title={video.name}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+              className="absolute inset-0 w-full h-full border-0"
+            />
+            {playerError && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
-                <p className="text-sm font-bold text-white">Open this video in YouTube to play it on iPhone.</p>
+                <p className="text-sm font-bold text-white">This device blocked the in-app YouTube player. Please close and try again.</p>
                 <button
-                  onClick={() => openYouTubeExternal(video.youtubeUrl)}
+                  onClick={handleRestart}
                   className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-black"
                 >
-                  Open on YouTube <ExternalLink className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <iframe
-                key={`${video.id}-${restarted}-${Math.floor(resumeFrom || 0)}`}
-                ref={iframeRef}
-                src={playerSrc}
-                title={video.name}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                referrerPolicy="strict-origin-when-cross-origin"
-                className="absolute inset-0 w-full h-full border-0"
-              />
-            )}
-            {playerError && !useExternalPlayer && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
-                <p className="text-sm font-bold text-white">This device blocked the in-app YouTube player.</p>
-                <button
-                  onClick={() => openYouTubeExternal(video.youtubeUrl)}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-black"
-                >
-                  Open on YouTube <ExternalLink className="w-4 h-4" />
+                  Retry
                 </button>
               </div>
             )}
@@ -250,15 +233,6 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
               <Section icon={<Check className="w-4 h-4" />} title="Do’s" body={video.dos} tone="primary" />
               <Section icon={<Ban className="w-4 h-4" />} title="Don’ts" body={video.donts} tone="destructive" />
             </div>
-
-            <a
-              href={video.youtubeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-xs font-semibold text-primary hover:underline"
-            >
-              Open on YouTube <ExternalLink className="w-3 h-3" />
-            </a>
           </div>
         </motion.div>
       </div>

@@ -26,7 +26,7 @@ import { useDailyExerciseGoal } from "@/hooks/useAppSettings";
 import { EmptyState } from "@/components/shared";
 import SessionBreakdownCard from "@/components/shared/SessionBreakdownCard";
 import { getTodayExerciseMinutes } from "@/lib/yogaProgressService";
-import { isNativeIOSApp, isYoutubePlayerMessage, openYouTubeExternal, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
+import { isNativeIOSApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 interface Props {
   packageKey: string | null;
@@ -59,8 +59,8 @@ function WatchModal({
   const lastReportedSecRef = useRef(0);
   const videoId = extractYoutubeId(exercise.youtube_url);
   const [playerError, setPlayerError] = useState(false);
-  const [useExternalPlayer] = useState(() => isNativeIOSApp());
-  const playerSrc = videoId ? youtubePlayerProxyUrl(videoId, { autoplay: true }) : "";
+  const [useSimpleEmbed] = useState(() => isNativeIOSApp());
+  const playerSrc = videoId ? youtubePlayerProxyUrl(videoId, { autoplay: true, simple: useSimpleEmbed }) : "";
 
   const reportDelta = useCallback(
     (watchedSec: number, durationSec: number, completed: boolean) => {
@@ -74,14 +74,8 @@ function WatchModal({
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (useExternalPlayer) return;
       if (event.source !== iframeRef.current?.contentWindow) return;
       if (!isYoutubePlayerMessage(event.data, videoId || undefined)) return;
-
-      if (event.data.type === "open") {
-        openYouTubeExternal(exercise.youtube_url);
-        return;
-      }
 
       if (event.data.type === "error") {
         setPlayerError(true);
@@ -111,7 +105,7 @@ function WatchModal({
       if (watched > 0) reportDelta(watched, duration, completed);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoId, useExternalPlayer]);
+  }, [videoId]);
 
   return (
     <div
@@ -123,35 +117,25 @@ function WatchModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative aspect-video">
-          {useExternalPlayer ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
-              <p className="text-sm font-bold text-white">Open this exercise in YouTube to play it on iPhone.</p>
-              <button
-                onClick={() => openYouTubeExternal(exercise.youtube_url)}
-                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-black"
-              >
-                Open on YouTube
-              </button>
-            </div>
-          ) : videoId ? (
+          {videoId ? (
             <iframe
               ref={iframeRef}
               src={playerSrc}
               title={exercise.name}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
               allowFullScreen
               referrerPolicy="strict-origin-when-cross-origin"
               className="w-full h-full border-0"
             />
           ) : null}
-          {playerError && !useExternalPlayer && (
+          {playerError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
-              <p className="text-sm font-bold text-white">This device blocked the in-app YouTube player.</p>
+              <p className="text-sm font-bold text-white">This device blocked the in-app YouTube player. Please close and try again.</p>
               <button
-                onClick={() => openYouTubeExternal(exercise.youtube_url)}
+                onClick={() => setPlayerError(false)}
                 className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-black"
               >
-                Open on YouTube
+                Retry
               </button>
             </div>
           )}
