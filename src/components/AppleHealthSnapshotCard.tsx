@@ -5,9 +5,9 @@ import {
   Activity, Flame, HeartPulse, Moon, Route, Timer, Droplet, Scale, RefreshCw,
 } from "lucide-react";
 import {
-  canUseAppleHealthSteps, fetchAppleHealthSnapshot, type HealthSnapshot,
-  enableAppleHealthBackgroundSync, onAppleHealthDataChanged,
-} from "@/lib/appleHealth";
+  canUseNativeHealth, fetchHealthSnapshot, type HealthSnapshot,
+  enableHealthBackgroundSync, onHealthDataChanged,
+} from "@/lib/healthProvider";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   saveHealthSnapshot, fetchLatestHealthSnapshot, type StoredHealthSnapshot,
@@ -49,7 +49,7 @@ function formatSyncedAt(iso?: string) {
 
 export default function AppleHealthSnapshotCard() {
   const { user } = useAuth();
-  const isNative = canUseAppleHealthSteps();
+  const isNative = canUseNativeHealth();
   const [snap, setSnap] = useState<HealthSnapshot | null>(null);
   const [syncedAt, setSyncedAt] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
@@ -60,7 +60,7 @@ export default function AppleHealthSnapshotCard() {
     try {
       if (isNative) {
         // Read live from HealthKit, persist to DB, and update UI.
-        const live = await fetchAppleHealthSnapshot();
+        const live = await fetchHealthSnapshot();
         if (live) {
           setSnap(live);
           setSyncedAt(new Date().toISOString());
@@ -84,9 +84,9 @@ export default function AppleHealthSnapshotCard() {
   useEffect(() => {
     if (!user) return;
     // Enable background delivery once so iOS wakes the app on new samples.
-    void enableAppleHealthBackgroundSync();
+    void enableHealthBackgroundSync();
     let unsub: () => void = () => {};
-    void onAppleHealthDataChanged(() => { void load(); }).then((fn) => { unsub = fn; });
+    void onHealthDataChanged(() => { void load(); }).then((fn) => { unsub = fn; });
     const sub = CapApp.addListener("appStateChange", ({ isActive }) => {
       if (isActive) void load();
     });
