@@ -498,7 +498,7 @@ export default function AdminExercises() {
                     >
                       <img src={img} alt={e.name} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                      </div>{/* emoji overlay removed */}
+                      
                       {yid && (
                         <a
                           href={e.youtube_url}
