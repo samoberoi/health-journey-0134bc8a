@@ -125,6 +125,92 @@ async function sendApnsAttempt(token: string, jwt: string, payload: Record<strin
   return { ok: res.ok, status: res.status, environment: target.environment, response: parseApnsResponse(text) };
 }
 
+// ============ FCM v1 (Android) ============
+let cachedFcm: { token: string; exp: number; projectId: string } | null = null;
+
+function pemToPkcs8(pem: string): ArrayBuffer {
+  const clean = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+    .replace(/-----END PRIVATE KEY-----/g, "")
+    .replace(/\\n/g, "")
+    .replace(/\s/g, "");
+  const binary = atob(clean);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+async function getFcmAccessToken(): Promise<{ token: string; projectId: string } | null> {
+  if (!FCM_SERVICE_ACCOUNT_JSON) return null;
+  const now = Math.floor(Date.now() / 1000);
+  if (cachedFcm && cachedFcm.exp - 60 > now) return { token: cachedFcm.token, projectId: cachedFcm.projectId };
+
+  let sa: any;
+  try { sa = JSON.parse(FCM_SERVICE_ACCOUNT_JSON); } catch { return null; }
+  if (!sa.private_key || !sa.client_email || !sa.project_id) return null;
+
+  const key = await crypto.subtle.importKey(
+    "pkcs8",
+    pemToPkcs8(sa.private_key),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+
+  const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const claims = base64url(JSON.stringify({
+    iss: sa.client_email,
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+  }));
+  const signingInput = `${header}.${claims}`;
+  const signature = await crypto.subtle.sign(
+    { name: "RSASSA-PKCS1-v1_5" },
+    key,
+    new TextEncoder().encode(signingInput),
+  );
+  const assertion = `${signingInput}.${base64url(signature)}`;
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${assertion}`,
+  });
+  const data = await res.json();
+  if (!res.ok || !data.access_token) {
+    console.error("FCM token exchange failed", data);
+    return null;
+  }
+  cachedFcm = { token: data.access_token, exp: now + (data.expires_in ?? 3600), projectId: sa.project_id };
+  return { token: cachedFcm.token, projectId: cachedFcm.projectId };
+}
+
+async function sendFcm(deviceToken: string, title: string, body: string, actionUrl: string): Promise<{ ok: boolean; status: number; response: unknown }> {
+  const creds = await getFcmAccessToken();
+  if (!creds) return { ok: false, status: 0, response: { error: "FCM not configured" } };
+  const res = await fetch(`https://fcm.googleapis.com/v1/projects/${creds.projectId}/messages:send`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${creds.token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      message: {
+        token: deviceToken,
+        notification: { title, body },
+        data: { action_url: actionUrl, type: "app_notification" },
+        android: { priority: "HIGH", notification: { sound: "default", default_vibrate_timings: true } },
+      },
+    }),
+  });
+  const text = await res.text();
+  let parsed: unknown = text;
+  try { parsed = JSON.parse(text); } catch { /* keep raw */ }
+  return { ok: res.ok, status: res.status, response: parsed };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" });
