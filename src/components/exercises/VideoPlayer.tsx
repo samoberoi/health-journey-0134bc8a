@@ -15,7 +15,7 @@ import {
   resetProgress,
   accumulateWatched,
 } from "@/lib/videoProgressStore";
-import { isYoutubePlayerMessage, openYouTubeExternal, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
+import { isNativeIOSApp, isYoutubePlayerMessage, openYouTubeExternal, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 const VIDEO_ICON_MAP: Record<string, LucideIcon> = {
   Activity,
@@ -48,6 +48,7 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
   const [resumeFrom, setResumeFrom] = useState<number>(0);
   const [restarted, setRestarted] = useState(false);
   const [playerError, setPlayerError] = useState(false);
+  const [useExternalPlayer] = useState(() => isNativeIOSApp());
 
   // Read prior progress once on open — seed accumulator so resumes don't lose credit
   useEffect(() => {
@@ -94,6 +95,7 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
+      if (useExternalPlayer) return;
       if (event.source !== iframeRef.current?.contentWindow) return;
       if (!isYoutubePlayerMessage(event.data, video.youtubeId)) return;
 
@@ -145,7 +147,7 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
       lastTickRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [video.id, video.youtubeId, restarted]);
+  }, [video.id, video.youtubeId, restarted, useExternalPlayer]);
 
   const handleRestart = () => {
     resetProgress(video.id);
@@ -205,17 +207,29 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
           )}
 
           <div className="relative w-full bg-black" style={{ aspectRatio: "16 / 9" }}>
-            <iframe
-              key={`${video.id}-${restarted}-${Math.floor(resumeFrom || 0)}`}
-              ref={iframeRef}
-              src={playerSrc}
-              title={video.name}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-              className="absolute inset-0 w-full h-full border-0"
-            />
-            {playerError && (
+            {useExternalPlayer ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
+                <p className="text-sm font-bold text-white">Open this video in YouTube to play it on iPhone.</p>
+                <button
+                  onClick={() => openYouTubeExternal(video.youtubeUrl)}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-black"
+                >
+                  Open on YouTube <ExternalLink className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <iframe
+                key={`${video.id}-${restarted}-${Math.floor(resumeFrom || 0)}`}
+                ref={iframeRef}
+                src={playerSrc}
+                title={video.name}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+                className="absolute inset-0 w-full h-full border-0"
+              />
+            )}
+            {playerError && !useExternalPlayer && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
                 <p className="text-sm font-bold text-white">This device blocked the in-app YouTube player.</p>
                 <button

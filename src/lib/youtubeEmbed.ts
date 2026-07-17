@@ -45,6 +45,16 @@ export function isNativeMobileApp() {
   }
 }
 
+export function isNativeIOSApp() {
+  if (typeof window === "undefined") return false;
+  const cap = (window as any).Capacitor;
+  try {
+    return Boolean(cap?.isNativePlatform?.() && cap?.getPlatform?.() === "ios");
+  } catch {
+    return /iphone|ipad|ipod/i.test(window.navigator.userAgent) && isNativeMobileApp();
+  }
+}
+
 export function openYouTubeExternal(url: string) {
   try {
     window.open(url, "_blank", "noopener,noreferrer");

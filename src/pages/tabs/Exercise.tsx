@@ -26,7 +26,7 @@ import { useDailyExerciseGoal } from "@/hooks/useAppSettings";
 import { EmptyState } from "@/components/shared";
 import SessionBreakdownCard from "@/components/shared/SessionBreakdownCard";
 import { getTodayExerciseMinutes } from "@/lib/yogaProgressService";
-import { isYoutubePlayerMessage, openYouTubeExternal, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
+import { isNativeIOSApp, isYoutubePlayerMessage, openYouTubeExternal, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 interface Props {
   packageKey: string | null;
@@ -59,6 +59,7 @@ function WatchModal({
   const lastReportedSecRef = useRef(0);
   const videoId = extractYoutubeId(exercise.youtube_url);
   const [playerError, setPlayerError] = useState(false);
+  const [useExternalPlayer] = useState(() => isNativeIOSApp());
   const playerSrc = videoId ? youtubePlayerProxyUrl(videoId, { autoplay: true }) : "";
 
   const reportDelta = useCallback(
@@ -73,6 +74,7 @@ function WatchModal({
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
+      if (useExternalPlayer) return;
       if (event.source !== iframeRef.current?.contentWindow) return;
       if (!isYoutubePlayerMessage(event.data, videoId || undefined)) return;
 
@@ -109,7 +111,7 @@ function WatchModal({
       if (watched > 0) reportDelta(watched, duration, completed);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoId]);
+  }, [videoId, useExternalPlayer]);
 
   return (
     <div
@@ -120,8 +122,18 @@ function WatchModal({
         className="w-full max-w-2xl rounded-2xl overflow-hidden bg-black ring-1 ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="aspect-video">
-          {videoId && (
+        <div className="relative aspect-video">
+          {useExternalPlayer ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
+              <p className="text-sm font-bold text-white">Open this exercise in YouTube to play it on iPhone.</p>
+              <button
+                onClick={() => openYouTubeExternal(exercise.youtube_url)}
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-black"
+              >
+                Open on YouTube
+              </button>
+            </div>
+          ) : videoId ? (
             <iframe
               ref={iframeRef}
               src={playerSrc}
@@ -131,8 +143,8 @@ function WatchModal({
               referrerPolicy="strict-origin-when-cross-origin"
               className="w-full h-full border-0"
             />
-          )}
-          {playerError && (
+          ) : null}
+          {playerError && !useExternalPlayer && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
               <p className="text-sm font-bold text-white">This device blocked the in-app YouTube player.</p>
               <button
