@@ -35,9 +35,10 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
   const lastAuthAt = useRef<number>(0);
   const authenticatingRef = useRef(false);
 
-  // Android biometric plugin path is disabled for now because it is crashing
-  // the installed APK before users can reach the app. Keep iOS strict.
-  const native = isNative() && !isAndroidNativeApp();
+  // Native biometric gate runs on both iOS (Face ID / Touch ID) and Android
+  // (Fingerprint / Face Unlock). On Android we're resilient — if biometry
+  // isn't enrolled we let the user in rather than trap them behind the lock.
+  const native = isNative();
   const startupShield = native && loading;
   const shouldGate = native && !loading && !!session;
   const gateVisible =
