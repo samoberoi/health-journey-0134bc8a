@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { loadDurations, saveDuration } from "@/lib/videoProgressStore";
+import { isNativeMobileApp } from "@/lib/youtubeEmbed";
 
 // Loads the YouTube IFrame API once.
 let ytReadyPromise: Promise<any> | null = null;
@@ -33,6 +34,7 @@ function loadYTAPI(): Promise<any> {
 export function useYouTubeDurationPrefetch(youtubeIds: string[], enabled = true) {
   useEffect(() => {
     if (!enabled || !youtubeIds.length || typeof window === "undefined") return;
+    if (isNativeMobileApp()) return;
     let cancelled = false;
     let host: HTMLDivElement | null = null;
     let player: any = null;
@@ -57,7 +59,16 @@ export function useYouTubeDurationPrefetch(youtubeIds: string[], enabled = true)
           player = new YT.Player(inner, {
             width: 1,
             height: 1,
-            playerVars: { autoplay: 0, controls: 0, mute: 1, playsinline: 1 },
+            host: "https://www.youtube-nocookie.com",
+            playerVars: {
+              autoplay: 0,
+              controls: 0,
+              mute: 1,
+              playsinline: 1,
+              enablejsapi: 1,
+              origin: window.location.origin,
+              widget_referrer: window.location.origin,
+            },
             events: { onReady: () => resolveReady() },
           });
         });

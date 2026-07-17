@@ -26,6 +26,7 @@ import { useDailyExerciseGoal } from "@/hooks/useAppSettings";
 import { EmptyState } from "@/components/shared";
 import SessionBreakdownCard from "@/components/shared/SessionBreakdownCard";
 import { getTodayExerciseMinutes } from "@/lib/yogaProgressService";
+import { isNativeIOSApp, isYoutubePlayerMessage, openYouTubeExternal, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 interface Props {
   packageKey: string | null;
@@ -37,21 +38,6 @@ function startOfTodayISO() {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   return d.toISOString();
-}
-
-/** Loads the YouTube IFrame API once. */
-let ytApiPromise: Promise<void> | null = null;
-function loadYouTubeApi(): Promise<void> {
-  if (typeof window === "undefined") return Promise.resolve();
-  if ((window as any).YT?.Player) return Promise.resolve();
-  if (ytApiPromise) return ytApiPromise;
-  ytApiPromise = new Promise((resolve) => {
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.head.appendChild(tag);
-    (window as any).onYouTubeIframeAPIReady = () => resolve();
-  });
-  return ytApiPromise;
 }
 
 /** Modal player that auto-logs a set when the video ends AND reports watched seconds. */
@@ -67,12 +53,14 @@ function WatchModal({
   /** Fired with newly watched seconds so repeats keep counting toward minutes. */
   onProgress: (deltaSec: number, durationSec: number, completed: boolean) => void;
 }) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const playerRef = useRef<any>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const firedRef = useRef(false);
   const lastWatchedRef = useRef({ watched: 0, duration: 0, completed: false });
   const lastReportedSecRef = useRef(0);
   const videoId = extractYoutubeId(exercise.youtube_url);
+  const [playerError, setPlayerError] = useState(false);
+  const [useExternalPlayer] = useState(() => isNativeIOSApp());
+  const playerSrc = videoId ? youtubePlayerProxyUrl(videoId, { autoplay: true }) : "";
 
   const reportDelta = useCallback(
     (watchedSec: number, durationSec: number, completed: boolean) => {
@@ -85,66 +73,45 @@ function WatchModal({
   );
 
   useEffect(() => {
-    let cancelled = false;
-    let tick: number | null = null;
-    loadYouTubeApi().then(() => {
-      if (cancelled || !containerRef.current) return;
-      const isNative =
-        typeof window !== "undefined" &&
-        /^(capacitor|ionic):/i.test(window.location.protocol);
-      const embedOrigin = isNative ? "https://localhost" : window.location.origin;
-      playerRef.current = new (window as any).YT.Player(containerRef.current, {
-        videoId,
-        host: "https://www.youtube-nocookie.com",
-        playerVars: {
-          autoplay: 1,
-          rel: 0,
-          modestbranding: 1,
-          playsinline: 1,
-          enablejsapi: 1,
-          origin: embedOrigin,
-          widget_referrer: embedOrigin,
-        },
-        events: {
-          onStateChange: (e: any) => {
-            if (e.data === 0 && !firedRef.current) {
-              // ended
-              firedRef.current = true;
-              try {
-                const d = playerRef.current?.getDuration?.() ?? 0;
-                lastWatchedRef.current = { watched: d, duration: d, completed: true };
-                reportDelta(d, d, true);
-              } catch {}
-              onCompleted();
-            }
-          },
-        },
-      });
-      // Poll watch time every 2s
-      tick = window.setInterval(() => {
-        try {
-          const p = playerRef.current;
-          if (!p?.getCurrentTime) return;
-          const watched = Math.max(lastWatchedRef.current.watched, Math.floor(p.getCurrentTime() || 0));
-          const duration = Math.floor(p.getDuration?.() || 0);
-          lastWatchedRef.current = { watched, duration, completed: lastWatchedRef.current.completed };
-          if (watched - lastReportedSecRef.current >= 15) {
-            reportDelta(watched, duration, false);
-          }
-        } catch {}
-      }, 2000);
-    });
+    const onMessage = (event: MessageEvent) => {
+      if (useExternalPlayer) return;
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      if (!isYoutubePlayerMessage(event.data, videoId || undefined)) return;
+
+      if (event.data.type === "open") {
+        openYouTubeExternal(exercise.youtube_url);
+        return;
+      }
+
+      if (event.data.type === "error") {
+        setPlayerError(true);
+        return;
+      }
+
+      if (event.data.type === "progress" || event.data.type === "ready") {
+        const watched = Math.max(lastWatchedRef.current.watched, Math.floor(event.data.currentTime || 0));
+        const duration = Math.floor(event.data.duration || 0);
+        lastWatchedRef.current = { watched, duration, completed: lastWatchedRef.current.completed };
+        if (watched - lastReportedSecRef.current >= 15) reportDelta(watched, duration, false);
+      }
+
+      if (event.data.type === "state" && event.data.state === 0 && !firedRef.current) {
+        firedRef.current = true;
+        const duration = Math.floor(event.data.duration || lastWatchedRef.current.duration || 0);
+        lastWatchedRef.current = { watched: duration, duration, completed: true };
+        reportDelta(duration, duration, true);
+        onCompleted();
+      }
+    };
+
+    window.addEventListener("message", onMessage);
     return () => {
-      cancelled = true;
-      if (tick) window.clearInterval(tick);
+      window.removeEventListener("message", onMessage);
       const { watched, duration, completed } = lastWatchedRef.current;
       if (watched > 0) reportDelta(watched, duration, completed);
-      try {
-        playerRef.current?.destroy?.();
-      } catch {}
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoId]);
+  }, [videoId, useExternalPlayer]);
 
   return (
     <div
@@ -155,8 +122,39 @@ function WatchModal({
         className="w-full max-w-2xl rounded-2xl overflow-hidden bg-black ring-1 ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="aspect-video">
-          <div ref={containerRef} className="w-full h-full" />
+        <div className="relative aspect-video">
+          {useExternalPlayer ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
+              <p className="text-sm font-bold text-white">Open this exercise in YouTube to play it on iPhone.</p>
+              <button
+                onClick={() => openYouTubeExternal(exercise.youtube_url)}
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-black"
+              >
+                Open on YouTube
+              </button>
+            </div>
+          ) : videoId ? (
+            <iframe
+              ref={iframeRef}
+              src={playerSrc}
+              title={exercise.name}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+              className="w-full h-full border-0"
+            />
+          ) : null}
+          {playerError && !useExternalPlayer && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
+              <p className="text-sm font-bold text-white">This device blocked the in-app YouTube player.</p>
+              <button
+                onClick={() => openYouTubeExternal(exercise.youtube_url)}
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-black"
+              >
+                Open on YouTube
+              </button>
+            </div>
+          )}
         </div>
         <div className="px-4 py-3 bg-black/80 flex items-center justify-between">
           <div className="min-w-0">

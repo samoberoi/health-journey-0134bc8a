@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>YouTube Player</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      #player, iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+      #fallback { position: absolute; inset: 0; display: none; place-items: center; padding: 24px; text-align: center; background: #000; }
+      #fallback.active { display: grid; }
+      .fallback-box { max-width: 360px; }
+      .fallback-title { font-size: 17px; font-weight: 800; margin: 0 0 8px; }
+      .fallback-copy { font-size: 13px; line-height: 1.45; color: rgba(255,255,255,.72); margin: 0 0 18px; }
+      .fallback-button { appearance: none; border: 0; border-radius: 999px; background: #fff; color: #000; min-height: 44px; padding: 0 18px; font-weight: 800; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div id="player"></div>
+    <div id="fallback" role="alert">
+      <div class="fallback-box">
+        <p class="fallback-title">Video playback needs YouTube</p>
+        <p class="fallback-copy">Open this session in YouTube if the in-app player is blocked on this device.</p>
+        <button id="open-youtube" class="fallback-button" type="button">Open on YouTube</button>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var videoId = params.get("v") || "";
+        var validVideoId = /^[a-zA-Z0-9_-]{11}$/.test(videoId);
+        var fallback = document.getElementById("fallback");
+        var openButton = document.getElementById("open-youtube");
+        var player;
+        var progressTimer;
+
+        function targetOrigin() {
+          return window.location.origin && window.location.origin !== "null" ? window.location.origin : "*";
+        }
+
+        function post(type, payload) {
+          try {
+            window.parent.postMessage(Object.assign({ source: "bbdo-youtube-player", type: type, videoId: videoId }, payload || {}), targetOrigin());
+          } catch (_) {}
+        }
+
+        function youtubeUrl() {
+          return "https://www.youtube.com/watch?v=" + encodeURIComponent(videoId);
+        }
+
+        function showFallback(code) {
+          fallback.classList.add("active");
+          post("error", { code: Number(code) || 153 });
+          if (progressTimer) window.clearInterval(progressTimer);
+        }
+
+        function snapshot() {
+          var currentTime = 0;
+          var duration = 0;
+          try {
+            currentTime = Number(player && player.getCurrentTime ? player.getCurrentTime() : 0) || 0;
+            duration = Number(player && player.getDuration ? player.getDuration() : 0) || 0;
+          } catch (_) {}
+          return { currentTime: currentTime, duration: duration };
+        }
+
+        openButton.addEventListener("click", function () {
+          post("open");
+          try {
+            window.top.location.href = youtubeUrl();
+          } catch (_) {
+            window.location.href = youtubeUrl();
+          }
+        });
+
+        if (!validVideoId) {
+          showFallback(2);
+          return;
+        }
+
+        window.onYouTubeIframeAPIReady = function () {
+          player = new window.YT.Player("player", {
+            videoId: videoId,
+            host: "https://www.youtube-nocookie.com",
+            playerVars: {
+              autoplay: params.get("autoplay") || "1",
+              controls: params.get("controls") || "1",
+              rel: params.get("rel") || "0",
+              modestbranding: params.get("modestbranding") || "1",
+              playsinline: params.get("playsinline") || "1",
+              enablejsapi: "1",
+              origin: window.location.origin,
+              widget_referrer: window.location.origin,
+              start: params.get("start") || "0"
+            },
+            events: {
+              onReady: function () {
+                var frame = document.querySelector("iframe");
+                if (frame) frame.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+                post("ready", snapshot());
+                progressTimer = window.setInterval(function () {
+                  post("progress", snapshot());
+                }, 1000);
+              },
+              onStateChange: function (event) {
+                post("state", Object.assign({ state: event.data }, snapshot()));
+              },
+              onError: function (event) {
+                showFallback(event && event.data);
+              }
+            }
+          });
+        };
+
+        var script = document.createElement("script");
+        script.src = "https://www.youtube.com/iframe_api";
+        script.async = true;
+        script.onerror = function () { showFallback(153); };
+        document.head.appendChild(script);
+      })();
+    </script>
+  </body>
+</html>

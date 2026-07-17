@@ -15,6 +15,7 @@ import {
   resetProgress,
   accumulateWatched,
 } from "@/lib/videoProgressStore";
+import { isNativeIOSApp, isYoutubePlayerMessage, openYouTubeExternal, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 const VIDEO_ICON_MAP: Record<string, LucideIcon> = {
   Activity,
@@ -37,38 +38,17 @@ function VideoFlatIcon({ name, className = "w-5 h-5" }: { name?: string | null; 
   return <Icon className={className} strokeWidth={1.75} />;
 }
 
-let ytReadyPromise: Promise<any> | null = null;
-function loadYTAPI(): Promise<any> {
-  if (typeof window === "undefined") return Promise.reject(new Error("no window"));
-  const w = window as any;
-  if (w.YT && w.YT.Player) return Promise.resolve(w.YT);
-  if (ytReadyPromise) return ytReadyPromise;
-  ytReadyPromise = new Promise((resolve) => {
-    const prev = w.onYouTubeIframeAPIReady;
-    w.onYouTubeIframeAPIReady = () => {
-      try { prev?.(); } catch {}
-      resolve((window as any).YT);
-    };
-    if (!document.querySelector('script[data-yt-api]')) {
-      const s = document.createElement("script");
-      s.src = "https://www.youtube.com/iframe_api";
-      s.async = true;
-      s.dataset.ytApi = "1";
-      document.head.appendChild(s);
-    }
-  });
-  return ytReadyPromise;
-}
-
 export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onClose: () => void }) {
-  const hostRef = useRef<HTMLDivElement | null>(null);
-  const playerRef = useRef<any>(null);
-  const pollRef = useRef<number | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const watchedSecRef = useRef<number>(0);
   const lastTickRef = useRef<number | null>(null);
   const lastPosRef = useRef<number>(0);
+  const currentTimeRef = useRef<number>(0);
+  const durationRef = useRef<number>(0);
   const [resumeFrom, setResumeFrom] = useState<number>(0);
   const [restarted, setRestarted] = useState(false);
+  const [playerError, setPlayerError] = useState(false);
+  const [useExternalPlayer] = useState(() => isNativeIOSApp());
 
   // Read prior progress once on open — seed accumulator so resumes don't lose credit
   useEffect(() => {
@@ -82,108 +62,97 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
     }
   }, [video.id]);
 
-  // Boot YT player
+  const playerSrc = youtubePlayerProxyUrl(video.youtubeId, {
+    autoplay: true,
+    start: restarted ? 0 : resumeFrom,
+  });
+
+  const handleProgressSnapshot = (currentTime?: number, duration?: number) => {
+    const t = Number(currentTime || 0);
+    const d = Number(duration || 0);
+    const now = Date.now();
+
+    currentTimeRef.current = t;
+    durationRef.current = d;
+    if (d > 0) saveDuration(video.youtubeId, d);
+
+    const wall = lastTickRef.current ? (now - lastTickRef.current) / 1000 : 0;
+    const posDelta = t - lastPosRef.current;
+    let creditedDelta = 0;
+    if (lastTickRef.current && wall > 0 && posDelta > 0 && posDelta <= wall + 1.5) {
+      creditedDelta = posDelta;
+      watchedSecRef.current = watchedSecRef.current + posDelta;
+    }
+    lastTickRef.current = now;
+    lastPosRef.current = t;
+
+    if (t > 1) recordProgress(video.id, t, d, video.youtubeId);
+    if (creditedDelta > 0) accumulateWatched(video.id, creditedDelta, d, video.youtubeId);
+    if (d > 0 && watchedSecRef.current / d >= 0.9) {
+      markCompleted(video.id, d, video.youtubeId);
+    }
+  };
+
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const YT = await loadYTAPI();
-      if (cancelled || !hostRef.current) return;
-      // With capacitor.config `server.hostname` + `https` schemes, both iOS and
-      // Android now serve the WebView from https://<hostname>/, so window.location.origin
-      // is already a valid https origin YouTube accepts. Use it directly.
-      const embedOrigin = window.location.origin;
-      playerRef.current = new YT.Player(hostRef.current, {
-        videoId: video.youtubeId,
-        host: "https://www.youtube-nocookie.com",
-        playerVars: {
-          rel: 0,
-          modestbranding: 1,
-          playsinline: 1,
-          autoplay: 1,
-          enablejsapi: 1,
-          origin: embedOrigin,
-          widget_referrer: embedOrigin,
-          start: restarted ? 0 : Math.floor(resumeFrom || 0),
-        },
-        events: {
-          onReady: (e: any) => {
-            const d = Number(e.target.getDuration?.() || 0);
-            if (d > 0) saveDuration(video.youtubeId, d);
-            lastPosRef.current = Number(e.target.getCurrentTime?.() || 0);
-          },
-          onError: (e: any) => {
-            // 101 / 150 / 153 = embed not allowed for this host. Fall back to
-            // opening the video in the system browser / YouTube app.
-            if ([101, 150, 153].includes(Number(e?.data))) {
-              try { window.open(video.youtubeUrl, "_blank"); } catch {}
-            }
-          },
-          onStateChange: (e: any) => {
-            // 1 = playing, everything else stops the tick clock so seeking / pausing don't accrue time
-            if (e.data === 1) {
-              lastTickRef.current = Date.now();
-              lastPosRef.current = Number(playerRef.current?.getCurrentTime?.() || 0);
-              if (pollRef.current == null) {
-                pollRef.current = window.setInterval(() => {
-                  const p = playerRef.current;
-                  if (!p?.getCurrentTime) return;
-                  const now = Date.now();
-                  const t = Number(p.getCurrentTime() || 0);
-                  const d = Number(p.getDuration?.() || 0);
-                  if (d > 0) saveDuration(video.youtubeId, d);
+    const onMessage = (event: MessageEvent) => {
+      if (useExternalPlayer) return;
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      if (!isYoutubePlayerMessage(event.data, video.youtubeId)) return;
 
-                  // Only credit if playback advanced roughly in real time (no seek-ahead)
-                  const wall = lastTickRef.current ? (now - lastTickRef.current) / 1000 : 0;
-                  const posDelta = t - lastPosRef.current;
-                  let creditedDelta = 0;
-                  if (wall > 0 && posDelta > 0 && posDelta <= wall + 1.5) {
-                    creditedDelta = posDelta;
-                    watchedSecRef.current = watchedSecRef.current + posDelta;
-                  }
-                  lastTickRef.current = now;
-                  lastPosRef.current = t;
+      if (event.data.type === "open") {
+        openYouTubeExternal(video.youtubeUrl);
+        return;
+      }
 
-                  // Persist resume position + accumulate lifetime/today real watch time
-                  if (t > 1) recordProgress(video.id, t, d, video.youtubeId);
-                  if (creditedDelta > 0) accumulateWatched(video.id, creditedDelta, d, video.youtubeId);
-                  if (d > 0 && watchedSecRef.current / d >= 0.9) {
-                    markCompleted(video.id, d, video.youtubeId);
-                  }
-                }, 2000);
-              }
-            } else {
-              lastTickRef.current = null;
-              if (e.data === 0) {
-                // Ended: only credit completion if the user actually watched ≥90%
-                const d = Number(playerRef.current?.getDuration?.() || 0);
-                if (d > 0 && watchedSecRef.current / d >= 0.9) {
-                  markCompleted(video.id, d, video.youtubeId);
-                }
-              }
-            }
-          },
-        },
-      });
-    })();
+      if (event.data.type === "error") {
+        setPlayerError(true);
+        return;
+      }
+
+      if (event.data.type === "ready") {
+        const d = Number(event.data.duration || 0);
+        const t = Number(event.data.currentTime || 0);
+        durationRef.current = d;
+        currentTimeRef.current = t;
+        if (d > 0) saveDuration(video.youtubeId, d);
+        lastPosRef.current = t;
+        return;
+      }
+
+      if (event.data.type === "state") {
+        if (event.data.state === 1) {
+          lastTickRef.current = Date.now();
+          lastPosRef.current = Number(event.data.currentTime || 0);
+        } else {
+          lastTickRef.current = null;
+          if (event.data.state === 0) {
+            const d = Number(event.data.duration || durationRef.current || 0);
+            if (d > 0 && watchedSecRef.current / d >= 0.9) markCompleted(video.id, d, video.youtubeId);
+          }
+        }
+        return;
+      }
+
+      if (event.data.type === "progress") {
+        handleProgressSnapshot(event.data.currentTime, event.data.duration);
+      }
+    };
+
+    window.addEventListener("message", onMessage);
     return () => {
-      cancelled = true;
-      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-      try {
-        const p = playerRef.current;
-        const d = Number(p?.getDuration?.() || 0);
-        const t = Number(p?.getCurrentTime?.() || 0);
-        if (t > 1) recordProgress(video.id, t, d, video.youtubeId);
-        p?.destroy?.();
-      } catch {}
-      playerRef.current = null;
+      window.removeEventListener("message", onMessage);
+      const d = Number(durationRef.current || 0);
+      const t = Number(currentTimeRef.current || 0);
+      if (t > 1) recordProgress(video.id, t, d, video.youtubeId);
       lastTickRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [video.id, video.youtubeId, restarted]);
+  }, [video.id, video.youtubeId, restarted, useExternalPlayer]);
 
   const handleRestart = () => {
     resetProgress(video.id);
     setResumeFrom(0);
+    setPlayerError(false);
     setRestarted((v) => !v);
   };
 
@@ -238,7 +207,39 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
           )}
 
           <div className="relative w-full bg-black" style={{ aspectRatio: "16 / 9" }}>
-            <div ref={hostRef} className="absolute inset-0 w-full h-full" />
+            {useExternalPlayer ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
+                <p className="text-sm font-bold text-white">Open this video in YouTube to play it on iPhone.</p>
+                <button
+                  onClick={() => openYouTubeExternal(video.youtubeUrl)}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-black"
+                >
+                  Open on YouTube <ExternalLink className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <iframe
+                key={`${video.id}-${restarted}-${Math.floor(resumeFrom || 0)}`}
+                ref={iframeRef}
+                src={playerSrc}
+                title={video.name}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+                className="absolute inset-0 w-full h-full border-0"
+              />
+            )}
+            {playerError && !useExternalPlayer && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
+                <p className="text-sm font-bold text-white">This device blocked the in-app YouTube player.</p>
+                <button
+                  onClick={() => openYouTubeExternal(video.youtubeUrl)}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-black"
+                >
+                  Open on YouTube <ExternalLink className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="p-5 space-y-4">
