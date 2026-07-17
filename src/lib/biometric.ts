@@ -71,9 +71,9 @@ export async function getBiometricDiagnostics(): Promise<BiometricDiagnostics> {
       platform,
       available: false,
       deviceSecure: false,
-      label: "Face ID / Touch ID",
+      label: "Face ID / Touch ID / Fingerprint",
       code: "web-preview",
-      reason: "Biometric unlock only runs in the installed iPhone app.",
+      reason: "Biometric unlock only runs in the installed mobile app.",
     };
   }
 
