@@ -118,6 +118,16 @@ export async function getExistingSessionUnlessLoggedOut() {
   existingSessionRestorePromise = (async () => {
   try {
     logStartupEvent("existing session restore started");
+    // CRITICAL: honor the explicit logout marker BEFORE hydrating native
+    // persistence. Otherwise iOS/Android will re-hydrate the previously stored
+    // session from the keychain and silently log the user back in — skipping
+    // the OTP + onboarding flow entirely.
+    if (localStorage.getItem(EXPLICIT_LOGOUT_KEY) === "1") {
+      logStartupEvent("existing session restore", "explicit logout marker present — skipping hydration");
+      try { await clearNativePersistedAuthState(); } catch { /* ignore */ }
+      try { await supabase.auth.signOut({ scope: "local" }); } catch { /* ignore */ }
+      return null;
+    }
     if (isNative()) await hydrateNativePersistence();
     let { data } = await supabase.auth.getSession();
     if (!data.session && isNative() && await hasNativePersistedAuthSession()) {
@@ -134,10 +144,6 @@ export async function getExistingSessionUnlessLoggedOut() {
       if (isNative()) void persistSupabaseSessionToNative(data.session);
       logStartupEvent("existing session restore found session", data.session.user?.id || "session");
       return data.session;
-    }
-    if (localStorage.getItem(EXPLICIT_LOGOUT_KEY) === "1") {
-      logStartupEvent("existing session restore", "explicit logout marker present");
-      return null;
     }
     logStartupEvent("existing session restore", "no session");
     return data.session ?? null;
