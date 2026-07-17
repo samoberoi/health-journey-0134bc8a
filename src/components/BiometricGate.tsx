@@ -53,11 +53,31 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
     }
     setBiometryAvailable(available);
     setBiometryChecked(true);
-    const ok = await authenticateWithBiometrics("Unlock bye bye diabetes");
+    // On Android, if biometry isn't enrolled/available, don't trap the user
+    // behind the lock screen — just let them in. iOS keeps the strict gate.
+    const isAndroid = typeof navigator !== "undefined" && /android/i.test(navigator.userAgent);
+    if (!available && isAndroid) {
+      authenticatingRef.current = false;
+      setAuthenticating(false);
+      lastAuthAt.current = Date.now();
+      setLocked(false);
+      return;
+    }
+    let ok = false;
+    try {
+      ok = await authenticateWithBiometrics("Unlock bye bye diabetes");
+    } catch (err) {
+      console.warn("Biometric auth threw:", err);
+      ok = false;
+    }
     authenticatingRef.current = false;
     setAuthenticating(false);
     if (ok) {
       setBiometricEnabled(true);
+      lastAuthAt.current = Date.now();
+      setLocked(false);
+    } else if (isAndroid) {
+      // Android: failure shouldn't lock the user out of their own app.
       lastAuthAt.current = Date.now();
       setLocked(false);
     } else {
