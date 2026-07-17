@@ -148,7 +148,30 @@ export default function Profile({ onClose, isDark = true, onToggleTheme }: Profi
   const storedUser = useUserStore();
   const { t, lang, setLang } = useLanguage();
   const { languages: enabledLanguages } = useAppLanguages({ onlyEnabled: true });
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const confirm = useConfirm();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    const ok = await confirm({
+      title: "Log out?",
+      description: "You'll need to sign in again to access your account.",
+      confirmText: "Log out",
+      cancelText: "Cancel",
+      destructive: true,
+    });
+    if (!ok) return;
+    setLoggingOut(true);
+    try {
+      await clearAppBadge();
+      await signOut();
+    } catch (e) {
+      console.error("logout failed", e);
+    } finally {
+      // Hard reset to auth page — clears any lingering in-memory state.
+      window.location.replace("/auth");
+    }
+  };
   const userName = storedUser?.profile?.name ?? "Friend";
   const userScore = storedUser?.assessment?.healthScore ?? 72;
   const userRiskCategory = storedUser?.assessment?.riskCategory ?? "Good";
