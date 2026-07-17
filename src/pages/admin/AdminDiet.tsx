@@ -529,6 +529,9 @@ export default function AdminDiet() {
       {editingFilter && (
         <FilterEditor filter={editingFilter} onClose={() => setEditingFilter(null)} onSaved={() => { setEditingFilter(null); reload(); }} />
       )}
+      {editingCategory && (
+        <CategoryEditor category={editingCategory} onClose={() => setEditingCategory(null)} onSaved={() => { setEditingCategory(null); reload(); }} />
+      )}
     </div>
   );
 }
