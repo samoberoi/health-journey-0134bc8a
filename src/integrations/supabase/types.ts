@@ -5342,7 +5342,7 @@ export type Database = {
       coach_type: "starter_reset" | "active_reset" | "pro_transformation"
       consultation_status: "pending" | "scheduled" | "declined" | "completed"
       food_category_slug: "sugar_spike" | "metabolic_essential" | "power_addon"
-      food_diet_type: "veg" | "vegan" | "non_veg" | "jain"
+      food_diet_type: "veg" | "vegan" | "non_veg" | "jain" | "eggitarian"
       food_gi_band: "low" | "low_med" | "medium" | "med_high" | "high"
       food_recommendation: "avoid" | "limit" | "moderate" | "encourage"
       food_serving_basis: "per_100g" | "per_100ml" | "cooked" | "raw"
@@ -5490,7 +5490,7 @@ export const Constants = {
       coach_type: ["starter_reset", "active_reset", "pro_transformation"],
       consultation_status: ["pending", "scheduled", "declined", "completed"],
       food_category_slug: ["sugar_spike", "metabolic_essential", "power_addon"],
-      food_diet_type: ["veg", "vegan", "non_veg", "jain"],
+      food_diet_type: ["veg", "vegan", "non_veg", "jain", "eggitarian"],
       food_gi_band: ["low", "low_med", "medium", "med_high", "high"],
       food_recommendation: ["avoid", "limit", "moderate", "encourage"],
       food_serving_basis: ["per_100g", "per_100ml", "cooked", "raw"],

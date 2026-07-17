@@ -1,0 +1,1 @@
+ALTER TYPE public.food_diet_type ADD VALUE IF NOT EXISTS 'eggitarian';
