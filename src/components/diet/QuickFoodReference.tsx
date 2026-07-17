@@ -339,8 +339,9 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
     if (diet === "vegan") return it.diet_type === "vegan";
     if (diet === "jain")  return it.is_jain_friendly;
     if (diet === "veg")   return it.diet_type === "veg" || it.diet_type === "vegan";
-
-    return true;
+    if (diet === "eggitarian") return it.diet_type === "veg" || it.diet_type === "vegan" || it.diet_type === "eggitarian";
+    // Custom diet slug added by admin → match exactly on the food's diet_type.
+    return it.diet_type === diet;
   };
 
   // A preset takes over the whole surface (cross-category), same effect as global sort.
