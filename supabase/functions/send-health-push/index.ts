@@ -22,6 +22,8 @@ type PushBody = {
   title?: unknown;
   body?: unknown;
   actionUrl?: unknown;
+  notificationId?: unknown;
+  backendDispatch?: unknown;
 };
 
 function json(status: number, payload: Record<string, unknown>) {
@@ -85,6 +87,12 @@ function validText(value: unknown, max: number): string | null {
   return clean;
 }
 
+function validUuid(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const clean = value.trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(clean) ? clean : null;
+}
+
 function parseApnsResponse(text: string): Record<string, unknown> | null {
   if (!text) return null;
   try {
@@ -125,27 +133,62 @@ Deno.serve(async (req) => {
       return json(503, { ok: false, error: "APNs credentials are not configured yet" });
     }
 
+    const raw = (await req.json().catch(() => null)) as PushBody | null;
     const authHeader = req.headers.get("Authorization") ?? "";
     const bearer = authHeader.replace(/^Bearer\s+/i, "").trim();
     if (!bearer) return json(401, { ok: false, error: "Missing auth token" });
 
-    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${bearer}` } },
-    });
-    const { data: userData, error: userError } = await userClient.auth.getUser(bearer);
-    if (userError || !userData.user) return json(401, { ok: false, error: "Invalid auth token" });
-
-    const raw = (await req.json().catch(() => null)) as PushBody | null;
-    const title = validText(raw?.title, 120);
-    const body = validText(raw?.body, 500);
-    const actionUrl = typeof raw?.actionUrl === "string" ? raw.actionUrl.slice(0, 240) : "/home?tab=profile";
-    if (!title || !body) return json(400, { ok: false, error: "Title and body are required" });
-
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+    let targetUserId: string;
+    let title: string;
+    let body: string;
+    let actionUrl = "/home?tab=profile";
+
+    if (raw?.backendDispatch === true) {
+      if (bearer !== ANON_KEY) return json(401, { ok: false, error: "Invalid backend dispatch token" });
+      const notificationId = validUuid(raw.notificationId);
+      if (!notificationId) return json(400, { ok: false, error: "Valid notificationId is required" });
+
+      const { data: notification, error: notificationError } = await admin
+        .from("notifications")
+        .select("id, user_id, title, body, type, action_url, created_at")
+        .eq("id", notificationId)
+        .eq("type", "health_alert")
+        .maybeSingle();
+
+      if (notificationError) throw notificationError;
+      if (!notification) return json(404, { ok: false, error: "Health alert notification not found" });
+
+      const createdAt = Date.parse((notification as any).created_at ?? "");
+      if (!Number.isFinite(createdAt) || createdAt < Date.now() - 30 * 60 * 1000) {
+        return json(410, { ok: false, error: "Health alert dispatch window expired" });
+      }
+
+      targetUserId = (notification as any).user_id;
+      title = validText((notification as any).title, 120) ?? "Health alert";
+      body = validText((notification as any).body, 500) ?? "Please review your latest health reading.";
+      actionUrl = typeof (notification as any).action_url === "string" ? (notification as any).action_url.slice(0, 240) : "/home?tab=profile";
+    } else {
+      const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+        global: { headers: { Authorization: `Bearer ${bearer}` } },
+      });
+      const { data: userData, error: userError } = await userClient.auth.getUser(bearer);
+      if (userError || !userData.user) return json(401, { ok: false, error: "Invalid auth token" });
+
+      const validatedTitle = validText(raw?.title, 120);
+      const validatedBody = validText(raw?.body, 500);
+      if (!validatedTitle || !validatedBody) return json(400, { ok: false, error: "Title and body are required" });
+
+      targetUserId = userData.user.id;
+      title = validatedTitle;
+      body = validatedBody;
+      actionUrl = typeof raw?.actionUrl === "string" ? raw.actionUrl.slice(0, 240) : "/home?tab=profile";
+    }
+
     const { data: tokens, error: tokenError } = await admin
       .from("device_push_tokens")
       .select("id, token, platform")
-      .eq("user_id", userData.user.id)
+      .eq("user_id", targetUserId)
       .eq("platform", "ios");
 
     if (tokenError) throw tokenError;
