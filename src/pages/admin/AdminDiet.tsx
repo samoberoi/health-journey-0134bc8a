@@ -27,8 +27,8 @@ type GiBand = "low" | "low_med" | "medium" | "med_high" | "high";
 type DietType = string;
 type ServingBasis = "per_100g" | "per_100ml" | "cooked" | "raw";
 
-interface Category { id: string; slug: CategorySlug; name: string; description: string | null; display_order: number; }
-interface Filter { id: string; category_id: string; slug: string; name: string; description: string | null; icon: string | null; display_order: number; order_number: number | null; number_label: string | null; key_takeaways: string[]; cautionary_note: string | null; is_active: boolean; }
+interface Category { id: string; slug: CategorySlug; name: string; description: string | null; display_order: number; image_url: string | null; }
+interface Filter { id: string; category_id: string; slug: string; name: string; description: string | null; icon: string | null; display_order: number; order_number: number | null; number_label: string | null; key_takeaways: string[]; cautionary_note: string | null; is_active: boolean; image_url: string | null; }
 interface Item {
   id: string; filter_id: string; name: string; alt_name: string | null; image_url: string | null;
   diet_type: DietType; serving_basis: ServingBasis;
