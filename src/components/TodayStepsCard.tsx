@@ -177,14 +177,14 @@ export default function TodayStepsCard({ onOpenMovement }: { onOpenMovement?: ()
             <div className="flex min-w-0 items-center gap-2">
               <Watch className="h-4 w-4 shrink-0 text-primary" />
               <p className="truncate text-[12px] font-semibold text-muted-foreground">
-                `${healthSourceLabel()} steps sync automatically`
+                {healthSourceLabel()} steps sync automatically
               </p>
             </div>
             <button
               type="button"
               onClick={handleHealthSync}
               disabled={syncingHealth}
-              aria-label="`Sync ${healthSourceLabel()} steps`"
+              aria-label={`Sync ${healthSourceLabel()} steps`}
               className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-primary disabled:opacity-60"
             >
               <RefreshCw className={`h-4 w-4 ${syncingHealth ? "animate-spin" : ""}`} />
