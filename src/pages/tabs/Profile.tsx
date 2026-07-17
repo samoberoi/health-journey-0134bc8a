@@ -18,6 +18,8 @@ import { fetchHealthLogs, fetchProgressSummaries, formatLogDate, insertHealthLog
 import { toast } from "sonner";
 import { fetchProfile } from "@/lib/profileService";
 import { useAuth } from "@/contexts/AuthContext";
+import { useConfirm } from "@/components/ConfirmProvider";
+import { clearAppBadge } from "@/lib/appBadge";
 import { LoadingState, EmptyState } from "@/components/shared";
 import MyPlanSection from "@/components/MyPlanSection";
 import { fetchActiveSubscription } from "@/lib/subscriptionService";
