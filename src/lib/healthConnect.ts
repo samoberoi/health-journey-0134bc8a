@@ -16,7 +16,7 @@ const READ_TYPES: RecordType[] = [
   "RestingHeartRate",
   "Weight",
   "BloodGlucose",
-] as const as RecordType[];
+] ;
 
 type HealthConnectPermissionState = {
   availability: HealthConnectAvailability | "Unknown";
