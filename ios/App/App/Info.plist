@@ -25,7 +25,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Use Face ID to securely unlock bye bye diabetes.</string>
+	<string>Use Face ID to securely unlock BBDO.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Read your steps, active calories, exercise, sleep, resting heart rate, HRV, weight and glucose from Apple Health to power your dashboard and trends.</string>
 	<key>NSHealthUpdateUsageDescription</key>
