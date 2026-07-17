@@ -3,6 +3,7 @@ import Capacitor
 import HealthKit
 import LocalAuthentication
 import Security
+import WebKit
 import AparajitaCapacitorBiometricAuth
 import AppPlugin
 import PreferencesPlugin
@@ -421,6 +422,8 @@ class BBDOBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         bbdoNativeLog("BBDOBridgeViewController.capacitorDidLoad")
+        bridge?.webView?.configuration.allowsInlineMediaPlayback = true
+        bridge?.webView?.configuration.mediaTypesRequiringUserActionForPlayback = []
         bridge?.registerPluginInstance(BBDOBiometricsPlugin())
         bridge?.registerPluginInstance(BBDONativeAuthStorePlugin())
         bridge?.registerPluginInstance(BBDOHealthKitPlugin())

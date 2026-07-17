@@ -21,9 +21,9 @@
     <div id="player"></div>
     <div id="fallback" role="alert">
       <div class="fallback-box">
-        <p class="fallback-title">Video playback needs YouTube</p>
-        <p class="fallback-copy">Open this session in YouTube if the in-app player is blocked on this device.</p>
-        <button id="open-youtube" class="fallback-button" type="button">Open on YouTube</button>
+        <p class="fallback-title">Video playback was blocked</p>
+        <p class="fallback-copy">Close this player and try again.</p>
+        <button id="retry-youtube" class="fallback-button" type="button">Retry</button>
       </div>
     </div>
 
@@ -33,7 +33,7 @@
         var videoId = params.get("v") || "";
         var validVideoId = /^[a-zA-Z0-9_-]{11}$/.test(videoId);
         var fallback = document.getElementById("fallback");
-        var openButton = document.getElementById("open-youtube");
+        var retryButton = document.getElementById("retry-youtube");
         var player;
         var progressTimer;
 
@@ -47,8 +47,17 @@
           } catch (_) {}
         }
 
-        function youtubeUrl() {
-          return "https://www.youtube.com/watch?v=" + encodeURIComponent(videoId);
+        function embedUrl() {
+          var embedParams = new URLSearchParams({
+            autoplay: params.get("autoplay") || "1",
+            controls: params.get("controls") || "1",
+            rel: params.get("rel") || "0",
+            modestbranding: params.get("modestbranding") || "1",
+            playsinline: params.get("playsinline") || "1",
+            fs: params.get("fs") || "1",
+            start: params.get("start") || "0"
+          });
+          return "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(videoId) + "?" + embedParams.toString();
         }
 
         function showFallback(code) {
@@ -67,17 +76,27 @@
           return { currentTime: currentTime, duration: duration };
         }
 
-        openButton.addEventListener("click", function () {
-          post("open");
-          try {
-            window.top.location.href = youtubeUrl();
-          } catch (_) {
-            window.location.href = youtubeUrl();
-          }
+        retryButton.addEventListener("click", function () {
+          window.location.reload();
         });
 
         if (!validVideoId) {
           showFallback(2);
+          return;
+        }
+
+        if (params.get("mode") === "simple") {
+          var iframe = document.createElement("iframe");
+          iframe.src = embedUrl();
+          iframe.title = "YouTube video player";
+          iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen";
+          iframe.allowFullscreen = true;
+          iframe.setAttribute("allowfullscreen", "");
+          iframe.setAttribute("webkitallowfullscreen", "");
+          iframe.setAttribute("mozallowfullscreen", "");
+          iframe.referrerPolicy = "strict-origin-when-cross-origin";
+          document.getElementById("player").appendChild(iframe);
+          post("ready", { currentTime: 0, duration: 0 });
           return;
         }
 
@@ -91,6 +110,7 @@
               rel: params.get("rel") || "0",
               modestbranding: params.get("modestbranding") || "1",
               playsinline: params.get("playsinline") || "1",
+              fs: params.get("fs") || "1",
               enablejsapi: "1",
               origin: window.location.origin,
               widget_referrer: window.location.origin,

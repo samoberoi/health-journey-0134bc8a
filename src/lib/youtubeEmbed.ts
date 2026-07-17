@@ -1,6 +1,6 @@
 export type YouTubePlayerMessage = {
   source: "bbdo-youtube-player";
-  type: "ready" | "state" | "progress" | "error" | "open";
+  type: "ready" | "state" | "progress" | "error";
   videoId: string;
   state?: number;
   currentTime?: number;
@@ -10,7 +10,7 @@ export type YouTubePlayerMessage = {
 
 export function youtubePlayerProxyUrl(
   videoId: string,
-  options: { autoplay?: boolean; start?: number; controls?: boolean } = {},
+  options: { autoplay?: boolean; start?: number; controls?: boolean; simple?: boolean } = {},
 ) {
   const params = new URLSearchParams({
     v: videoId,
@@ -19,7 +19,10 @@ export function youtubePlayerProxyUrl(
     rel: "0",
     modestbranding: "1",
     playsinline: "1",
+    fs: "1",
   });
+
+  if (options.simple) params.set("mode", "simple");
 
   const start = Math.max(0, Math.floor(options.start || 0));
   if (start > 0) params.set("start", String(start));
@@ -32,7 +35,7 @@ export function isYoutubePlayerMessage(data: unknown, videoId?: string): data is
   const message = data as Partial<YouTubePlayerMessage>;
   if (message.source !== "bbdo-youtube-player") return false;
   if (!message.videoId || (videoId && message.videoId !== videoId)) return false;
-  return ["ready", "state", "progress", "error", "open"].includes(message.type || "");
+  return ["ready", "state", "progress", "error"].includes(message.type || "");
 }
 
 export function isNativeMobileApp() {
