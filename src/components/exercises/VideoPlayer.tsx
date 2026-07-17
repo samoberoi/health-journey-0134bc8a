@@ -16,7 +16,7 @@ import {
   accumulateWatched,
 } from "@/lib/videoProgressStore";
 import NativeYouTubePlayer from "@/components/exercises/NativeYouTubePlayer";
-import { isNativeMobileApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
+import { isNativeIOSApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 const VIDEO_ICON_MAP: Record<string, LucideIcon> = {
   Activity,
@@ -49,7 +49,7 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
   const [resumeFrom, setResumeFrom] = useState<number>(0);
   const [restarted, setRestarted] = useState(false);
   const [playerError, setPlayerError] = useState(false);
-  const [useNativePlayer] = useState(() => isNativeMobileApp());
+  const [useNativePlayer] = useState(() => isNativeIOSApp());
 
   // Read prior progress once on open — seed accumulator so resumes don't lose credit
   useEffect(() => {

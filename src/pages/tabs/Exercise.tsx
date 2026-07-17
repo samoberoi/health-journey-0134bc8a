@@ -27,7 +27,7 @@ import { EmptyState } from "@/components/shared";
 import SessionBreakdownCard from "@/components/shared/SessionBreakdownCard";
 import { getTodayExerciseMinutes } from "@/lib/yogaProgressService";
 import NativeYouTubePlayer from "@/components/exercises/NativeYouTubePlayer";
-import { isNativeMobileApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
+import { isNativeIOSApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 interface Props {
   packageKey: string | null;
@@ -61,7 +61,7 @@ function WatchModal({
   const videoId = extractYoutubeId(exercise.youtube_url);
   const [playerError, setPlayerError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
-  const [useNativePlayer] = useState(() => isNativeMobileApp());
+  const [useNativePlayer] = useState(() => isNativeIOSApp());
   const playerSrc = videoId ? youtubePlayerProxyUrl(videoId, { autoplay: true }) : "";
 
   const reportDelta = useCallback(
