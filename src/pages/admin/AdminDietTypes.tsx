@@ -53,10 +53,10 @@ export default function AdminDietTypes() {
 
   const saveAll = async () => {
     setSaving(true);
+    const errors: string[] = [];
     for (const r of rows) {
       if (!r.slug.trim() || !r.label.trim()) continue;
-      const payload = {
-        slug: r.slug.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_"),
+      const payload: any = {
         label: r.label.trim(),
         description: r.description || null,
         dot_color: r.dot_color || null,
@@ -64,13 +64,22 @@ export default function AdminDietTypes() {
         is_active: r.is_active,
       };
       if (r.id) {
-        await supabase.from("diet_types" as any).update(payload).eq("id", r.id);
+        // Do NOT update slug on existing rows — it's the stable identifier used
+        // by food_items.diet_type and user_diet_profiles.diet_preference.
+        const { error } = await supabase.from("diet_types" as any).update(payload).eq("id", r.id);
+        if (error) errors.push(`${r.label}: ${error.message}`);
       } else {
-        await supabase.from("diet_types" as any).insert(payload);
+        payload.slug = r.slug.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
+        const { error } = await supabase.from("diet_types" as any).insert(payload);
+        if (error) errors.push(`${r.label}: ${error.message}`);
       }
     }
     setSaving(false);
-    toast({ title: "Saved", description: "Diet types updated." });
+    if (errors.length) {
+      toast({ title: "Some rows didn't save", description: errors.join(" · "), variant: "destructive" });
+    } else {
+      toast({ title: "Saved", description: "Diet types updated." });
+    }
     load();
   };
 
