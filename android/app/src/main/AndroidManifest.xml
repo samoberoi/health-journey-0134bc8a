@@ -29,15 +29,15 @@
             </intent-filter>
         </activity>
 
-        <!-- Health Connect privacy policy intent (pre-Android 14, permission-usage rationale) -->
+        <!-- Health Connect permission rationale (pre-Android 14 devices using the
+             standalone Health Connect app). Without this the "Allow" dialog never
+             appears for third-party apps. -->
         <activity-alias
             android:name="ViewPermissionUsageActivity"
             android:exported="true"
-            android:targetActivity=".MainActivity"
-            android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+            android:targetActivity=".MainActivity">
             <intent-filter>
-                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
-                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
         </activity-alias>
 
