@@ -89,9 +89,22 @@ function WatchModal({
     let tick: number | null = null;
     loadYouTubeApi().then(() => {
       if (cancelled || !containerRef.current) return;
+      const isNative =
+        typeof window !== "undefined" &&
+        /^(capacitor|ionic):/i.test(window.location.protocol);
+      const embedOrigin = isNative ? "https://localhost" : window.location.origin;
       playerRef.current = new (window as any).YT.Player(containerRef.current, {
         videoId,
-        playerVars: { autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1 },
+        host: "https://www.youtube-nocookie.com",
+        playerVars: {
+          autoplay: 1,
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1,
+          enablejsapi: 1,
+          origin: embedOrigin,
+          widget_referrer: embedOrigin,
+        },
         events: {
           onStateChange: (e: any) => {
             if (e.data === 0 && !firedRef.current) {
