@@ -23,6 +23,7 @@ import { PushNotifications } from "@capacitor/push-notifications";
 import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
 import { playNotificationSound } from "@/lib/soundEngine";
 import { fireRealtimeHealthNotificationAlert } from "@/lib/healthAlerts";
+import { isNativePushSupported } from "@/lib/nativePush";
 
 import Splash from "./pages/Splash";
 import LanguageSelect from "./pages/LanguageSelect";
