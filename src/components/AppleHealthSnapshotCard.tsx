@@ -13,7 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   saveHealthSnapshot, fetchLatestHealthSnapshot, type StoredHealthSnapshot,
 } from "@/lib/healthSnapshotService";
-import { healthSourceLabel, phoneLabel, wearableLabel } from "@/lib/platformLabels";
+import { healthSourceLabel, isAndroidPlatform, phoneLabel, wearableLabel } from "@/lib/platformLabels";
 
 function Tile({
   icon: Icon, label, value, sub,
@@ -131,6 +131,9 @@ export default function AppleHealthSnapshotCard() {
   const km = snap?.distanceMeters ? (snap.distanceMeters / 1000).toFixed(2) : null;
   const syncedLabel = formatSyncedAt(syncedAt);
   const hasAnyData = snap && Object.values(snap).some((v) => v != null && v !== "");
+  const nonNativeMessage = isAndroidPlatform()
+    ? "Health Connect sync works in the installed Android app only, not the browser preview."
+    : `Open the app on your ${phoneLabel()} once to sync your ${healthSourceLabel()} vitals here.`;
 
   return (
     <motion.div
@@ -162,7 +165,7 @@ export default function AppleHealthSnapshotCard() {
           <p className="text-[12px] font-medium text-muted-foreground">
             {isNative
               ? healthMessage ?? `No ${healthSourceLabel()} data yet. Allow permissions to sync your vitals.`
-              : `Open the app on your ${phoneLabel()} once to sync your ${healthSourceLabel()} vitals here.`}
+              : nonNativeMessage}
           </p>
           {isNative && canRequestHealth && (
             <button
