@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize2, Play, RotateCcw } from "lucide-react";
-import { YoutubePlayer } from "@capgo/capacitor-youtube-player";
+// Dynamically imported to avoid bundling issues when the native plugin
+// isn't installed locally (e.g. before `npm install` on a fresh pull).
+const loadYoutubePlayer = async () => {
+  const mod = await import(
+    /* @vite-ignore */ "@capgo/capacitor-youtube-player"
+  );
+  return (mod as any).YoutubePlayer;
+};
 
 type NativeYouTubePlayerProps = {
   videoId: string;
