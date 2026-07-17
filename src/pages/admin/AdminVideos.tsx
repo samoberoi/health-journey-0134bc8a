@@ -20,7 +20,7 @@ function extractYoutubeId(input: string): string {
 }
 import { videos, videoGroups, type VideoEntry, type VideoGroup, type VideoTag } from "@/lib/exerciseData";
 import VideoPlayer from "@/components/exercises/VideoPlayer";
-import { useVideoThumbnails } from "@/hooks/useVideoThumbnails";
+import { notifyVideoThumbnailsChanged, useVideoThumbnails } from "@/hooks/useVideoThumbnails";
 import { useVideoMetadata } from "@/hooks/useVideoMetadata";
 import {
   setVideoThumbnail,
@@ -95,8 +95,8 @@ export default function AdminVideos() {
   const confirm = useConfirm();
   const [group, setGroup] = useState<(typeof videoGroups)[number]["id"]>("all");
   const [active, setActive] = useState<VideoEntry | null>(null);
-  const { overrides, reload, resolve } = useVideoThumbnails();
-  const { overrides: metaOverrides, reload: reloadMeta, resolveVideo, customVideos, disabledIds } = useVideoMetadata();
+  const { overrides, loading: thumbnailsLoading, reload, resolve } = useVideoThumbnails();
+  const { overrides: metaOverrides, loading: metadataLoading, reload: reloadMeta, resolveVideo, customVideos, disabledIds } = useVideoMetadata();
   const thumbFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [editing, setEditing] = useState<VideoEntry | null>(null);
@@ -219,20 +219,21 @@ export default function AdminVideos() {
       let targetId = editing.id;
       if (isNew) {
         targetId = await createCustomVideo({ ...patch, name: form.name, youtube_id: normalizedYoutubeId });
-        if (editingThumbFile && editingThumbPreview) {
-          await setVideoThumbnail(targetId, editingThumbPreview);
+        if (editingThumbFile) {
+          await setVideoThumbnail(targetId, editingThumbFile);
         }
       } else {
         await setVideoMetadata(editing.id, patch);
         if (editingThumbReset) {
           await clearVideoThumbnail(editing.id);
-        } else if (editingThumbFile && editingThumbPreview) {
-          await setVideoThumbnail(editing.id, editingThumbPreview);
+        } else if (editingThumbFile) {
+          await setVideoThumbnail(editing.id, editingThumbFile);
         }
       }
 
-      await reloadMeta();
       await reload();
+      await reloadMeta();
+      notifyVideoThumbnailsChanged();
       logAudit({
         module: "Videos",
         action: isNew ? "create" : "update",
@@ -376,7 +377,18 @@ export default function AdminVideos() {
       </div>
 
       <div className="grid gap-3 xl:grid-cols-2">
-        {filtered.map((v, index) => {
+        {(thumbnailsLoading || metadataLoading) && Array.from({ length: 6 }).map((_, index) => (
+          <div key={`video-skeleton-${index}`} className="liquid-glass rounded-3xl p-3 sm:p-4 flex flex-col sm:flex-row gap-3 sm:gap-4 min-w-0 mobile-card-stack">
+            <div className="w-full sm:w-40 shrink-0 rounded-2xl bg-muted animate-pulse mobile-media" style={{ aspectRatio: "16 / 9" }} />
+            <div className="min-w-0 flex-1 space-y-3 py-1">
+              <div className="h-3 w-24 rounded-full bg-muted animate-pulse" />
+              <div className="h-4 w-44 rounded-full bg-muted animate-pulse" />
+              <div className="h-3 w-full max-w-xs rounded-full bg-muted animate-pulse" />
+              <div className="h-7 w-24 rounded-full bg-muted animate-pulse" />
+            </div>
+          </div>
+        ))}
+        {!(thumbnailsLoading || metadataLoading) && filtered.map((v, index) => {
           const thumb = resolve(v.id, v.thumbnail);
           const isThumbOverridden = !!overrides[v.id];
           const isMetaOverridden = !!metaOverrides[v.id];
@@ -471,7 +483,7 @@ export default function AdminVideos() {
         })}
       </div>
 
-      {filtered.length === 0 && (
+      {!(thumbnailsLoading || metadataLoading) && filtered.length === 0 && (
         <div className="liquid-glass rounded-3xl p-10 text-center text-sm text-muted-foreground">
           No videos match this filter.
         </div>

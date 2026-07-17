@@ -15,6 +15,7 @@ export interface VideoMetadataOverride {
   is_enabled?: boolean;
   is_custom?: boolean;
   thumbnail_url?: string | null;
+  updated_at?: string | null;
 }
 
 export type MetadataMap = Record<string, VideoMetadataOverride & { video_id: string }>;
@@ -23,7 +24,7 @@ export async function fetchVideoMetadataOverrides(): Promise<MetadataMap> {
   const { data, error } = await supabase
     .from("video_metadata")
     .select(
-      "video_id, name, category, icon, youtube_id, group_name, tags, benefits, suitable_for, not_suitable_for, dos, donts, is_enabled, is_custom, thumbnail_url",
+      "video_id, name, category, icon, youtube_id, group_name, tags, benefits, suitable_for, not_suitable_for, dos, donts, is_enabled, is_custom, thumbnail_url, updated_at",
     );
   if (error || !data) return {};
   const map: MetadataMap = {};

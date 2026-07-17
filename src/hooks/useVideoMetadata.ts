@@ -9,6 +9,13 @@ function ytThumb(id: string) {
   return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 }
 
+function versionedThumbnail(url: string | null | undefined, updatedAt?: string | null) {
+  if (!url || url.startsWith("data:") || url.startsWith("blob:")) return url;
+  const version = updatedAt ? new Date(updatedAt).getTime() : Date.now();
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}v=${version}`;
+}
+
 export function useVideoMetadata() {
   const [overrides, setOverrides] = useState<MetadataMap>({});
   const [loading, setLoading] = useState(true);
@@ -29,6 +36,7 @@ export function useVideoMetadata() {
       const o = overrides[v.id];
       if (!o) return v;
       const youtubeId = o.youtube_id || v.youtubeId;
+      const thumbnail = versionedThumbnail(o.thumbnail_url, (o as any).updated_at) ?? v.thumbnail;
       return {
         ...v,
         name: o.name ?? v.name,
@@ -41,7 +49,7 @@ export function useVideoMetadata() {
         notSuitableFor: o.not_suitable_for ?? v.notSuitableFor,
         dos: o.dos ?? v.dos,
         donts: o.donts ?? v.donts,
-        thumbnail: o.thumbnail_url ?? v.thumbnail,
+        thumbnail,
         youtubeId,
         youtubeUrl: `https://youtu.be/${youtubeId}`,
       };
@@ -66,7 +74,7 @@ export function useVideoMetadata() {
         donts: o.donts || "",
         benefits: o.benefits || "",
         icon: o.icon || "🎬",
-        thumbnail: o.thumbnail_url || (youtubeId ? ytThumb(youtubeId) : ""),
+        thumbnail: versionedThumbnail(o.thumbnail_url, (o as any).updated_at) || (youtubeId ? ytThumb(youtubeId) : ""),
         youtubeId,
         youtubeUrl: youtubeId ? `https://youtu.be/${youtubeId}` : "",
       });

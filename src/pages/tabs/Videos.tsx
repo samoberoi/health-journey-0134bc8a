@@ -42,8 +42,8 @@ export default function Videos() {
   const [tag, setTag] = useState<(typeof videoTagFilters)[number]["id"]>("all");
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<VideoEntry | null>(null);
-  const { resolve } = useVideoThumbnails();
-  const { resolveVideo, customVideos, disabledIds } = useVideoMetadata();
+  const { resolve, loading: thumbnailsLoading } = useVideoThumbnails();
+  const { resolveVideo, customVideos, disabledIds, loading: metadataLoading } = useVideoMetadata();
   const { getStatus, watched } = useVideoProgress();
 
   const allResolved = useMemo(
@@ -106,6 +106,7 @@ export default function Videos() {
   const yogaPct = Math.min(100, Math.round((yogaMinutesToday / Math.max(1, yogaGoalMin)) * 100));
   const yogaGoalMet = yogaMinutesToday >= yogaGoalMin;
   const yogaRemaining = Math.max(0, yogaGoalMin - yogaMinutesToday);
+  const thumbnailsReady = !(thumbnailsLoading || metadataLoading);
 
   return (
     <div className="flex flex-col gap-4 pt-4 md:pt-6 pb-6">
@@ -235,7 +236,7 @@ export default function Videos() {
 
 
       {/* Continue watching row — Netflix-style */}
-      {continueWatching.length > 0 && (
+      {thumbnailsReady && continueWatching.length > 0 && (
         <section className="space-y-2">
           <h2 className="px-5 text-sm font-black uppercase tracking-[0.12em] text-foreground/80">
             Continue Watching
@@ -278,7 +279,17 @@ export default function Videos() {
 
       {/* Cards */}
       <div className="grid gap-3 px-5 md:grid-cols-2">
-        {filtered.map((v, i) => {
+        {!thumbnailsReady && Array.from({ length: 6 }).map((_, index) => (
+          <div key={`video-card-skeleton-${index}`} className="rounded-xl overflow-hidden bg-white border border-border shadow-card">
+            <div className="w-full bg-muted animate-pulse" style={{ aspectRatio: "16 / 9" }} />
+            <div className="p-3 space-y-2">
+              <div className="h-4 w-2/3 rounded-full bg-muted animate-pulse" />
+              <div className="h-3 w-full rounded-full bg-muted animate-pulse" />
+              <div className="h-3 w-1/2 rounded-full bg-muted animate-pulse" />
+            </div>
+          </div>
+        ))}
+        {thumbnailsReady && filtered.map((v, i) => {
           const s = getStatus(v.id, v.youtubeId);
           return (
             <motion.button
@@ -369,7 +380,7 @@ export default function Videos() {
         })}
       </div>
 
-      {filtered.length === 0 && (
+      {thumbnailsReady && filtered.length === 0 && (
         <div className="text-center py-12 px-5">
           <p className="text-muted-foreground text-sm">No videos match these filters.</p>
         </div>
