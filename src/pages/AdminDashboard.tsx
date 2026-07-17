@@ -257,6 +257,7 @@ const controlCenterTabs = new Set<AdminTab>([
   "channel_partners",
   "global_streak",
   "pnl",
+  "diet_types",
 ]);
 
 const supplementTabs = new Set<AdminTab>(["supplements"]);
