@@ -280,9 +280,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (uid) logAudit({ module: "Auth", action: "logout", target_type: "user", target_id: uid });
     setLoading(true);
     try {
-      await supabase.auth.signOut({ scope: "global" });
+      // Use LOCAL scope (no server round-trip) and a hard timeout so the
+      // mobile app never hangs when the network is slow or the refresh token
+      // is already invalid.
+      await Promise.race([
+        supabase.auth.signOut({ scope: "local" }),
+        new Promise((resolve) => setTimeout(resolve, 2500)),
+      ]);
+    } catch (error) {
+      console.warn("signOut error (ignored, forcing local clear)", error);
     } finally {
-      await clearAllPersistedAuthState();
+      try {
+        await clearAllPersistedAuthState();
+      } catch (error) {
+        console.warn("clearAllPersistedAuthState error (ignored)", error);
+      }
       prevUserId.current = null;
       setSession(null);
       setLoading(false);
