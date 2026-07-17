@@ -275,14 +275,17 @@ Deno.serve(async (req) => {
       .from("device_push_tokens")
       .select("id, token, platform")
       .eq("user_id", targetUserId)
-      .eq("platform", "ios");
+      .in("platform", ["ios", "android"]);
 
     if (tokenError) throw tokenError;
-    if (!tokens?.length) return json(200, { ok: true, sent: 0, note: "No iOS device token registered" });
+    if (!tokens?.length) return json(200, { ok: true, sent: 0, note: "No device token registered" });
 
-    const jwt = await createApnsJwt();
+    const iosTokens = (tokens as Array<{ id: string; token: string; platform: string }>).filter((t) => t.platform === "ios");
+    const androidTokens = (tokens as Array<{ id: string; token: string; platform: string }>).filter((t) => t.platform === "android");
+
+    const jwt = iosTokens.length ? await createApnsJwt() : "";
     const hosts = apnsHosts();
-    const payload = {
+    const apnsPayload = {
       aps: {
         alert: { title, body },
         sound: "default",
@@ -294,14 +297,14 @@ Deno.serve(async (req) => {
       type: "app_notification",
     };
 
-    const results = await Promise.all((tokens as Array<{ id: string; token: string }>).map(async (row) => {
+    const iosResults = await Promise.all(iosTokens.map(async (row) => {
       const attempts: ApnsAttempt[] = [];
-      const first = await sendApnsAttempt(row.token, jwt, payload, hosts[0]);
+      const first = await sendApnsAttempt(row.token, jwt, apnsPayload, hosts[0]);
       attempts.push(first);
 
       const firstReason = typeof first.response?.reason === "string" ? first.response.reason : "";
       if (!first.ok && firstReason === "BadDeviceToken") {
-        attempts.push(await sendApnsAttempt(row.token, jwt, payload, hosts[1]));
+        attempts.push(await sendApnsAttempt(row.token, jwt, apnsPayload, hosts[1]));
       }
 
       const success = attempts.find((attempt) => attempt.ok);
@@ -311,8 +314,21 @@ Deno.serve(async (req) => {
         await admin.from("device_push_tokens").delete().eq("id", row.id);
       }
       console.log("APNs push attempt", { ok: Boolean(success), attempts: attempts.map((a) => ({ status: a.status, environment: a.environment, reason: a.response?.reason ?? null })) });
-      return { ok: Boolean(success), status: success?.status ?? last.status, environment: success?.environment ?? last.environment, response: success?.response ?? last.response, attempts };
+      return { platform: "ios", ok: Boolean(success), status: success?.status ?? last.status, environment: success?.environment ?? last.environment, response: success?.response ?? last.response, attempts };
     }));
+
+    const androidResults = await Promise.all(androidTokens.map(async (row) => {
+      const result = await sendFcm(row.token, title, body, actionUrl);
+      const resp = result.response as any;
+      const errStatus = resp?.error?.status ?? resp?.error?.details?.[0]?.errorCode ?? "";
+      if (!result.ok && (result.status === 404 || errStatus === "UNREGISTERED" || errStatus === "INVALID_ARGUMENT" || errStatus === "NOT_FOUND")) {
+        await admin.from("device_push_tokens").delete().eq("id", row.id);
+      }
+      console.log("FCM push attempt", { ok: result.ok, status: result.status, error: resp?.error ?? null });
+      return { platform: "android", ok: result.ok, status: result.status, response: result.response };
+    }));
+
+    const results = [...iosResults, ...androidResults];
 
     return json(200, {
       ok: results.some((r) => r.ok),
