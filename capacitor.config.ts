@@ -4,6 +4,14 @@ const config: CapacitorConfig = {
   appId: "app.lovable.byebyediabetes",
   appName: "BBDO",
   webDir: "dist",
+  // Serve the WebView from a real-looking https origin so YouTube's IFrame API
+  // accepts the Referer header (otherwise it fails with Error 153 —
+  // embedder.identity.missing.referrer). Applies to both platforms.
+  server: {
+    hostname: "app.byebyediabetes.com",
+    androidScheme: "https",
+    iosScheme: "https",
+  },
   // NOTE: No `server.url` — the app runs the locally bundled build from `dist/`,
   // so users get a native app experience with no Lovable sandbox flash.
   // If you want live hot-reload during development, temporarily add:
