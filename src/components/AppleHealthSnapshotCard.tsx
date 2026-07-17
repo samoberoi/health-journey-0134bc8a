@@ -7,6 +7,7 @@ import {
 import {
   canUseNativeHealth, fetchHealthSnapshot, type HealthSnapshot,
   enableHealthBackgroundSync, onHealthDataChanged,
+  getNativeHealthPermissionState, requestNativeHealthAuthorization,
 } from "@/lib/healthProvider";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -53,19 +54,32 @@ export default function AppleHealthSnapshotCard() {
   const [snap, setSnap] = useState<HealthSnapshot | null>(null);
   const [syncedAt, setSyncedAt] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
+  const [healthMessage, setHealthMessage] = useState<string | null>(null);
+  const [canRequestHealth, setCanRequestHealth] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
       if (isNative) {
-        // Read live from HealthKit, persist to DB, and update UI.
-        const live = await fetchHealthSnapshot();
-        if (live) {
-          setSnap(live);
-          setSyncedAt(new Date().toISOString());
-          void saveHealthSnapshot(user.id, live);
-          return;
+        const state = await getNativeHealthPermissionState();
+        setCanRequestHealth(state.canRequest);
+        setHealthMessage(state.authorized ? null : state.message);
+
+        try {
+          // Read live from Apple Health / Health Connect, persist to DB, and update UI.
+          const live = await fetchHealthSnapshot();
+          if (live) {
+            setSnap(live);
+            setSyncedAt(new Date().toISOString());
+            setHealthMessage(null);
+            setCanRequestHealth(false);
+            void saveHealthSnapshot(user.id, live);
+            return;
+          }
+        } catch (error: any) {
+          setHealthMessage(error?.message || `Couldn't sync ${healthSourceLabel()} data.`);
+          setCanRequestHealth(true);
         }
       }
       // Web (or native failed): fall back to the last synced snapshot from DB.
@@ -78,6 +92,19 @@ export default function AppleHealthSnapshotCard() {
       setLoading(false);
     }
   }, [isNative, user]);
+
+  const connectHealth = useCallback(async () => {
+    if (!user || !isNative) return;
+    setLoading(true);
+    try {
+      const state = await requestNativeHealthAuthorization();
+      setHealthMessage(state.authorized ? null : state.message);
+      setCanRequestHealth(state.canRequest);
+      if (state.authorized) await load();
+    } finally {
+      setLoading(false);
+    }
+  }, [isNative, load, user]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -131,11 +158,23 @@ export default function AppleHealthSnapshotCard() {
       </div>
 
       {!hasAnyData && !loading ? (
-        <p className="rounded-2xl border border-dashed border-border bg-background/60 px-3 py-4 text-center text-[12px] font-medium text-muted-foreground">
-          {isNative
-            ? `No ${healthSourceLabel()} data yet. Allow permissions in the Health app.`
-            : `Open the app on your ${phoneLabel()} once to sync your ${healthSourceLabel()} vitals here.`}
-        </p>
+        <div className="rounded-2xl border border-dashed border-border bg-background/60 px-3 py-4 text-center">
+          <p className="text-[12px] font-medium text-muted-foreground">
+            {isNative
+              ? healthMessage ?? `No ${healthSourceLabel()} data yet. Allow permissions to sync your vitals.`
+              : `Open the app on your ${phoneLabel()} once to sync your ${healthSourceLabel()} vitals here.`}
+          </p>
+          {isNative && canRequestHealth && (
+            <button
+              type="button"
+              onClick={() => void connectHealth()}
+              className="mt-3 h-9 rounded-xl bg-primary px-4 text-xs font-bold text-primary-foreground disabled:opacity-60"
+              disabled={loading}
+            >
+              Allow {healthSourceLabel()}
+            </button>
+          )}
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-2">
           <Tile
