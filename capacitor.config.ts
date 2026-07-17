@@ -31,6 +31,10 @@ const config: CapacitorConfig = {
     PushNotifications: {
       presentationOptions: ["badge", "sound", "banner", "list"],
     },
+    YoutubePlayer: {
+      patchRefererHeader: true,
+      refererHeader: "https://www.youtube.com",
+    },
   },
   ios: {
     preferredContentMode: "mobile",

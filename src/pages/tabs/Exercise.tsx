@@ -26,7 +26,8 @@ import { useDailyExerciseGoal } from "@/hooks/useAppSettings";
 import { EmptyState } from "@/components/shared";
 import SessionBreakdownCard from "@/components/shared/SessionBreakdownCard";
 import { getTodayExerciseMinutes } from "@/lib/yogaProgressService";
-import { isNativeIOSApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
+import NativeYouTubePlayer from "@/components/exercises/NativeYouTubePlayer";
+import { isNativeMobileApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 interface Props {
   packageKey: string | null;
@@ -60,8 +61,8 @@ function WatchModal({
   const videoId = extractYoutubeId(exercise.youtube_url);
   const [playerError, setPlayerError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
-  const [useSimpleEmbed] = useState(() => isNativeIOSApp());
-  const playerSrc = videoId ? youtubePlayerProxyUrl(videoId, { autoplay: true, simple: useSimpleEmbed }) : "";
+  const [useNativePlayer] = useState(() => isNativeMobileApp());
+  const playerSrc = videoId ? youtubePlayerProxyUrl(videoId, { autoplay: true }) : "";
 
   const reportDelta = useCallback(
     (watchedSec: number, durationSec: number, completed: boolean) => {
@@ -119,18 +120,22 @@ function WatchModal({
       >
         <div className="relative aspect-video">
           {videoId ? (
-            <iframe
-              key={`${videoId}-${retryKey}-${useSimpleEmbed ? "simple" : "tracked"}`}
-              ref={iframeRef}
-              src={playerSrc}
-              title={exercise.name}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-              className="w-full h-full border-0"
-            />
+            useNativePlayer ? (
+              <NativeYouTubePlayer key={`${videoId}-${retryKey}`} videoId={videoId} title={exercise.name} />
+            ) : (
+              <iframe
+                key={`${videoId}-${retryKey}`}
+                ref={iframeRef}
+                src={playerSrc}
+                title={exercise.name}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+                className="w-full h-full border-0"
+              />
+            )
           ) : null}
-          {playerError && (
+          {playerError && !useNativePlayer && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
               <p className="text-sm font-bold text-white">This device blocked the in-app YouTube player. Please close and try again.</p>
               <button

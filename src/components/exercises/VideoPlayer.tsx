@@ -15,7 +15,8 @@ import {
   resetProgress,
   accumulateWatched,
 } from "@/lib/videoProgressStore";
-import { isNativeIOSApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
+import NativeYouTubePlayer from "@/components/exercises/NativeYouTubePlayer";
+import { isNativeMobileApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 const VIDEO_ICON_MAP: Record<string, LucideIcon> = {
   Activity,
@@ -48,7 +49,7 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
   const [resumeFrom, setResumeFrom] = useState<number>(0);
   const [restarted, setRestarted] = useState(false);
   const [playerError, setPlayerError] = useState(false);
-  const [useSimpleEmbed] = useState(() => isNativeIOSApp());
+  const [useNativePlayer] = useState(() => isNativeMobileApp());
 
   // Read prior progress once on open — seed accumulator so resumes don't lose credit
   useEffect(() => {
@@ -65,7 +66,6 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
   const playerSrc = youtubePlayerProxyUrl(video.youtubeId, {
     autoplay: true,
     start: restarted ? 0 : resumeFrom,
-    simple: useSimpleEmbed,
   });
 
   const handleProgressSnapshot = (currentTime?: number, duration?: number) => {
@@ -202,17 +202,26 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
           )}
 
           <div className="relative w-full bg-black" style={{ aspectRatio: "16 / 9" }}>
-            <iframe
-              key={`${video.id}-${restarted}-${Math.floor(resumeFrom || 0)}-${useSimpleEmbed ? "simple" : "tracked"}`}
-              ref={iframeRef}
-              src={playerSrc}
-              title={video.name}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-              className="absolute inset-0 w-full h-full border-0"
-            />
-            {playerError && (
+            {useNativePlayer ? (
+              <NativeYouTubePlayer
+                key={`${video.id}-${restarted}-${Math.floor(resumeFrom || 0)}`}
+                videoId={video.youtubeId}
+                title={video.name}
+                start={restarted ? 0 : resumeFrom}
+              />
+            ) : (
+              <iframe
+                key={`${video.id}-${restarted}-${Math.floor(resumeFrom || 0)}`}
+                ref={iframeRef}
+                src={playerSrc}
+                title={video.name}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+                className="absolute inset-0 w-full h-full border-0"
+              />
+            )}
+            {playerError && !useNativePlayer && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-5 text-center">
                 <p className="text-sm font-bold text-white">This device blocked the in-app YouTube player. Please close and try again.</p>
                 <button

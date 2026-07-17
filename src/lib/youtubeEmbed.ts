@@ -57,11 +57,3 @@ export function isNativeIOSApp() {
     return /iphone|ipad|ipod/i.test(window.navigator.userAgent) && isNativeMobileApp();
   }
 }
-
-export function openYouTubeExternal(url: string) {
-  try {
-    window.open(url, "_blank", "noopener,noreferrer");
-  } catch {
-    window.location.href = url;
-  }
-}

@@ -24,6 +24,7 @@
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/push-notifications": "^8.1.2",
     "@capawesome/capacitor-badge": "^8.0.2",
+    "@capgo/capacitor-youtube-player": "^8.2.14",
     "@fontsource/epilogue": "^5.2.8",
     "@fontsource/montserrat": "^5.2.8",
     "@fontsource/urbanist": "^5.2.7",
