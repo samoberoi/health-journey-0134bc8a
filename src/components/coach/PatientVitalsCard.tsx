@@ -34,7 +34,7 @@ export default function PatientVitalsCard({ patientId }: { patientId: string }) 
     <div className="space-y-3">
       <div className="liquid-glass rounded-3xl p-5">
         <div className="mb-3">
-          <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-foreground">Apple Health</p>
+          <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-foreground">Health</p>
           <p className="text-sm font-black text-foreground">
             Latest vitals{snap?.date ? ` · ${snap.date}` : ""}
           </p>
@@ -43,7 +43,7 @@ export default function PatientVitalsCard({ patientId }: { patientId: string }) 
           <p className="text-[12px] text-muted-foreground">Loading…</p>
         ) : !snap ? (
           <p className="rounded-2xl border border-dashed border-border bg-background/60 px-3 py-4 text-center text-[12px] font-medium text-muted-foreground">
-            Patient hasn't synced Apple Health from their iPhone yet.
+            Patient hasn't synced health data from their phone yet.
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-2">
