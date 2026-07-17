@@ -78,12 +78,12 @@ export default function BiometricToggle() {
         <div className="text-sm font-semibold">Unlock with {label}</div>
         <div className="text-xs text-muted-foreground mt-0.5">
           {!native
-            ? "Available in the installed iPhone app."
+            ? "Available in the installed mobile app."
             : checking
             ? "Checking device support…"
             : supported
               ? `${label} is required automatically whenever the app opens.`
-              : "Required automatically. If Face ID is unavailable, your device passcode can be used."}
+              : `Required automatically. If ${label} is unavailable, your device passcode can be used.`}
         </div>
         {native && diagnostics && (
           <div className="mt-2 rounded-xl bg-muted/60 px-3 py-2 text-[11px] leading-snug text-muted-foreground">
