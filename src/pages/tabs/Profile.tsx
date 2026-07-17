@@ -1312,9 +1312,26 @@ export default function Profile({ onClose, isDark = true, onToggleTheme }: Profi
         })}
       </motion.div>
 
-      <motion.button onClick={() => navigate("/")} className="flex items-center justify-center gap-2 py-3 text-destructive text-sm font-semibold" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} whileTap={{ scale: 0.98 }}>
-        <LogOut className="w-4 h-4" strokeWidth={1.6} />
-        {t("logOut")}
+      <motion.button
+        onClick={handleLogout}
+        disabled={loggingOut}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+        whileTap={{ scale: 0.98 }}
+        className="w-full mt-2 mb-6 h-14 rounded-2xl bg-destructive text-destructive-foreground font-semibold text-[15px] tracking-tight flex items-center justify-center gap-2 shadow-[0_8px_24px_-8px_hsl(var(--destructive)/0.5)] active:opacity-90 disabled:opacity-60"
+      >
+        {loggingOut ? (
+          <>
+            <span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+            Logging out…
+          </>
+        ) : (
+          <>
+            <LogOut className="w-[18px] h-[18px]" strokeWidth={2} />
+            {t("logOut")}
+          </>
+        )}
       </motion.button>
     </div>
   );
