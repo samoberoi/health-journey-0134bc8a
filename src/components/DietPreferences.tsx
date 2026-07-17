@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Leaf, Salad, Drumstick, Sprout, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, Leaf, Salad, Drumstick, Sprout, EggFried, Loader2, Sparkles, UtensilsCrossed } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { useDietTypes } from "@/hooks/useDietTypes";
 
-type DietPref = "veg" | "vegan" | "jain" | "non_veg";
+type DietPref = string;
 
-const OPTIONS: { value: DietPref; title: string; desc: string; icon: any }[] = [
-  { value: "veg",     title: "Vegetarian",      desc: "Plant-based + dairy. No meat, fish or eggs.", icon: Salad },
-  { value: "vegan",   title: "Vegan",           desc: "100% plant-based. No dairy, eggs or honey.",  icon: Leaf },
-  { value: "jain",    title: "Jain",            desc: "Vegetarian, no root vegetables.",             icon: Sprout },
-  { value: "non_veg", title: "Non-vegetarian",  desc: "Includes meat, fish and eggs.",               icon: Drumstick },
-];
+const ICON_FOR_SLUG: Record<string, any> = {
+  veg: Salad,
+  vegan: Leaf,
+  jain: Sprout,
+  non_veg: Drumstick,
+  eggitarian: EggFried,
+};
 
 const COMMON_ALLERGIES = [
   "Peanuts", "Tree nuts", "Dairy", "Eggs", "Soy", "Wheat / Gluten",
@@ -20,12 +22,11 @@ const COMMON_ALLERGIES = [
 ];
 
 function normalizePref(p: string): DietPref | null {
-  const v = (p || "").toLowerCase();
-  if (v === "veg" || v === "vegetarian") return "veg";
-  if (v === "vegan") return "vegan";
-  if (v === "jain") return "jain";
-  if (v === "non_veg" || v === "non-veg" || v === "nonveg") return "non_veg";
-  return null;
+  const v = (p || "").toLowerCase().replace(/[-\s]/g, "_");
+  if (!v) return null;
+  if (v === "vegetarian") return "veg";
+  if (v === "nonveg" || v === "non_vegetarian") return "non_veg";
+  return v;
 }
 
 export default function DietPreferences({ onBack }: { onBack: () => void }) {
