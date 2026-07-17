@@ -191,18 +191,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // If the user just explicitly logged out, ignore any auto-restored
+        // session from a token refresh / native hydration and force the app
+        // back to a signed-out state.
         if (localStorage.getItem(EXPLICIT_LOGOUT_KEY) === "1") {
           if (session) {
-            localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
+            // Native keychain / persisted refresh token restored a session
+            // we've been told to forget. Nuke it and stay logged out.
+            void supabase.auth.signOut({ scope: "local" }).catch(() => {});
+            void clearNativePersistedAuthState().catch(() => {});
           } else {
             localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
-            applySession(null);
-            setLoading(false);
-            setReady(true);
-            prevUserId.current = null;
-            void syncNativePersistenceFromLocalStorage();
-            return;
           }
+          applySession(null);
+          setLoading(false);
+          setReady(true);
+          prevUserId.current = null;
+          void syncNativePersistenceFromLocalStorage();
+          return;
         }
 
         const previousUid = prevUserId.current;
@@ -231,6 +237,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       logStartupEvent("auth provider initial restore started");
+      // CRITICAL: check the explicit logout marker BEFORE hydrating any native
+      // persisted tokens. Otherwise the app relaunch on iOS/Android will
+      // silently restore the old session and skip the login/onboarding flow.
+      if (localStorage.getItem(EXPLICIT_LOGOUT_KEY) === "1") {
+        logStartupEvent("auth provider initial restore", "explicit logout marker present");
+        try { await clearNativePersistedAuthState(); } catch { /* ignore */ }
+        try { await supabase.auth.signOut({ scope: "local" }); } catch { /* ignore */ }
+        applySession(null);
+        setLoading(false);
+        setReady(true);
+        prevUserId.current = null;
+        void syncNativePersistenceFromLocalStorage();
+        return;
+      }
       if (isNative()) {
         const diagnostics = await getNativePersistenceDiagnostics();
         console.info("Native auth storage status", diagnostics);
@@ -243,19 +263,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session = retry.data.session;
         if (!session) {
           session = await recoverNativeStoredSession();
-        }
-      }
-      if (localStorage.getItem(EXPLICIT_LOGOUT_KEY) === "1") {
-        if (session) {
-          localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
-        } else {
-          localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
-          applySession(null);
-          setLoading(false);
-          setReady(true);
-          prevUserId.current = null;
-          void syncNativePersistenceFromLocalStorage();
-          return;
         }
       }
 
