@@ -1934,6 +1934,7 @@ export type Database = {
           description: string | null
           display_order: number
           id: string
+          image_url: string | null
           name: string
           severity_default: Database["public"]["Enums"]["food_recommendation"]
           slug: Database["public"]["Enums"]["food_category_slug"]
@@ -1944,6 +1945,7 @@ export type Database = {
           description?: string | null
           display_order?: number
           id?: string
+          image_url?: string | null
           name: string
           severity_default?: Database["public"]["Enums"]["food_recommendation"]
           slug: Database["public"]["Enums"]["food_category_slug"]
@@ -1954,6 +1956,7 @@ export type Database = {
           description?: string | null
           display_order?: number
           id?: string
+          image_url?: string | null
           name?: string
           severity_default?: Database["public"]["Enums"]["food_recommendation"]
           slug?: Database["public"]["Enums"]["food_category_slug"]
@@ -2045,6 +2048,7 @@ export type Database = {
           display_order: number
           icon: string | null
           id: string
+          image_url: string | null
           is_active: boolean
           key_takeaways: string[]
           name: string
@@ -2061,6 +2065,7 @@ export type Database = {
           display_order?: number
           icon?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           key_takeaways?: string[]
           name: string
@@ -2077,6 +2082,7 @@ export type Database = {
           display_order?: number
           icon?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           key_takeaways?: string[]
           name?: string

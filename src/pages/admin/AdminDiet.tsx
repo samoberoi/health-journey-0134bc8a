@@ -15,6 +15,8 @@ import { useConfirm } from "@/components/ConfirmProvider";
 import { logAudit } from "@/lib/auditLog";
 import ExportCsvButton from "@/components/admin/ExportCsvButton";
 import ImportCsvButton from "@/components/admin/ImportCsvButton";
+import TaxonomyImageUploader from "@/components/admin/TaxonomyImageUploader";
+import { uploadCategoryImage, uploadFilterImage } from "@/lib/foodTaxonomyImageService";
 import {
   Plus, Pencil, Trash2, AlertTriangle, Sparkles, Search, Leaf, Wheat, Candy, Bean, Milk, Apple,
   Beef, Drumstick, Droplets, Salad, EggFried, Sprout, Nut, FlaskConical, Image as ImageIcon,
@@ -27,8 +29,8 @@ type GiBand = "low" | "low_med" | "medium" | "med_high" | "high";
 type DietType = string;
 type ServingBasis = "per_100g" | "per_100ml" | "cooked" | "raw";
 
-interface Category { id: string; slug: CategorySlug; name: string; description: string | null; display_order: number; }
-interface Filter { id: string; category_id: string; slug: string; name: string; description: string | null; icon: string | null; display_order: number; order_number: number | null; number_label: string | null; key_takeaways: string[]; cautionary_note: string | null; is_active: boolean; }
+interface Category { id: string; slug: CategorySlug; name: string; description: string | null; display_order: number; image_url: string | null; }
+interface Filter { id: string; category_id: string; slug: string; name: string; description: string | null; icon: string | null; display_order: number; order_number: number | null; number_label: string | null; key_takeaways: string[]; cautionary_note: string | null; is_active: boolean; image_url: string | null; }
 interface Item {
   id: string; filter_id: string; name: string; alt_name: string | null; image_url: string | null;
   diet_type: DietType; serving_basis: ServingBasis;
@@ -154,6 +156,7 @@ export default function AdminDiet() {
   const [editing, setEditing] = useState<Item | null>(null);
   const [creating, setCreating] = useState(false);
   const [editingFilter, setEditingFilter] = useState<Filter | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [recFilter, setRecFilter] = useState<"all" | Recommendation>("all");
@@ -257,11 +260,11 @@ export default function AdminDiet() {
           const th = themeFor(c.slug);
           const count = items.filter(i => filters.some(f => f.id === i.filter_id && f.category_id === c.id)).length;
           return (
-            <motion.button
+            <motion.div
               key={c.id}
-              onClick={() => setActiveCat(c.id)}
               whileTap={{ scale: 0.99 }}
-              className={`text-left p-5 rounded-2xl border transition-all ${active ? th.tileActive : th.tileInactive}`}
+              className={`relative text-left p-5 rounded-2xl border transition-all cursor-pointer ${active ? th.tileActive : th.tileInactive}`}
+              onClick={() => setActiveCat(c.id)}
             >
               <div className="flex items-start justify-between mb-2">
                 <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md ${active ? th.chip : "bg-muted text-muted-foreground"}`}>
@@ -269,9 +272,24 @@ export default function AdminDiet() {
                 </span>
                 <span className="text-[10px] text-muted-foreground font-mono">{count} items</span>
               </div>
-              <h3 className={`text-base font-bold leading-tight ${active ? th.title : "text-foreground"}`}>{c.name}</h3>
-              {c.description && <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{c.description}</p>}
-            </motion.button>
+              <div className="flex items-start gap-3">
+                {c.image_url && (
+                  <img src={c.image_url} alt={c.name} className="w-14 h-14 rounded-xl object-cover border border-border shrink-0" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <h3 className={`text-base font-bold leading-tight ${active ? th.title : "text-foreground"}`}>{c.name}</h3>
+                  {c.description && <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{c.description}</p>}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setEditingCategory(c); }}
+                className="absolute bottom-2 right-2 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md bg-background/80 backdrop-blur border border-border hover:bg-background"
+                title="Edit category image"
+              >
+                <Pencil className="w-3 h-3" /> Image
+              </button>
+            </motion.div>
           );
         })}
       </div>
@@ -300,8 +318,12 @@ export default function AdminDiet() {
                   active ? th.filterActive : th.filterInactive
                 }`}
               >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${active ? th.filterIconBox : "bg-muted"}`}>
-                  <Icon className="w-4 h-4" strokeWidth={2} />
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 overflow-hidden ${active ? th.filterIconBox : "bg-muted"}`}>
+                  {f.image_url ? (
+                    <img src={f.image_url} alt={f.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Icon className="w-4 h-4" strokeWidth={2} />
+                  )}
                 </div>
                 <div className="text-left">
                   <p className={`text-[9px] font-mono font-bold leading-none ${active ? "opacity-80" : "opacity-70"}`}>{num}</p>
@@ -326,8 +348,12 @@ export default function AdminDiet() {
             <div className="mb-5 p-6 rounded-2xl bg-gradient-to-br from-primary/5 via-card to-card border border-border shadow-card">
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="flex items-start gap-4 min-w-0">
-                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                    {(() => { const Icon = FILTER_ICONS[activeFilterObj.slug] || Leaf; return <Icon className="w-7 h-7 text-primary" strokeWidth={2} />; })()}
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                    {activeFilterObj.image_url ? (
+                      <img src={activeFilterObj.image_url} alt={activeFilterObj.name} className="w-full h-full object-cover" />
+                    ) : (
+                      (() => { const Icon = FILTER_ICONS[activeFilterObj.slug] || Leaf; return <Icon className="w-7 h-7 text-primary" strokeWidth={2} />; })()
+                    )}
                   </div>
                   <div className="min-w-0">
                     <p className="text-[11px] font-mono font-bold text-primary tracking-wider mb-0.5">{activeFilterObj.number_label ?? `F${String(activeFilterObj.order_number ?? 0).padStart(2, "0")}`}</p>
@@ -502,6 +528,9 @@ export default function AdminDiet() {
       )}
       {editingFilter && (
         <FilterEditor filter={editingFilter} onClose={() => setEditingFilter(null)} onSaved={() => { setEditingFilter(null); reload(); }} />
+      )}
+      {editingCategory && (
+        <CategoryEditor category={editingCategory} onClose={() => setEditingCategory(null)} onSaved={() => { setEditingCategory(null); reload(); }} />
       )}
     </div>
   );
@@ -748,6 +777,7 @@ function FilterEditor({ filter, onClose, onSaved }: { filter: Filter; onClose: (
   const [takeaways, setTakeaways] = useState((filter.key_takeaways || []).join("\n"));
   const [note, setNote] = useState(filter.cautionary_note || "");
   const [orderNumber, setOrderNumber] = useState<number>(filter.order_number ?? filter.display_order);
+  const [imageUrl, setImageUrl] = useState<string | null>(filter.image_url);
   const [saving, setSaving] = useState(false);
   const confirm = useConfirm();
 
@@ -762,7 +792,8 @@ function FilterEditor({ filter, onClose, onSaved }: { filter: Filter; onClose: (
     const { error } = await supabase.from("food_filters").update({
       name, description, cautionary_note: note, order_number: orderNumber,
       key_takeaways: takeaways.split("\n").map(s => s.trim()).filter(Boolean),
-    }).eq("id", filter.id);
+      image_url: imageUrl,
+    } as any).eq("id", filter.id);
     setSaving(false);
     if (error) return toast.error(error.message);
     logAudit({ module: "Diet", action: "update", target_type: "food_filter", target_id: filter.id, target_label: name });
@@ -774,6 +805,14 @@ function FilterEditor({ filter, onClose, onSaved }: { filter: Filter; onClose: (
       <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>Edit filter</DialogTitle></DialogHeader>
         <div className="space-y-4 mt-2">
+          <Field label="Image">
+            <TaxonomyImageUploader
+              value={imageUrl}
+              onChange={setImageUrl}
+              onUpload={(f) => uploadFilterImage(filter.id, f)}
+              label={filter.name}
+            />
+          </Field>
           <div className="grid grid-cols-[100px_1fr] gap-3">
             <Field label="Number"><Input type="number" value={orderNumber} onChange={e => setOrderNumber(Number(e.target.value))} /></Field>
             <Field label="Name"><Input value={name} onChange={e => setName(e.target.value)} /></Field>
@@ -781,6 +820,48 @@ function FilterEditor({ filter, onClose, onSaved }: { filter: Filter; onClose: (
           <Field label="Description"><Textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} /></Field>
           <Field label="Key takeaways (one per line)"><Textarea rows={4} value={takeaways} onChange={e => setTakeaways(e.target.value)} /></Field>
           <Field label="Cautionary note"><Textarea rows={3} value={note} onChange={e => setNote(e.target.value)} /></Field>
+          <div className="flex gap-2 pt-2 justify-end">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CategoryEditor({ category, onClose, onSaved }: { category: Category; onClose: () => void; onSaved: () => void; }) {
+  const [imageUrl, setImageUrl] = useState<string | null>(category.image_url);
+  const [name, setName] = useState(category.name);
+  const [description, setDescription] = useState(category.description || "");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    const { error } = await supabase.from("food_categories").update({
+      name, description, image_url: imageUrl,
+    } as any).eq("id", category.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    logAudit({ module: "Diet", action: "update", target_type: "food_category", target_id: category.id, target_label: name });
+    toast.success("Updated"); onSaved();
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Edit category</DialogTitle></DialogHeader>
+        <div className="space-y-4 mt-2">
+          <Field label="Image">
+            <TaxonomyImageUploader
+              value={imageUrl}
+              onChange={setImageUrl}
+              onUpload={(f) => uploadCategoryImage(category.id, f)}
+              label={category.name}
+            />
+          </Field>
+          <Field label="Name"><Input value={name} onChange={e => setName(e.target.value)} /></Field>
+          <Field label="Description"><Textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} /></Field>
           <div className="flex gap-2 pt-2 justify-end">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
