@@ -153,20 +153,19 @@ Deno.serve(async (req) => {
         .from("notifications")
         .select("id, user_id, title, body, type, action_url, created_at")
         .eq("id", notificationId)
-        .eq("type", "health_alert")
         .maybeSingle();
 
       if (notificationError) throw notificationError;
-      if (!notification) return json(404, { ok: false, error: "Health alert notification not found" });
+      if (!notification) return json(404, { ok: false, error: "Notification not found" });
 
       const createdAt = Date.parse((notification as any).created_at ?? "");
       if (!Number.isFinite(createdAt) || createdAt < Date.now() - 30 * 60 * 1000) {
-        return json(410, { ok: false, error: "Health alert dispatch window expired" });
+        return json(410, { ok: false, error: "Notification dispatch window expired" });
       }
 
       targetUserId = (notification as any).user_id;
-      title = validText((notification as any).title, 120) ?? "Health alert";
-      body = validText((notification as any).body, 500) ?? "Please review your latest health reading.";
+      title = validText((notification as any).title, 120) ?? "BBDO notification";
+      body = validText((notification as any).body, 500) ?? "You have a new app notification.";
       actionUrl = typeof (notification as any).action_url === "string" ? (notification as any).action_url.slice(0, 240) : "/home?tab=profile";
     } else {
       const userClient = createClient(SUPABASE_URL, ANON_KEY, {
@@ -205,7 +204,7 @@ Deno.serve(async (req) => {
         "relevance-score": 1,
       },
       action_url: actionUrl,
-      type: "health_alert",
+      type: "app_notification",
     };
 
     const results = await Promise.all((tokens as Array<{ id: string; token: string }>).map(async (row) => {

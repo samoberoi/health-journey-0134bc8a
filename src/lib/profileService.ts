@@ -87,11 +87,20 @@ export async function updateProfile(userId: string, updates: Partial<ProfileRow>
 
   const nextWeight = Number((updates as any).weight);
   if (Number.isFinite(nextWeight) && previousProfile?.weight !== nextWeight) {
-    void fireHealthMetricFeedback(
-      { user_id: userId, log_type: "weight", weight_kg: nextWeight },
-      previousProfile?.weight ?? null,
-      { createInboxNotification: false },
-    );
+    const { error: weightLogError } = await supabase.from("health_logs" as any).insert({
+      user_id: userId,
+      log_type: "weight",
+      logged_at: new Date().toISOString(),
+      weight_kg: nextWeight,
+    });
+    if (weightLogError) {
+      console.error("Failed to save weight health log:", weightLogError);
+      void fireHealthMetricFeedback(
+        { user_id: userId, log_type: "weight", weight_kg: nextWeight },
+        previousProfile?.weight ?? null,
+        { createInboxNotification: false },
+      );
+    }
   }
 
   const clinical = (updates.clinical ?? {}) as any;
@@ -102,16 +111,26 @@ export async function updateProfile(userId: string, updates: Partial<ProfileRow>
   const previousDiastolic = Number(previousClinical.diastolicBP ?? previousClinical.bp_diastolic ?? previousClinical.diastolic ?? previousClinical.bloodPressureDiastolic);
   const bpChanged = systolic !== previousSystolic || diastolic !== previousDiastolic;
   if (Number.isFinite(systolic) && Number.isFinite(diastolic) && bpChanged) {
-    void fireHealthMetricFeedback(
-      {
-        user_id: userId,
-        log_type: "bp",
-        bp_systolic: systolic,
-        bp_diastolic: diastolic,
-      },
-      null,
-      { createInboxNotification: false },
-    );
+    const { error: bpLogError } = await supabase.from("health_logs" as any).insert({
+      user_id: userId,
+      log_type: "bp",
+      logged_at: new Date().toISOString(),
+      bp_systolic: systolic,
+      bp_diastolic: diastolic,
+    });
+    if (bpLogError) {
+      console.error("Failed to save BP health log:", bpLogError);
+      void fireHealthMetricFeedback(
+        {
+          user_id: userId,
+          log_type: "bp",
+          bp_systolic: systolic,
+          bp_diastolic: diastolic,
+        },
+        null,
+        { createInboxNotification: false },
+      );
+    }
   }
 
   return true;
