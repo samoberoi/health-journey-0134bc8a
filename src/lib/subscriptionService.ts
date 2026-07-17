@@ -43,7 +43,32 @@ export async function fetchActiveSubscription(userId?: string): Promise<Subscrip
     console.error("Failed to fetch subscription:", error);
     return null;
   }
+  const sub = data as unknown as Subscription | null;
+  // Treat time-expired subscriptions as inactive even if status not yet reconciled.
+  if (sub && new Date(sub.expires_at).getTime() <= Date.now()) return null;
+  return sub;
+}
+
+/** Latest subscription row regardless of status — used to detect expired users. */
+export async function fetchLatestSubscription(userId: string): Promise<Subscription | null> {
+  const { data, error } = await supabase
+    .from("subscriptions" as any)
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error("Failed to fetch latest subscription:", error);
+    return null;
+  }
   return data as unknown as Subscription | null;
+}
+
+export function isSubscriptionExpired(sub: Subscription | null): boolean {
+  if (!sub) return false;
+  if (sub.status !== "active") return true;
+  return new Date(sub.expires_at).getTime() <= Date.now();
 }
 
 export async function createSubscription(sub: {
