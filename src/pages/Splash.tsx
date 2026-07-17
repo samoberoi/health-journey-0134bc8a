@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import logoImg from "@/assets/logo.png";
 import { setPhase } from "@/lib/musicEngine";
 import { useAuth } from "@/contexts/AuthContext";
+import { resolvePostAuthRoute } from "@/lib/accessControl";
 
 /**
  * Minimal, modern splash.
@@ -42,8 +43,13 @@ export default function Splash() {
   useEffect(() => {
     if (!minimumSplashDone || !ready) return;
     if (session) {
-      navigate("/home", { replace: true });
-      return;
+      let cancelled = false;
+      void resolvePostAuthRoute(session.user.id, { missingProfileRoute: null }).then((route) => {
+        if (!cancelled) navigate(route ?? "/reality-hook", { replace: true });
+      });
+      return () => {
+        cancelled = true;
+      };
     }
     navigate("/reality-hook", { replace: true });
   }, [minimumSplashDone, navigate, ready, session]);

@@ -153,10 +153,9 @@ export function useRbac() {
       if (tab === "consult" && !cache.isCoach && cache.packageKey === "foundation") return false;
       // While loading or before any perms resolved, allow common tabs (no flicker)
       if (loading) return true;
-      // If no package & no coach role, fall back to permissive (legacy users without subscription)
+      // Standard users without an active package must not see paid app tabs.
       if (!cache.packageKey && !cache.isCoach && !cache.isChannelPartner) {
-        if (tab === "consult") return false;
-        return true;
+        return false;
       }
       const mod = TAB_TO_MODULE[tab];
       if (!mod) return true; // unknown tab → don't hide

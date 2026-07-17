@@ -8,6 +8,7 @@ import { setPhase, fadeOutAndStop } from "@/lib/musicEngine";
 import { useAuth } from "@/contexts/AuthContext";
 import { updateProfile, syncLocalToBackend } from "@/lib/profileService";
 import { sendWelcomeNotification } from "@/lib/notificationService";
+import { fetchActiveSubscription } from "@/lib/subscriptionService";
 
 const badges = [
   { icon: Trophy, label: "First Step Taken" },
@@ -33,14 +34,20 @@ export default function DayOneScreen() {
   useEffect(() => {
     if (authUser) {
       syncLocalToBackend(authUser.id).then(() => {
-        updateProfile(authUser.id, { onboarding_completed: true }).then(() => {
-          void sendWelcomeNotification(authUser.id).catch((error) => {
-            console.error("sendWelcomeNotification failed", error);
+        fetchActiveSubscription(authUser.id).then((activeSubscription) => {
+          if (!activeSubscription) {
+            navigate("/plans", { replace: true });
+            return;
+          }
+          updateProfile(authUser.id, { onboarding_completed: true }).then(() => {
+            void sendWelcomeNotification(authUser.id).catch((error) => {
+              console.error("sendWelcomeNotification failed", error);
+            });
           });
         });
       });
     }
-  }, [authUser]);
+  }, [authUser, navigate]);
 
   return (
     <div className="phone-container ob-lock min-h-dvh cursor-pointer overflow-x-hidden bg-background flex flex-col items-center justify-center px-6 text-center" onClick={() => navigate(nextRoute)}>

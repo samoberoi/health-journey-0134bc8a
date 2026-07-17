@@ -20,6 +20,7 @@ import logoImg from "@/assets/logo.png";
 import AuthHeroCarousel from "@/components/AuthHeroCarousel";
 import { toast } from "sonner";
 import { persistSupabaseSessionToNative } from "@/lib/nativePersistence";
+import { resolvePostAuthRoute } from "@/lib/accessControl";
 
 const DEFAULT_OTP = "111111";
 
@@ -62,7 +63,12 @@ export default function Auth() {
       try {
         const existingSession = await getExistingSessionUnlessLoggedOut();
         if (existingSession) {
-          navigate("/home", { replace: true });
+          const route = await resolvePostAuthRoute(existingSession.user.id, { missingProfileRoute: null });
+          if (route) {
+            navigate(route, { replace: true });
+            return;
+          }
+          if (!cancelled) setSessionPreparing(false);
           return;
         }
       } catch {
@@ -141,15 +147,14 @@ export default function Auth() {
           saveUser({ profile: { phone, country: country.name, country_code: country.dial } as any });
           loadProfileToLocal(profile);
           const activeSubscription = await fetchActiveSubscription(signInData.user.id);
-          if (profile.onboarding_completed || activeSubscription) {
-            if (!profile.onboarding_completed && activeSubscription) {
-              await supabase
-                .from("profiles" as any)
-                .update({ onboarding_completed: true } as any)
-                .eq("user_id", signInData.user.id);
-            }
+          if (activeSubscription) {
             setLoading(false);
             navigate("/home");
+            return;
+          }
+          if (profile.onboarding_completed) {
+            setLoading(false);
+            navigate("/plans");
             return;
           }
           if (profile.name) {

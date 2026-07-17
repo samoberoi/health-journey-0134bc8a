@@ -11,6 +11,18 @@ import {
   type BiometricDiagnostics,
 } from "@/lib/biometric";
 import { Button } from "@/components/ui/button";
+import { useLocation } from "react-router-dom";
+
+const BIOMETRIC_PROTECTED_ROUTES = new Set([
+  "/home",
+  "/dashboard",
+  "/tour",
+  "/notifications",
+  "/admin-dashboard",
+  "/admin/users-insights",
+  "/coach-dashboard",
+  "/partner-dashboard",
+]);
 
 function isAndroidNativeApp() {
   return typeof navigator !== "undefined" && /android/i.test(navigator.userAgent);
@@ -26,6 +38,7 @@ function isAndroidNativeApp() {
  */
 export default function BiometricGate({ children }: { children: ReactNode }) {
   const { session, loading, signOut } = useAuth();
+  const location = useLocation();
   const [locked, setLocked] = useState<boolean>(false);
   const [authenticating, setAuthenticating] = useState<boolean>(false);
   const [biometryChecked, setBiometryChecked] = useState<boolean>(false);
@@ -40,7 +53,7 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
   // isn't enrolled we let the user in rather than trap them behind the lock.
   const native = isNative();
   const startupShield = native && loading;
-  const shouldGate = native && !loading && !!session;
+  const shouldGate = native && !loading && !!session && BIOMETRIC_PROTECTED_ROUTES.has(location.pathname);
   const gateVisible =
     startupShield ||
     (shouldGate && (locked || authenticating || lastAuthAt.current === 0));

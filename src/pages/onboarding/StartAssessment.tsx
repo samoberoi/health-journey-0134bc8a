@@ -5,6 +5,7 @@ import { ArrowRight, Clock, ShieldCheck, ClipboardCheck } from "lucide-react";
 import SoundToggle from "@/components/SoundToggle";
 import { setPhase, setIntensity } from "@/lib/musicEngine";
 import { getExistingSessionUnlessLoggedOut } from "@/contexts/AuthContext";
+import { resolvePostAuthRoute } from "@/lib/accessControl";
 
 const features = [
   { icon: Clock, text: "Takes less than\n5 minutes" },
@@ -19,7 +20,8 @@ export default function StartAssessment() {
   const goToLogin = async () => {
     const existingSession = await getExistingSessionUnlessLoggedOut();
     if (existingSession) {
-      navigate("/home", { replace: true });
+      const route = await resolvePostAuthRoute(existingSession.user.id, { missingProfileRoute: null });
+      navigate(route ?? "/auth", { replace: true });
       return;
     }
     navigate("/auth", { replace: true });

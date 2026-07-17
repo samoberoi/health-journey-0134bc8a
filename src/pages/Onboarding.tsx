@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight } from "lucide-react";
 import { getExistingSessionUnlessLoggedOut } from "@/contexts/AuthContext";
+import { resolvePostAuthRoute } from "@/lib/accessControl";
 
 const slides = [
   {
@@ -32,7 +33,8 @@ export default function Onboarding() {
   const goToLogin = async () => {
     const existingSession = await getExistingSessionUnlessLoggedOut();
     if (existingSession) {
-      navigate("/home", { replace: true });
+      const route = await resolvePostAuthRoute(existingSession.user.id, { missingProfileRoute: null });
+      navigate(route ?? "/auth", { replace: true });
       return;
     }
     navigate("/auth", { replace: true });
