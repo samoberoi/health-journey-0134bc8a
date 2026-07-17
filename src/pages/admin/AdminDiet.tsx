@@ -774,6 +774,7 @@ function FilterEditor({ filter, onClose, onSaved }: { filter: Filter; onClose: (
   const [takeaways, setTakeaways] = useState((filter.key_takeaways || []).join("\n"));
   const [note, setNote] = useState(filter.cautionary_note || "");
   const [orderNumber, setOrderNumber] = useState<number>(filter.order_number ?? filter.display_order);
+  const [imageUrl, setImageUrl] = useState<string | null>(filter.image_url);
   const [saving, setSaving] = useState(false);
   const confirm = useConfirm();
 
@@ -788,7 +789,8 @@ function FilterEditor({ filter, onClose, onSaved }: { filter: Filter; onClose: (
     const { error } = await supabase.from("food_filters").update({
       name, description, cautionary_note: note, order_number: orderNumber,
       key_takeaways: takeaways.split("\n").map(s => s.trim()).filter(Boolean),
-    }).eq("id", filter.id);
+      image_url: imageUrl,
+    } as any).eq("id", filter.id);
     setSaving(false);
     if (error) return toast.error(error.message);
     logAudit({ module: "Diet", action: "update", target_type: "food_filter", target_id: filter.id, target_label: name });
@@ -800,6 +802,14 @@ function FilterEditor({ filter, onClose, onSaved }: { filter: Filter; onClose: (
       <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>Edit filter</DialogTitle></DialogHeader>
         <div className="space-y-4 mt-2">
+          <Field label="Image">
+            <TaxonomyImageUploader
+              value={imageUrl}
+              onChange={setImageUrl}
+              onUpload={(f) => uploadFilterImage(filter.id, f)}
+              label={filter.name}
+            />
+          </Field>
           <div className="grid grid-cols-[100px_1fr] gap-3">
             <Field label="Number"><Input type="number" value={orderNumber} onChange={e => setOrderNumber(Number(e.target.value))} /></Field>
             <Field label="Name"><Input value={name} onChange={e => setName(e.target.value)} /></Field>
@@ -807,6 +817,48 @@ function FilterEditor({ filter, onClose, onSaved }: { filter: Filter; onClose: (
           <Field label="Description"><Textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} /></Field>
           <Field label="Key takeaways (one per line)"><Textarea rows={4} value={takeaways} onChange={e => setTakeaways(e.target.value)} /></Field>
           <Field label="Cautionary note"><Textarea rows={3} value={note} onChange={e => setNote(e.target.value)} /></Field>
+          <div className="flex gap-2 pt-2 justify-end">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CategoryEditor({ category, onClose, onSaved }: { category: Category; onClose: () => void; onSaved: () => void; }) {
+  const [imageUrl, setImageUrl] = useState<string | null>(category.image_url);
+  const [name, setName] = useState(category.name);
+  const [description, setDescription] = useState(category.description || "");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    const { error } = await supabase.from("food_categories").update({
+      name, description, image_url: imageUrl,
+    } as any).eq("id", category.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    logAudit({ module: "Diet", action: "update", target_type: "food_category", target_id: category.id, target_label: name });
+    toast.success("Updated"); onSaved();
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Edit category</DialogTitle></DialogHeader>
+        <div className="space-y-4 mt-2">
+          <Field label="Image">
+            <TaxonomyImageUploader
+              value={imageUrl}
+              onChange={setImageUrl}
+              onUpload={(f) => uploadCategoryImage(category.id, f)}
+              label={category.name}
+            />
+          </Field>
+          <Field label="Name"><Input value={name} onChange={e => setName(e.target.value)} /></Field>
+          <Field label="Description"><Textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} /></Field>
           <div className="flex gap-2 pt-2 justify-end">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
