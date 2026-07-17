@@ -5,9 +5,9 @@ import {
   Activity, Flame, HeartPulse, Moon, Route, Timer, Droplet, Scale, RefreshCw,
 } from "lucide-react";
 import {
-  canUseAppleHealthSteps, fetchAppleHealthSnapshot, type HealthSnapshot,
-  enableAppleHealthBackgroundSync, onAppleHealthDataChanged,
-} from "@/lib/appleHealth";
+  canUseNativeHealth, fetchHealthSnapshot, type HealthSnapshot,
+  enableHealthBackgroundSync, onHealthDataChanged,
+} from "@/lib/healthProvider";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   saveHealthSnapshot, fetchLatestHealthSnapshot, type StoredHealthSnapshot,
