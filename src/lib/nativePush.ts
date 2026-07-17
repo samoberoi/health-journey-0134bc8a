@@ -22,9 +22,8 @@ let lastRegistrationToken: string | null = null;
 let tokenWaiters: Array<(token: string) => void> = [];
 
 export function isNativePushSupported(): boolean {
-  // Android remote push needs Firebase configured first. Until google-services
-  // is added, do not touch the Android PushNotifications plugin at startup.
-  return Capacitor.isNativePlatform() && Capacitor.getPlatform() !== "android";
+  // Both iOS (APNs) and Android (FCM via google-services.json) are wired up.
+  return Capacitor.isNativePlatform();
 }
 
 export function currentPlatform(): "ios" | "android" | "web" {
