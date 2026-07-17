@@ -247,7 +247,7 @@ export async function fireHealthMetricFeedback(
       notify(result.message);
     } else if (settings.enabled) {
       setMasterVolume(settings.volume ?? 0.8);
-      playSuccess();
+      playNotificationSound(settings.variant);
     }
   } catch (err) {
     console.warn("health metric feedback failed", err);
