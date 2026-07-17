@@ -316,8 +316,12 @@ export default function AdminDiet() {
                   active ? th.filterActive : th.filterInactive
                 }`}
               >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${active ? th.filterIconBox : "bg-muted"}`}>
-                  <Icon className="w-4 h-4" strokeWidth={2} />
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 overflow-hidden ${active ? th.filterIconBox : "bg-muted"}`}>
+                  {f.image_url ? (
+                    <img src={f.image_url} alt={f.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Icon className="w-4 h-4" strokeWidth={2} />
+                  )}
                 </div>
                 <div className="text-left">
                   <p className={`text-[9px] font-mono font-bold leading-none ${active ? "opacity-80" : "opacity-70"}`}>{num}</p>
