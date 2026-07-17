@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { HealthConnect } from "capacitor-health-connect";
+import type { HealthConnectAvailability, RecordType } from "capacitor-health-connect";
 import type { HealthSnapshot } from "@/lib/appleHealth";
 import { logStartupEvent, reportStartupError } from "@/lib/startupDiagnostics";
 
@@ -8,53 +9,129 @@ export function canUseHealthConnect() {
   return Capacitor.getPlatform() === "android" && Capacitor.isNativePlatform();
 }
 
-const READ_TYPES = [
+const READ_TYPES: RecordType[] = [
   "Steps",
-  "Distance",
   "ActiveCaloriesBurned",
-  "ExerciseSession",
-  "HeartRate",
-  "HeartRateVariabilityRmssd",
-  "SleepSession",
+  "HeartRateSeries",
+  "RestingHeartRate",
   "Weight",
   "BloodGlucose",
-] as const;
+] ;
 
-type ReadType = (typeof READ_TYPES)[number];
+type HealthConnectPermissionState = {
+  availability: HealthConnectAvailability | "Unknown";
+  authorized: boolean;
+  canRequest: boolean;
+  message: string;
+};
 
-async function ensureAvailableAndAuthorized(): Promise<boolean> {
-  if (!canUseHealthConnect()) return false;
+const readOptions = { read: READ_TYPES, write: [] as RecordType[] };
+
+export async function getHealthConnectPermissionState(): Promise<HealthConnectPermissionState> {
+  if (!canUseHealthConnect()) {
+    return {
+      availability: "Unknown",
+      authorized: false,
+      canRequest: false,
+      message: "Open the installed Android app to connect Health Connect.",
+    };
+  }
+
   try {
     const status = await HealthConnect.checkAvailability();
-    // status.availability: "Available" | "NotInstalled" | "NotSupported"
-    if (status.availability !== "Available") {
-      logStartupEvent("health-connect availability", status.availability);
-      return false;
+    if (status.availability === "NotInstalled") {
+      return {
+        availability: status.availability,
+        authorized: false,
+        canRequest: true,
+        message: "Install or update Health Connect, then allow permissions.",
+      };
     }
-    const perms = await HealthConnect.checkHealthPermissions({
-      read: READ_TYPES as unknown as ReadType[],
-      write: ["Weight"],
-    } as any);
-    const missing = ((perms as any)?.readPermissions ?? []).length !==
-      READ_TYPES.length;
-    if (missing) {
-      await HealthConnect.requestHealthPermissions({
-        read: READ_TYPES as unknown as ReadType[],
-        write: ["Weight"],
-      } as any);
+    if (status.availability === "NotSupported") {
+      return {
+        availability: status.availability,
+        authorized: false,
+        canRequest: false,
+        message: "Health Connect is not supported on this Android device.",
+      };
     }
-    return true;
+
+    const perms = await HealthConnect.checkHealthPermissions(readOptions);
+    const authorized = !!perms?.hasAllPermissions;
+    return {
+      availability: status.availability,
+      authorized,
+      canRequest: !authorized,
+      message: authorized
+        ? "Health Connect is connected."
+        : "Allow Health Connect permissions to sync your Android vitals.",
+    };
   } catch (e) {
-    reportStartupError("health-connect init failed", e);
-    return false;
+    reportStartupError("health-connect permission check failed", e);
+    return {
+      availability: "Unknown",
+      authorized: false,
+      canRequest: true,
+      message: "Health Connect permissions could not be checked. Tap Allow and try again.",
+    };
   }
+}
+
+export async function requestHealthConnectAuthorization(): Promise<HealthConnectPermissionState> {
+  if (!canUseHealthConnect()) return getHealthConnectPermissionState();
+
+  try {
+    const status = await HealthConnect.checkAvailability();
+    if (status.availability === "NotSupported") return getHealthConnectPermissionState();
+
+    logStartupEvent("health-connect authorization requested");
+    const result = await HealthConnect.requestHealthPermissions(readOptions);
+    logStartupEvent("health-connect authorization result", result?.hasAllPermissions ? "granted" : "denied");
+
+    if (result?.hasAllPermissions) {
+      return {
+        availability: "Available",
+        authorized: true,
+        canRequest: false,
+        message: "Health Connect is connected.",
+      };
+    }
+
+    return {
+      availability: status.availability,
+      authorized: false,
+      canRequest: true,
+      message: "Health Connect permission was not granted. Tap Allow and enable the requested data types.",
+    };
+  } catch (e) {
+    reportStartupError("health-connect permission request failed", e);
+    return {
+      availability: "Unknown",
+      authorized: false,
+      canRequest: true,
+      message: "Health Connect permission request was cancelled or failed. Tap Allow and try again.",
+    };
+  }
+}
+
+async function ensureAvailableAndAuthorized(): Promise<boolean> {
+  const state = await getHealthConnectPermissionState();
+  if (state.authorized) return true;
+  if (state.availability !== "Available" && state.availability !== "NotInstalled") {
+    logStartupEvent("health-connect availability", state.availability);
+    throw new Error(state.message);
+  }
+
+  const requested = await requestHealthConnectAuthorization();
+  if (!requested.authorized) throw new Error(requested.message);
+  return true;
 }
 
 function startOfToday() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
 function endOfToday()   { const d = new Date(); d.setHours(23, 59, 59, 999); return d; }
 function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return d; }
 
-async function aggregate(type: ReadType, start: Date, end: Date): Promise<any | null> {
+async function aggregate(type: RecordType, start: Date, end: Date): Promise<any | null> {
   try {
     const res: any = await (HealthConnect as any).readRecords({
       type,
@@ -93,36 +170,23 @@ export async function fetchHealthConnectSnapshot(): Promise<HealthSnapshot | nul
   const ok = await ensureAvailableAndAuthorized();
   if (!ok) return null;
 
-  const [steps, distance, active, exercise, hr, hrv, sleep, weight, glucose] =
+  const [steps, active, hr, restingHr, weight, glucose] =
     await Promise.all([
       aggregate("Steps", startOfToday(), endOfToday()),
-      aggregate("Distance", startOfToday(), endOfToday()),
       aggregate("ActiveCaloriesBurned", startOfToday(), endOfToday()),
-      aggregate("ExerciseSession", startOfToday(), endOfToday()),
-      aggregate("HeartRate", daysAgo(1), endOfToday()),
-      aggregate("HeartRateVariabilityRmssd", daysAgo(1), endOfToday()),
-      aggregate("SleepSession", daysAgo(1), endOfToday()),
+      aggregate("HeartRateSeries", daysAgo(1), endOfToday()),
+      aggregate("RestingHeartRate", daysAgo(7), endOfToday()),
       aggregate("Weight", daysAgo(30), endOfToday()),
       aggregate("BloodGlucose", daysAgo(7), endOfToday()),
     ]);
 
   const stepsTotal = sum(steps, "count");
-  const distMeters = sum(distance, "distance") ??
-    (distance ? distance.reduce((a: number, r: any) => a + Number(r?.distance?.value ?? 0), 0) : undefined);
   const activeKcal = active ? active.reduce(
     (a: number, r: any) => a + Number(r?.energy?.value ?? r?.energy ?? 0),
     0,
   ) : undefined;
 
-  const exerciseMinutes = exercise ? Math.round(
-    exercise.reduce((a: number, r: any) => {
-      const s = new Date(r?.startTime).getTime();
-      const e = new Date(r?.endTime).getTime();
-      return a + Math.max(0, (e - s) / 60000);
-    }, 0),
-  ) : undefined;
-
-  const restingHr = (() => {
+  const heartRateFromSeries = (() => {
     if (!hr || hr.length === 0) return undefined;
     const samples: number[] = [];
     for (const r of hr) {
@@ -134,43 +198,33 @@ export async function fetchHealthConnectSnapshot(): Promise<HealthSnapshot | nul
     return Math.round(samples[Math.floor(samples.length * 0.1)]);
   })();
 
-  const hrvMs = (() => {
-    if (!hrv || hrv.length === 0) return undefined;
-    const vals = hrv.map((r: any) => Number(r?.heartRateVariabilityMillis ?? 0)).filter(Boolean);
-    if (!vals.length) return undefined;
-    return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
-  })();
-
-  const sleepHours = (() => {
-    if (!sleep || sleep.length === 0) return undefined;
-    const ms = sleep.reduce((a: number, r: any) => {
-      const s = new Date(r?.startTime).getTime();
-      const e = new Date(r?.endTime).getTime();
-      return a + Math.max(0, e - s);
-    }, 0);
-    return ms > 0 ? +(ms / 3600000).toFixed(2) : undefined;
-  })();
+  const lastRestingHr = last<any>(restingHr);
+  const restingHeartRate = Number(lastRestingHr?.beatsPerMinute ?? 0) || heartRateFromSeries;
 
   const lastWeight = last<any>(weight);
-  const weightKg = lastWeight
-    ? Number(lastWeight?.weight?.value ?? lastWeight?.weight ?? 0) || undefined
-    : undefined;
+  const weightKg = (() => {
+    if (!lastWeight) return undefined;
+    const value = Number(lastWeight?.weight?.value ?? lastWeight?.weight ?? 0);
+    if (!value) return undefined;
+    const unit = lastWeight?.weight?.unit;
+    return unit === "gram" ? value / 1000 : value;
+  })();
   const weightAt = lastWeight?.time ?? lastWeight?.endTime;
 
   const lastGlucose = last<any>(glucose);
-  const glucoseMgDl = lastGlucose
-    ? Math.round(Number(lastGlucose?.level?.value ?? 0) * 18.0182) || undefined
-    : undefined;
+  const glucoseMgDl = (() => {
+    if (!lastGlucose) return undefined;
+    const value = Number(lastGlucose?.level?.value ?? 0);
+    if (!value) return undefined;
+    return Math.round(lastGlucose?.level?.unit === "millimolesPerLiter" ? value * 18.0182 : value);
+  })();
   const glucoseAt = lastGlucose?.time;
 
   return {
     steps: stepsTotal != null ? Math.round(stepsTotal) : undefined,
-    distanceMeters: distMeters ? Math.round(distMeters) : undefined,
     activeCalories: activeKcal ? Math.round(activeKcal) : undefined,
-    exerciseMinutes,
-    restingHeartRate: restingHr,
-    hrvMs,
-    sleepHours,
+    restingHeartRate,
+    restingHeartRateAt: lastRestingHr?.time,
     weightKg,
     weightAt,
     glucoseMgDl,
@@ -181,13 +235,18 @@ export async function fetchHealthConnectSnapshot(): Promise<HealthSnapshot | nul
 export async function writeWeightToHealthConnect(kg: number, at?: Date): Promise<boolean> {
   if (!canUseHealthConnect() || !kg || kg <= 0) return false;
   try {
-    const ok = await ensureAvailableAndAuthorized();
-    if (!ok) return false;
+    const readOk = await ensureAvailableAndAuthorized();
+    if (!readOk) return false;
+    const writePerms = await HealthConnect.checkHealthPermissions({ read: [], write: ["Weight"] });
+    if (!writePerms?.hasAllPermissions) {
+      const requested = await HealthConnect.requestHealthPermissions({ read: [], write: ["Weight"] });
+      if (!requested?.hasAllPermissions) return false;
+    }
     await (HealthConnect as any).insertRecords({
       records: [{
         type: "Weight",
         time: (at ?? new Date()).toISOString(),
-        weight: { value: kg, unit: "kilograms" },
+        weight: { value: kg, unit: "kilogram" },
       }],
     });
     return true;
