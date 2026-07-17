@@ -70,6 +70,19 @@ function normalizePref(p: string | null | undefined): DietKey | null {
 export default function QuickFoodReference({ onClose, embedded = false }: { onClose?: () => void; embedded?: boolean }) {
   const { user } = useAuth();
   const confirm = useConfirm();
+  const { types: dietTypeRows } = useDietTypes();
+  const DIET_CHIPS = useMemo(
+    () => dietTypeRows.map(dt => ({
+      key: dt.slug as DietKey,
+      label: dt.label.replace(/^Non-vegetarian$/i, "Non-veg").replace(/^Vegetarian$/i, "Veg"),
+      dot: dt.dot_color || "bg-emerald-500",
+    })),
+    [dietTypeRows],
+  );
+  const DIET_PREF_LABEL = useMemo(
+    () => Object.fromEntries(dietTypeRows.map(dt => [dt.slug, dt.label])) as Record<string, string>,
+    [dietTypeRows],
+  );
   const [cats, setCats] = useState<FoodCategory[]>([]);
   const [filters, setFilters] = useState<FoodFilter[]>([]);
   const [items, setItems] = useState<FoodItem[]>([]);
