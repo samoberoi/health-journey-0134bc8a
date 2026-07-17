@@ -5,7 +5,8 @@ import { Footprints, Plus, ChevronRight, Flame, RefreshCw, Watch } from "lucide-
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchProfile } from "@/lib/profileService";
-import { canUseAppleHealthSteps, syncTodayStepsFromAppleHealth } from "@/lib/appleHealth";
+import { canUseNativeHealth, syncTodaySteps } from "@/lib/healthProvider";
+import { healthSourceLabel } from "@/lib/platformLabels";
 import {
   fetchMovementOverview,
   logTodaySteps,
