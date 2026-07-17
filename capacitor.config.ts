@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "app.lovable.byebyediabetes",
-  appName: "bye bye diabetes",
+  appName: "BBDO",
   webDir: "dist",
   // NOTE: No `server.url` — the app runs the locally bundled build from `dist/`,
   // so users get a native app experience with no Lovable sandbox flash.
