@@ -1371,6 +1371,42 @@ export type Database = {
         }
         Relationships: []
       }
+      diet_types: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          dot_color: string | null
+          id: string
+          is_active: boolean
+          label: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          dot_color?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          dot_color?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       event_registrations: {
         Row: {
           amount_paid_inr: number

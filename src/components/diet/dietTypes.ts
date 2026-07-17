@@ -1,7 +1,7 @@
 export type CategorySlug = "sugar_spike" | "metabolic_essential" | "power_addon";
 export type Recommendation = "avoid" | "limit" | "moderate" | "encourage";
 export type GiBand = "low" | "low_med" | "medium" | "med_high" | "high";
-export type DietType = "veg" | "vegan" | "non_veg" | "jain";
+export type DietType = string;
 
 export interface FoodCategory {
   id: string; slug: CategorySlug; name: string; description: string | null; display_order: number;

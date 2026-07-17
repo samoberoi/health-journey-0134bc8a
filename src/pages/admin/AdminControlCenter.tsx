@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, CreditCard, Link2, Palette, Bell, Flame, TrendingUp } from "lucide-react";
+import { Shield, CreditCard, Link2, Palette, Bell, Flame, TrendingUp, Salad } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AdminRBAC from "./AdminRBAC";
 import AdminSubscriptions from "./AdminSubscriptions";
@@ -9,9 +9,10 @@ import AdminColorGauges from "./AdminColorGauges";
 import AdminNotificationManager from "./AdminNotificationManager";
 import AdminGlobalStreak from "./AdminGlobalStreak";
 import AdminPnl from "./AdminPnl";
+import AdminDietTypes from "./AdminDietTypes";
 
 import CsvToolbar from "@/components/admin/CsvToolbar";
-type Tab = "rbac" | "subscriptions" | "assignments" | "color_gauges" | "notifications" | "global_streak" | "pnl";
+type Tab = "rbac" | "subscriptions" | "assignments" | "color_gauges" | "notifications" | "global_streak" | "pnl" | "diet_types";
 
 const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "rbac", label: "Role-Based Access", icon: Shield },
@@ -21,6 +22,7 @@ const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "notifications", label: "Notification Manager", icon: Bell },
   { id: "global_streak", label: "Global Streak", icon: Flame },
   { id: "pnl", label: "P&L Manager", icon: TrendingUp },
+  { id: "diet_types", label: "Diet Types", icon: Salad },
 ];
 
 export default function AdminControlCenter({ initialTab = "rbac" }: { initialTab?: Tab }) {
@@ -73,6 +75,7 @@ export default function AdminControlCenter({ initialTab = "rbac" }: { initialTab
           {tab === "notifications" && <AdminNotificationManager />}
           {tab === "global_streak" && <AdminGlobalStreak />}
           {tab === "pnl" && <AdminPnl />}
+          {tab === "diet_types" && <AdminDietTypes />}
         </motion.div>
       </AnimatePresence>
     </div>

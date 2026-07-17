@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useDietTypes } from "@/hooks/useDietTypes";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Search, X, SlidersHorizontal, Check, Sparkles, Leaf, Zap, Flame, AlertTriangle, ShieldAlert, Eye, EyeOff, HeartPulse, FlaskConical, Droplet, Flower2, Activity, type LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +19,7 @@ import {
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-type DietKey = "veg" | "vegan" | "jain" | "non_veg";
+type DietKey = string;
 type SortKey = "recommended" | "protein_high" | "carbs_low" | "gi_low" | "cal_low";
 type PresetKey = "best" | "low_carb" | "low_gi" | "high_protein";
 
@@ -58,33 +59,30 @@ const SORT_OPTIONS: { key: SortKey; label: string; short: string }[] = [
   { key: "cal_low",      label: "Lowest calories", short: "Low cal" },
 ];
 
-const DIET_CHIPS: { key: DietKey; label: string; dot: string }[] = [
-  { key: "veg",     label: "Veg",      dot: "bg-emerald-600" },
-  { key: "vegan",   label: "Vegan",    dot: "bg-emerald-500" },
-  { key: "jain",    label: "Jain",     dot: "bg-amber-500" },
-  { key: "non_veg", label: "Non-veg",  dot: "bg-rose-600" },
-  
-];
-
 function normalizePref(p: string | null | undefined): DietKey | null {
-  const v = (p || "").toLowerCase();
-  if (v === "vegan") return "vegan";
-  if (v === "jain") return "jain";
-  if (v === "veg" || v === "vegetarian") return "veg";
-  if (v === "non_veg" || v === "non-veg" || v === "nonveg" || v === "non_vegetarian") return "non_veg";
-  return null;
+  const v = (p || "").toLowerCase().replace(/[-\s]/g, "_");
+  if (!v) return null;
+  if (v === "vegetarian") return "veg";
+  if (v === "nonveg" || v === "non_vegetarian") return "non_veg";
+  return v;
 }
-
-const DIET_PREF_LABEL: Record<DietKey, string> = {
-  veg: "Vegetarian",
-  vegan: "Vegan",
-  jain: "Jain",
-  non_veg: "Non-Vegetarian",
-};
 
 export default function QuickFoodReference({ onClose, embedded = false }: { onClose?: () => void; embedded?: boolean }) {
   const { user } = useAuth();
   const confirm = useConfirm();
+  const { types: dietTypeRows } = useDietTypes();
+  const DIET_CHIPS = useMemo(
+    () => dietTypeRows.map(dt => ({
+      key: dt.slug as DietKey,
+      label: dt.label.replace(/^Non-vegetarian$/i, "Non-veg").replace(/^Vegetarian$/i, "Veg"),
+      dot: dt.dot_color || "bg-emerald-500",
+    })),
+    [dietTypeRows],
+  );
+  const DIET_PREF_LABEL = useMemo(
+    () => Object.fromEntries(dietTypeRows.map(dt => [dt.slug, dt.label])) as Record<string, string>,
+    [dietTypeRows],
+  );
   const [cats, setCats] = useState<FoodCategory[]>([]);
   const [filters, setFilters] = useState<FoodFilter[]>([]);
   const [items, setItems] = useState<FoodItem[]>([]);
@@ -341,8 +339,9 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
     if (diet === "vegan") return it.diet_type === "vegan";
     if (diet === "jain")  return it.is_jain_friendly;
     if (diet === "veg")   return it.diet_type === "veg" || it.diet_type === "vegan";
-
-    return true;
+    if (diet === "eggitarian") return it.diet_type === "veg" || it.diet_type === "vegan" || it.diet_type === "eggitarian";
+    // Custom diet slug added by admin → match exactly on the food's diet_type.
+    return it.diet_type === diet;
   };
 
   // A preset takes over the whole surface (cross-category), same effect as global sort.

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDietTypes } from "@/hooks/useDietTypes";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ import {
 type CategorySlug = "sugar_spike" | "metabolic_essential" | "power_addon";
 type Recommendation = "avoid" | "limit" | "moderate" | "encourage";
 type GiBand = "low" | "low_med" | "medium" | "med_high" | "high";
-type DietType = "veg" | "vegan" | "non_veg" | "jain";
+type DietType = string;
 type ServingBasis = "per_100g" | "per_100ml" | "cooked" | "raw";
 
 interface Category { id: string; slug: CategorySlug; name: string; description: string | null; display_order: number; }
@@ -134,6 +135,7 @@ const CAT_THEME: Record<string, {
 const themeFor = (slug?: string) => CAT_THEME[slug || ""] || CAT_THEME.metabolic_essential;
 
 export default function AdminDiet() {
+  const { types: dietTypes } = useDietTypes(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [filters, setFilters] = useState<Filter[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -518,6 +520,7 @@ function FlagBadge({ label, title, tone }: { label: string; title: string; tone:
 
 // ---------- Item editor (full-page dialog) ----------
 function ItemEditor({ item, filterId, filterSlug, onClose, onSaved }: { item: Item | null; filterId: string; filterSlug: string; onClose: () => void; onSaved: () => void; }) {
+  const { types: dietTypes } = useDietTypes(true);
   const [form, setForm] = useState<Partial<Item>>(item || {
     filter_id: filterId, name: "", diet_type: "vegan",
     serving_basis: filterSlug === "milk_and_milk_sugars" ? "per_100ml" : filterSlug === "lean_proteins_non_veg" ? "cooked" : "per_100g",
@@ -581,10 +584,9 @@ function ItemEditor({ item, filterId, filterSlug, onClose, onSaved }: { item: It
                   <Select value={form.diet_type} onValueChange={(v: any) => set("diet_type", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="vegan">Vegan (VG)</SelectItem>
-                      <SelectItem value="veg">Vegetarian (V)</SelectItem>
-                      <SelectItem value="non_veg">Non-vegetarian (NV)</SelectItem>
-                      <SelectItem value="jain">Strictly Jain (JN)</SelectItem>
+                      {dietTypes.map(dt => (
+                        <SelectItem key={dt.slug} value={dt.slug}>{dt.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Field>
