@@ -44,12 +44,24 @@ export const recClass: Record<Recommendation, string> = {
   limit: "bg-amber-500/15 text-amber-700",
   avoid: "bg-rose-500/15 text-rose-700",
 };
-export const dietBadge: Record<DietType, { label: string; cls: string; title: string }> = {
+export type DietBadgeMeta = { label: string; cls: string; title: string };
+
+export const dietBadge: Record<DietType, DietBadgeMeta> = {
   vegan:   { label: "Vegan", cls: "bg-emerald-500/15 text-emerald-700", title: "Vegan" },
   veg:     { label: "Veg",   cls: "bg-green-500/15 text-green-700",     title: "Vegetarian" },
+  eggitarian: { label: "Egg", cls: "bg-yellow-500/15 text-yellow-700", title: "Eggitarian" },
   non_veg: { label: "Non-veg", cls: "bg-rose-500/15 text-rose-700",     title: "Non-vegetarian" },
   jain:    { label: "Jain",  cls: "bg-amber-500/15 text-amber-700",     title: "Jain" },
 };
+
+export function getDietBadge(dietType: DietType | null | undefined): DietBadgeMeta {
+  const key = dietType || "";
+  if (dietBadge[key]) return dietBadge[key];
+  const title = key
+    ? key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    : "Diet type";
+  return { label: title, cls: "bg-muted text-muted-foreground", title };
+}
 
 export function range(min: number | null, max: number | null, suffix = ""): string {
   if (min == null && max == null) return "—";

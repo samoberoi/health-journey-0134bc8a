@@ -85,9 +85,19 @@ const giLabel: Record<GiBand, string> = { low: "Low", low_med: "Low–Med", medi
 const DIET_BADGE: Record<DietType, { label: string; cls: string; title: string }> = {
   vegan:   { label: "VG", cls: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30", title: "Vegan" },
   veg:     { label: "V",  cls: "bg-green-500/10  text-green-700   border-green-500/30",   title: "Vegetarian" },
+  eggitarian: { label: "EG", cls: "bg-yellow-500/10 text-yellow-700 border-yellow-500/30", title: "Eggitarian" },
   non_veg: { label: "NV", cls: "bg-rose-500/10   text-rose-700    border-rose-500/30",    title: "Non-vegetarian" },
   jain:    { label: "JN", cls: "bg-amber-500/10  text-amber-700   border-amber-500/30",   title: "Strictly Jain" },
 };
+
+function getAdminDietBadge(dietType: DietType | null | undefined) {
+  const key = dietType || "";
+  if (DIET_BADGE[key]) return DIET_BADGE[key];
+  const title = key
+    ? key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    : "Diet type";
+  return { label: title.slice(0, 3).toUpperCase(), cls: "bg-muted text-muted-foreground border-border", title };
+}
 
 // Color themes per category — visual reinforcement for admins.
 // sugar_spike = red (never touch), metabolic_essential + power_addon = green (encourage).
@@ -181,6 +191,8 @@ export default function AdminDiet() {
     if (recFilter !== "all") arr = arr.filter(i => i.recommendation === recFilter);
     if (dietFilter === "jain_only") arr = arr.filter(i => i.is_jain_friendly);
     else if (dietFilter === "dairy_free") arr = arr.filter(i => i.is_dairy_free);
+    else if (dietFilter === "eggitarian") arr = arr.filter(i => i.diet_type === "eggitarian" || i.diet_type === "veg" || i.diet_type === "vegan");
+    else if (dietFilter === "veg") arr = arr.filter(i => i.diet_type === "veg" || i.diet_type === "vegan");
     else if (dietFilter !== "all") arr = arr.filter(i => i.diet_type === dietFilter);
     return arr;
   }, [items, activeFilter, search, recFilter, dietFilter]);
@@ -374,9 +386,9 @@ export default function AdminDiet() {
                   <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All diets</SelectItem>
-                    <SelectItem value="vegan">Vegan only</SelectItem>
-                    <SelectItem value="veg">Vegetarian</SelectItem>
-                    <SelectItem value="non_veg">Non-vegetarian</SelectItem>
+                    {dietTypes.map(dt => (
+                      <SelectItem key={dt.slug} value={dt.slug}>{dt.label}</SelectItem>
+                    ))}
                     <SelectItem value="jain_only">Jain-friendly</SelectItem>
                     <SelectItem value="dairy_free">Dairy-free</SelectItem>
                   </SelectContent>
@@ -408,7 +420,7 @@ export default function AdminDiet() {
                   <tbody>
                     {filterItems.map((it, idx) => {
                       const filterLabel = activeFilterObj.number_label ?? `F${String(activeFilterObj.order_number ?? 0).padStart(2, "0")}`;
-                      const dt = DIET_BADGE[it.diet_type];
+                      const dt = getAdminDietBadge(it.diet_type);
                       return (
                         <tr key={it.id} className="border-t border-border hover:bg-muted/30 transition-colors">
                           <td className="px-3 py-3 font-mono text-[11px] text-muted-foreground whitespace-nowrap">

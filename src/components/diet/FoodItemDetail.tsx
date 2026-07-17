@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { X, Leaf, Flame, Wheat, Beef, Droplets, Apple } from "lucide-react";
-import { type FoodItem, type FoodFilter, dietBadge, giLabel, giClass, recLabel, recClass, range, portionLabel, scaleCalories, scaleMacro, scaleRange } from "./dietTypes";
+import { type FoodItem, type FoodFilter, getDietBadge, giLabel, giClass, recLabel, recClass, range, portionLabel, scaleCalories, scaleMacro, scaleRange } from "./dietTypes";
 import { getFoodImageUrl } from "@/lib/foodImageService";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -9,7 +9,7 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 export default function FoodItemDetail({
   item, filter, onClose,
 }: { item: FoodItem; filter: FoodFilter | null; onClose: () => void }) {
-  const diet = dietBadge[item.diet_type];
+  const diet = getDietBadge(item.diet_type);
   const servingLabel = portionLabel(item);
   const carbs = scaleRange(item.carbs_min, item.carbs_max, item, "g");
   const protein = scaleMacro(item.protein_g, item);
