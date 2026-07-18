@@ -147,6 +147,11 @@ export default function Tour() {
   const [i, setI] = useState(0);
 
   useEffect(() => {
+    const scroller = document.getElementById("bbdo-tour-scroll");
+    if (scroller) {
+      scroller.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [i]);
 
@@ -172,19 +177,26 @@ export default function Tour() {
   };
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div className="fixed inset-0 z-50 bg-background text-foreground flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-background/85 backdrop-blur-xl" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-        <div className="max-w-3xl mx-auto flex items-center justify-between px-5 py-3">
+      <div
+        className="relative z-20 shrink-0 bg-background/95 backdrop-blur-xl"
+        style={{
+          borderBottom: "1px solid hsl(var(--border))",
+          paddingTop: "max(env(safe-area-inset-top), 12px)",
+        }}
+      >
+        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3 px-5 py-3">
           <div className="flex items-center gap-2.5">
             <img src={bbdoLogo} alt="BBDO" className="w-8 h-8 rounded-full object-contain" />
             <BbdoWordmark className="text-base" />
           </div>
           <button
             onClick={skip}
-            className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+            type="button"
+            className="no-pill shrink-0 rounded-full bg-[var(--bbdo-ink)] px-4 py-2.5 text-xs font-semibold text-white shadow-card active:scale-[0.98] transition-transform"
           >
-            Skip tour
+            Skip
           </button>
         </div>
         {/* Progress dots */}
@@ -205,7 +217,12 @@ export default function Tour() {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-5 pb-32 pt-6">
+      <div
+        id="bbdo-tour-scroll"
+        className="flex-1 overflow-y-auto overscroll-contain"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
+      <div className="max-w-3xl mx-auto px-5 pt-5" style={{ paddingBottom: "calc(7rem + max(env(safe-area-inset-bottom), 64px))" }}>
         <AnimatePresence mode="wait">
           {p ? (
             <motion.div
@@ -322,14 +339,22 @@ export default function Tour() {
           )}
         </AnimatePresence>
       </div>
+      </div>
 
       {/* Footer nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-xl" style={{ borderTop: "1px solid hsl(var(--border))" }}>
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3 px-5 py-4">
+      <div
+        className="relative z-30 shrink-0 bg-background/98 backdrop-blur-xl shadow-[0_-10px_30px_rgba(15,26,61,0.08)]"
+        style={{
+          borderTop: "1px solid hsl(var(--border))",
+          paddingBottom: "max(env(safe-area-inset-bottom), 56px)",
+        }}
+      >
+        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3 px-5 pt-3">
           <button
             onClick={back}
             disabled={i === 0}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-muted-foreground disabled:opacity-30 hover:text-foreground transition-colors"
+            type="button"
+            className="no-pill flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold text-muted-foreground disabled:opacity-30 active:scale-[0.98] transition-transform"
           >
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
@@ -338,7 +363,8 @@ export default function Tour() {
           </div>
           <button
             onClick={next}
-            className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[var(--bbdo-red)] text-white text-sm font-bold shadow-card hover:opacity-90 active:scale-[0.98] transition-all"
+            type="button"
+            className="no-pill flex min-h-11 items-center gap-1.5 rounded-full bg-[var(--bbdo-red)] px-5 py-2.5 text-sm font-bold text-white shadow-card active:scale-[0.98] transition-transform"
           >
             {isLast ? "Enter dashboard" : "Next"} <ArrowRight className="w-4 h-4" />
           </button>
