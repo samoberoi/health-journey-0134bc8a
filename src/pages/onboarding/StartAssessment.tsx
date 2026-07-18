@@ -28,12 +28,20 @@ export default function StartAssessment() {
   };
 
   return (
-    <div className="phone-container ob-lock flex flex-col items-center px-5 text-center bg-background" style={{ minHeight: "100dvh" }}>
+    <div
+      className="phone-container ob-lock flex flex-col items-center px-5 text-center bg-background overflow-y-auto"
+      style={{
+        minHeight: "100dvh",
+        paddingTop: "calc(env(safe-area-inset-top) + 1rem)",
+        paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)",
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
       <SoundToggle />
-      <motion.h1 className="ob-title mb-10 mt-16" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.h1 className="ob-title mb-8 mt-8" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         Let's understand what<br />your <span className="text-primary">body needs</span>
       </motion.h1>
-      <div className="flex items-start gap-3 mb-12 w-full max-w-sm">
+      <div className="flex items-start gap-3 mb-10 w-full max-w-sm">
         {features.map((f, i) => {
           const Icon = f.icon;
           return (
@@ -46,7 +54,7 @@ export default function StartAssessment() {
           );
         })}
       </div>
-      <motion.div className="w-full max-w-sm mt-auto pb-8" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}>
+      <motion.div className="w-full max-w-sm mt-auto pt-4" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}>
         <motion.button onClick={() => void goToLogin()} className="ob-cta" whileTap={{ scale: 0.98 }}>Get Started <ArrowRight className="h-4 w-4" /></motion.button>
       </motion.div>
     </div>
