@@ -58,9 +58,10 @@ const PRIORITY: Tab[] = [
   "supplements", "consult", "labs", "videos", "community", "messages",
 ];
 
-// Layout: [tab] [tab] [ + ] [tab] [ ... ]  — plus sign lives in the middle.
-const PRIMARY_SLOTS = 3;
-const LEFT_SLOTS = 2; // tabs shown to the LEFT of the center FAB
+// Layout: [tab][tab][tab] [ + ] [tab][tab][…]  — plus sign lives in the middle,
+// full-width flat bar uses the entire phone width real estate.
+const PRIMARY_SLOTS = 5;
+const LEFT_SLOTS = 3; // tabs shown to the LEFT of the center FAB
 
 
 
