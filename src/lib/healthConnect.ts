@@ -153,6 +153,34 @@ function sum(records: any[] | null, key: string): number | undefined {
   return records.reduce((acc, r) => acc + Number(r?.[key] ?? 0), 0);
 }
 
+function originOf(r: any): string {
+  return String(
+    r?.metadata?.dataOrigin?.packageName ??
+      r?.metadata?.dataOrigin ??
+      r?.dataOrigin?.packageName ??
+      r?.dataOrigin ??
+      "unknown",
+  );
+}
+
+/**
+ * Health Connect returns raw Steps records from every contributing app
+ * (Google Fit, Samsung Health, phone sensor, Fitbit, etc.). Summing across
+ * sources double- or triple-counts steps. Group by dataOrigin and use the
+ * single largest source as the authoritative count for the range.
+ */
+function sumStepsDeduped(records: any[] | null): number | undefined {
+  if (!records || records.length === 0) return undefined;
+  const perOrigin = new Map<string, number>();
+  for (const r of records) {
+    const key = originOf(r);
+    perOrigin.set(key, (perOrigin.get(key) ?? 0) + Number(r?.count ?? 0));
+  }
+  let max = 0;
+  for (const v of perOrigin.values()) if (v > max) max = v;
+  return max;
+}
+
 function last<T = any>(records: any[] | null): T | undefined {
   if (!records || records.length === 0) return undefined;
   return records[records.length - 1] as T;
@@ -162,7 +190,7 @@ export async function syncTodayStepsFromHealthConnect(): Promise<number | null> 
   const ok = await ensureAvailableAndAuthorized();
   if (!ok) return null;
   const recs = await aggregate("Steps", startOfToday(), endOfToday());
-  const total = sum(recs, "count");
+  const total = sumStepsDeduped(recs);
   return total != null ? Math.max(0, Math.round(total)) : 0;
 }
 
