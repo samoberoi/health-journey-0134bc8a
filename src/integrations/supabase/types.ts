@@ -3918,6 +3918,33 @@ export type Database = {
         }
         Relationships: []
       }
+      translation_cache: {
+        Row: {
+          created_at: string
+          id: string
+          lang: string
+          source_hash: string
+          source_text: string
+          translated: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lang: string
+          source_hash: string
+          source_text: string
+          translated: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lang?: string
+          source_hash?: string
+          source_text?: string
+          translated?: string
+        }
+        Relationships: []
+      }
       user_bbdo_badges: {
         Row: {
           badge_type: string
