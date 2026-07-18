@@ -20,7 +20,7 @@ import Messages from "./tabs/Messages";
 import Consult from "./tabs/Consult";
 import LabTestsTab from "./tabs/LabTests";
 import Diet from "./tabs/Diet";
-import Events from "./tabs/Events";
+
 import UserFasting from "@/components/UserFasting";
 import UserSupplements from "@/components/UserSupplements";
 import NotificationsPanel from "@/components/NotificationsPanel";
@@ -33,9 +33,9 @@ import { useAttentionCounts } from "@/hooks/useAttentionCounts";
 import AttentionBadge from "@/components/attention/AttentionBadge";
 
 
-export type Tab = "home" | "habits" | "exercise" | "fasting" | "supplements" | "videos" | "community" | "consult" | "labs" | "diet" | "messages" | "events";
+export type Tab = "home" | "habits" | "exercise" | "fasting" | "supplements" | "videos" | "community" | "consult" | "labs" | "diet" | "messages";
 
-const VALID_TABS: Tab[] = ["home", "habits", "exercise", "fasting", "supplements", "videos", "community", "consult", "labs", "diet", "messages", "events"];
+const VALID_TABS: Tab[] = ["home", "habits", "exercise", "fasting", "supplements", "videos", "community", "consult", "labs", "diet", "messages"];
 
 function isTab(value: string | null): value is Tab {
   return value != null && VALID_TABS.includes(value as Tab);
@@ -53,7 +53,7 @@ const navIcons: Record<Tab, React.ElementType> = {
   labs: FlaskConical,
   diet: Avocado,
   messages: MessageCircle,
-  events: CalendarDays,
+  
 };
 
 const navLabelOverrides: Partial<Record<Tab, string>> = {
@@ -64,7 +64,7 @@ const navLabelOverrides: Partial<Record<Tab, string>> = {
   videos: "Stress and Yoga",
   labs: "Lab Tests",
   messages: "Messages",
-  events: "Events",
+  
 };
 
 export default function Dashboard() {
@@ -105,7 +105,7 @@ export default function Dashboard() {
   };
 
   const showMessagesTab = packageKey === "foundation" && hasYogaBooking;
-  const ALL_TABS: Tab[] = ["home", "diet", "fasting", "habits", "exercise", "supplements", "videos", "labs", "events", "community", "consult", "messages"];
+  const ALL_TABS: Tab[] = ["home", "diet", "fasting", "habits", "exercise", "supplements", "videos", "labs", "community", "consult", "messages"];
   const tabs: Tab[] = ALL_TABS.filter((t) => {
     if (t === "messages") return showMessagesTab;
     return canSeeTab(t);
@@ -295,7 +295,7 @@ export default function Dashboard() {
     labs: <LabTestsTab foundationMode={packageKey === "foundation"} />,
     diet: <Diet />,
     messages: <Messages />,
-    events: <Events />,
+    
   };
 
   return (
