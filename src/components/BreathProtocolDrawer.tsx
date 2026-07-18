@@ -6,7 +6,8 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { useAuth } from "@/contexts/AuthContext";
 import { useBreathSessionsToday } from "@/hooks/useBreathSessionsToday";
 import { BREATH_PROTOCOL_VIDEO, getBreathYoutubeId, recordBreathSession } from "@/lib/breathProtocol";
-import { youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
+import { isNativeIOSApp, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
+import NativeYouTubePlayer from "@/components/exercises/NativeYouTubePlayer";
 
 export default function BreathProtocolDrawer({
   open,
@@ -19,6 +20,8 @@ export default function BreathProtocolDrawer({
   const { count, goal, completed, refresh } = useBreathSessionsToday();
   const [saving, setSaving] = useState(false);
   const [videoId, setVideoId] = useState(BREATH_PROTOCOL_VIDEO.youtubeId);
+  const [useNativePlayer] = useState(() => isNativeIOSApp());
+
 
   useEffect(() => {
     let cancelled = false;
@@ -97,17 +100,27 @@ export default function BreathProtocolDrawer({
         </div>
 
         {/* Video */}
-        <div className="mt-3 rounded-2xl overflow-hidden bg-black border border-border" style={{ aspectRatio: "16 / 9" }}>
-          <iframe
-            key={embedSrc}
-            src={embedSrc}
-            title="BBDO Daily Breath Protocol"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
-            className="w-full h-full"
-          />
+        <div className="mt-3 rounded-2xl overflow-hidden bg-black border border-border relative" style={{ aspectRatio: "16 / 9" }}>
+          {useNativePlayer ? (
+            <NativeYouTubePlayer
+              key={videoId}
+              videoId={videoId}
+              title="BBDO Daily Breath Protocol"
+              start={0}
+            />
+          ) : (
+            <iframe
+              key={embedSrc}
+              src={embedSrc}
+              title="BBDO Daily Breath Protocol"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+              className="absolute inset-0 w-full h-full"
+            />
+          )}
         </div>
+
 
         <button
           onClick={onComplete}
