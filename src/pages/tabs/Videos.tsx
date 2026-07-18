@@ -456,6 +456,8 @@ export default function Videos() {
       <AnimatePresence>
         {active && <VideoPlayer video={active} onClose={() => setActive(null)} />}
       </AnimatePresence>
+
+      <BreathProtocolDrawer open={breathOpen} onOpenChange={setBreathOpen} />
     </div>
   );
 }
