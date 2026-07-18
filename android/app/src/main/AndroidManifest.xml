@@ -55,7 +55,7 @@
         <!-- FCM: default notification channel for push notifications with sound -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="bbdo-alerts-v6" />
+            android:value="bbdo-alerts-v7" />
     </application>
 
     <!-- Permissions -->
