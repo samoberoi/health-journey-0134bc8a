@@ -1458,35 +1458,45 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
         return <DailyActivityDial items={rings} title="Close your rings" size="lg" />;
       })()}
 
-      {/* ─── 3 Metric Rings: Health Score, Weight, Sugar ─── */}
-      <div className="grid grid-cols-3 gap-3">
-
-        <MetricRing
-          value={healthScore}
-          label="Health"
-          delta={initialScore != null ? healthScore - initialScore : null}
-          ringColor={getRingColor("Health", healthScore, initialScore)}
-          dangerColor={getRingColor("Health", healthScore, initialScore)}
-        />
-        <MetricRing
-          value={latestWeight ?? (user.bodyMetrics.weight ?? "—")}
-          label="Weight"
-          unit="kg"
-          delta={initialWeight != null && latestWeight != null ? Math.round((latestWeight - initialWeight) * 10) / 10 : null}
-          ringColor={getRingColor("Weight", typeof latestWeight === "number" ? latestWeight : (user.bodyMetrics.weight ?? NaN), initialWeight)}
-          dangerColor={getRingColor("Weight", typeof latestWeight === "number" ? latestWeight : (user.bodyMetrics.weight ?? NaN), initialWeight)}
-        />
-
-        <MetricRing
-          value={latestGlucose ?? "—"}
-          label="Blood Glucose"
-          unit="mg/dL"
-          delta={initialGlucose != null && latestGlucose != null ? Math.round(latestGlucose - initialGlucose) : null}
-          ringColor={getRingColor("Blood Glucose", typeof latestGlucose === "number" ? latestGlucose : NaN, initialGlucose)}
-          dangerColor={getRingColor("Blood Glucose", typeof latestGlucose === "number" ? latestGlucose : NaN, initialGlucose)}
-        />
-
-      </div>
+      {/* ─── Today's Vitals: unified card with 3 rings ─── */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+        className="rounded-3xl border border-border/60 bg-card/60 p-4 backdrop-blur-xl"
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-bold tracking-[0.16em] uppercase text-muted-foreground">Your numbers</p>
+            <p className="text-sm font-black text-foreground leading-tight">Today's vitals</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2 md:gap-3">
+          <MetricRing
+            value={healthScore}
+            label="Health"
+            delta={initialScore != null ? healthScore - initialScore : null}
+            ringColor={getRingColor("Health", healthScore, initialScore)}
+            dangerColor={getRingColor("Health", healthScore, initialScore)}
+          />
+          <MetricRing
+            value={latestWeight ?? (user.bodyMetrics.weight ?? "—")}
+            label="Weight"
+            unit="kg"
+            delta={initialWeight != null && latestWeight != null ? Math.round((latestWeight - initialWeight) * 10) / 10 : null}
+            ringColor={getRingColor("Weight", typeof latestWeight === "number" ? latestWeight : (user.bodyMetrics.weight ?? NaN), initialWeight)}
+            dangerColor={getRingColor("Weight", typeof latestWeight === "number" ? latestWeight : (user.bodyMetrics.weight ?? NaN), initialWeight)}
+          />
+          <MetricRing
+            value={latestGlucose ?? "—"}
+            label="Glucose"
+            unit="mg/dL"
+            delta={initialGlucose != null && latestGlucose != null ? Math.round(latestGlucose - initialGlucose) : null}
+            ringColor={getRingColor("Blood Glucose", typeof latestGlucose === "number" ? latestGlucose : NaN, initialGlucose)}
+            dangerColor={getRingColor("Blood Glucose", typeof latestGlucose === "number" ? latestGlucose : NaN, initialGlucose)}
+          />
+        </div>
+      </motion.div>
 
 
       {/* Health Markers from lab reports */}
