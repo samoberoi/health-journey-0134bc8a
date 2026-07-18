@@ -15,7 +15,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const APP_VERSION = (globalThis as any).__APP_VERSION__ ?? "1.0.0";
-export const BBDO_PUSH_CHANNEL_ID = "bbdo-push-v2";
 export const BBDO_PUSH_CHANNEL_ID = "bbdo-alerts-v3";
 
 let registered = false;
@@ -139,7 +138,7 @@ export async function registerNativePush(userId: string): Promise<
           visibility: 1,
           vibration: true,
           lights: true,
-        };
+        } as const;
         await PushNotifications.createChannel(channel);
         await LocalNotifications.createChannel(channel);
       } catch (err) {
