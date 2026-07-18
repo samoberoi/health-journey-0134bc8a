@@ -214,24 +214,6 @@ export async function fireHealthMetricFeedback(
     const isAlert = result.level === "alert" || result.level === "critical";
 
     if (isAlert) {
-      // Send native notifications first and isolate each side effect. A sound
-      // failure on iOS must never block APNs delivery for a critical alert.
-      void sendRemoteHealthPush(result.title, result.message).then((ok) => {
-        if (!ok) console.warn("remote health push was not accepted", result.title);
-      });
-      void sendLocalHealthAlert(result.title, result.message);
-
-      try {
-        // Health alerts should be loud enough to test confidently.
-        const previousVolume = getMasterVolume();
-        setMasterVolume(Math.max(settings.volume ?? 0.8, result.level === "critical" ? 1 : 0.9));
-        playCriticalHealthAlert();
-        setTimeout(() => playNotificationSound(settings.variant), 520);
-        setTimeout(() => setMasterVolume(previousVolume), 1_800);
-      } catch (soundErr) {
-        console.warn("health alert sound failed", soundErr);
-      }
-
       if (opts.createInboxNotification !== false && log.user_id) {
         void createNotification({
           user_id: log.user_id,
@@ -241,6 +223,24 @@ export async function fireHealthMetricFeedback(
           icon: result.level === "critical" ? "🚨" : "⚠️",
           action_url: "/home?tab=profile",
         }).catch((err) => console.warn("health alert notification failed", err));
+      } else {
+        // Direct remote push is only used when no database notification is being
+        // created. Otherwise the backend trigger dispatches the native push once.
+        void sendRemoteHealthPush(result.title, result.message).then((ok) => {
+          if (!ok) console.warn("remote health push was not accepted", result.title);
+        });
+      }
+
+      if (!Capacitor.isNativePlatform()) {
+        try {
+          const previousVolume = getMasterVolume();
+          setMasterVolume(Math.max(settings.volume ?? 0.8, result.level === "critical" ? 1 : 0.9));
+          playCriticalHealthAlert();
+          setTimeout(() => playNotificationSound(settings.variant), 520);
+          setTimeout(() => setMasterVolume(previousVolume), 1_800);
+        } catch (soundErr) {
+          console.warn("health alert sound failed", soundErr);
+        }
       }
 
       const notify = result.level === "critical" ? toast.error : toast.warning;

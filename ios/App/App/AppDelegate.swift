@@ -4,6 +4,7 @@ import HealthKit
 import LocalAuthentication
 import Security
 import WebKit
+import UserNotifications
 import AparajitaCapacitorBiometricAuth
 import AppPlugin
 import PreferencesPlugin
@@ -559,6 +560,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
         bbdoNativeLog("application didFinishLaunching")
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            bbdoNativeLog("notification settings authorization=\(settings.authorizationStatus.rawValue) alert=\(settings.alertSetting.rawValue) sound=\(settings.soundSetting.rawValue)")
+        }
         return true
     }
 

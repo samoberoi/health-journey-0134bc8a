@@ -284,15 +284,36 @@ Deno.serve(async (req) => {
 
     const { data: tokens, error: tokenError } = await admin
       .from("device_push_tokens")
-      .select("id, token, platform")
+      .select("id, token, platform, updated_at")
       .eq("user_id", targetUserId)
-      .in("platform", ["ios", "android"]);
+      .in("platform", ["ios", "android"])
+      .order("updated_at", { ascending: false });
 
     if (tokenError) throw tokenError;
     if (!tokens?.length) return json(200, { ok: true, sent: 0, note: "No device token registered" });
 
-    const iosTokens = (tokens as Array<{ id: string; token: string; platform: string }>).filter((t) => t.platform === "ios");
-    const androidTokens = (tokens as Array<{ id: string; token: string; platform: string }>).filter((t) => t.platform === "android");
+    // One logged-in phone can leave multiple historical APNs/FCM tokens behind
+    // after reinstalls or upgrades. Sending all accepted historical tokens causes
+    // duplicate native banners. Keep only the latest row per platform, and also
+    // de-dupe identical token strings defensively.
+    const latestByPlatform = new Map<string, { id: string; token: string; platform: string; updated_at?: string }>();
+    const seenTokenStrings = new Set<string>();
+    for (const row of tokens as Array<{ id: string; token: string; platform: string; updated_at?: string }>) {
+      if (seenTokenStrings.has(row.token)) continue;
+      seenTokenStrings.add(row.token);
+      if (!latestByPlatform.has(row.platform)) latestByPlatform.set(row.platform, row);
+    }
+
+    const activeTokens = Array.from(latestByPlatform.values());
+    const staleTokenIds = (tokens as Array<{ id: string; token: string; platform: string }>).filter(
+      (row) => !activeTokens.some((active) => active.id === row.id),
+    ).map((row) => row.id);
+    if (staleTokenIds.length > 0) {
+      await admin.from("device_push_tokens").delete().in("id", staleTokenIds);
+    }
+
+    const iosTokens = activeTokens.filter((t) => t.platform === "ios");
+    const androidTokens = activeTokens.filter((t) => t.platform === "android");
 
     const jwt = iosTokens.length ? await createApnsJwt() : "";
     const hosts = apnsHosts();
@@ -301,7 +322,7 @@ Deno.serve(async (req) => {
         alert: { title, body },
         sound: BBDO_PUSH_SOUND,
         badge: 1,
-        "interruption-level": "time-sensitive",
+        "interruption-level": "active",
         "relevance-score": 1,
       },
       action_url: actionUrl,
