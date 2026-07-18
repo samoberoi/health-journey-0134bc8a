@@ -117,112 +117,68 @@ export default function Videos() {
 
   return (
     <div className="flex flex-col gap-4 pt-4 md:pt-6 pb-6">
-      {/* Hero */}
-      <motion.div
-        className="mx-5 rounded-2xl p-5 md:p-6 text-white shadow-card relative overflow-hidden"
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{ background: "var(--bbdo-gradient)" }}
-      >
-        <div className="absolute -right-16 -top-16 w-44 h-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-        <div className="relative">
-          <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-white/85">Exercise Library</p>
-          <h1 className="text-[22px] md:text-3xl font-black tracking-tight mt-1 leading-tight">
-            Move. Breathe. Recover.
-          </h1>
-          <p className="text-[13px] text-white/90 mt-1.5 leading-snug">
-            Curated yoga, pranayama &amp; fitness. Aim for {yogaGoalMin} minutes today.
-          </p>
-
-          {/* Daily yoga goal */}
-          <div className="mt-4 rounded-2xl bg-white/15 backdrop-blur-sm p-3.5 ring-1 ring-white/20">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <Target className="w-3.5 h-3.5 shrink-0" />
-                <span className="text-[11px] font-black uppercase tracking-[0.14em] truncate">Daily goal</span>
-              </div>
-              <span className="text-xs font-bold shrink-0">
-                {yogaMinutesToday}/{yogaGoalMin} min
-              </span>
-            </div>
-            <div className="mt-2 h-2 rounded-full bg-white/20 overflow-hidden">
-              <motion.div
-                initial={false}
-                animate={{ width: `${yogaPct}%` }}
-                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                className="h-full rounded-full"
-                style={{ background: yogaGoalMet ? "#10B981" : "#FFFFFF" }}
-              />
-            </div>
-            <p className="text-[11px] text-white/85 mt-2 leading-snug">
-              {yogaGoalMet
-                ? "You've hit today's yoga minimum — beautiful work."
-                : `${yogaRemaining} more min of yoga, pranayama or bandha to finish today's goal.`}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 mt-3 text-[11px] font-semibold">
-            <span className="inline-flex items-center gap-1.5 bg-white/18 px-2.5 py-1 rounded-full">
-              <Sparkles className="w-3.5 h-3.5" /> {allResolved.length} sessions
-            </span>
-            {totalWatched > 0 && (
-              <span className="inline-flex items-center gap-1.5 bg-white/18 px-2.5 py-1 rounded-full">
-                <CheckCircle2 className="w-3.5 h-3.5" /> {totalWatched} completed
-              </span>
-            )}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Fasting-window session breakdown removed for end users —
-          the live daily-goal ring already reflects the active fasting protocol. */}
-
-      {/* Pinned: BBDO Daily Breath Protocol — #1 video, ritual 4×/day */}
+      {/* HERO — BBDO Daily Breath Protocol (big, prominent) */}
       <div className="mx-5">
         <motion.button
           onClick={() => setBreathOpen(true)}
-          whileTap={{ scale: 0.985 }}
+          whileTap={{ scale: 0.99 }}
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
           className="no-pill w-full text-left rounded-2xl overflow-hidden shadow-card relative"
           style={{ background: "linear-gradient(135deg, #0F1A3D 0%, #1E3A8A 55%, #2563EB 100%)" }}
         >
-          <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-          <div className="relative p-4 md:p-5 flex gap-3 items-stretch">
-            <div className="relative shrink-0 rounded-xl overflow-hidden bg-black/40 ring-1 ring-white/20" style={{ width: 128, aspectRatio: "16 / 9" }}>
-              <img
-                src={`https://i.ytimg.com/vi/${BREATH_PROTOCOL_VIDEO.youtubeId}/hqdefault.jpg`}
-                alt="BBDO Daily Breath Protocol"
-                loading="lazy"
-                className="absolute inset-0 w-full h-full object-cover opacity-80"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-11 h-11 rounded-full bg-white/95 text-foreground flex items-center justify-center shadow-lift">
-                  <Play className="w-5 h-5 ml-0.5" fill="currentColor" />
-                </div>
+          <div className="absolute -right-16 -top-16 w-52 h-52 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+
+          {/* Big thumbnail */}
+          <div className="relative w-full bg-black/40" style={{ aspectRatio: "16 / 9" }}>
+            <img
+              src={`https://i.ytimg.com/vi/${BREATH_PROTOCOL_VIDEO.youtubeId}/maxresdefault.jpg`}
+              alt="BBDO Daily Breath Protocol"
+              loading="lazy"
+              className="absolute inset-0 w-full h-full object-cover"
+              onError={(e) => {
+                const el = e.currentTarget as HTMLImageElement;
+                if (!el.dataset.fallback) {
+                  el.dataset.fallback = "1";
+                  el.src = `https://i.ytimg.com/vi/${BREATH_PROTOCOL_VIDEO.youtubeId}/hqdefault.jpg`;
+                }
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/95 text-foreground flex items-center justify-center shadow-lift">
+                <Play className="w-7 h-7 md:w-8 md:h-8 ml-0.5" fill="currentColor" />
               </div>
-              <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded-md bg-black/70 text-white text-[10px] font-black">76s</div>
             </div>
-            <div className="min-w-0 flex-1 text-white">
-              <div className="flex items-center gap-1.5">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/15 text-white text-[10px] font-black uppercase tracking-[0.14em]">
-                  <Wind className="w-3 h-3" /> BBDO Ritual
+            <div className="absolute top-3 left-3 flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/95 text-foreground text-[10px] font-black uppercase tracking-[0.14em]">
+                <Wind className="w-3 h-3" /> BBDO Hero Ritual
+              </span>
+              {breathDone && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black text-white" style={{ background: "#10B981" }}>
+                  <CheckCircle2 className="w-3 h-3" /> Done today
                 </span>
-                {breathDone && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black" style={{ background: "#10B981", color: "#fff" }}>
-                    <CheckCircle2 className="w-3 h-3" /> Done today
-                  </span>
-                )}
-              </div>
-              <h2 className="text-[15px] md:text-lg font-black leading-tight mt-1.5 truncate">The 4-7-8 Breathing Protocol</h2>
-              <p className="text-[11px] md:text-xs text-white/85 mt-1 line-clamp-2 leading-snug">
-                BBDO 76 seconds daily breath protocol · 4-7-8 breathing. Complete 4 rounds every day.
-              </p>
-              <div className="mt-2.5">
+              )}
+            </div>
+            <div className="absolute bottom-3 right-3 px-2 py-1 rounded-md bg-black/70 text-white text-[11px] font-black">76s</div>
+          </div>
+
+          {/* Info + rounds */}
+          <div className="relative p-4 md:p-5 text-white">
+            <p className="text-[10px] tracking-[0.18em] uppercase font-bold text-white/80">Exercise Library · Hero</p>
+            <h1 className="text-[20px] md:text-2xl font-black leading-tight mt-1">
+              The 4-7-8 Breathing Protocol
+            </h1>
+            <p className="text-[12px] md:text-[13px] text-white/85 mt-1 leading-snug">
+              BBDO 76 seconds daily breath protocol · complete 4 rounds every day.
+            </p>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[10px] font-black uppercase tracking-[0.14em] text-white/80">Today</span>
                   <span className="text-[11px] font-black tabular-nums">{breathCount}/{breathGoal} rounds</span>
                 </div>
-                <div className="mt-1 h-1.5 rounded-full bg-white/20 overflow-hidden">
+                <div className="mt-1.5 h-1.5 rounded-full bg-white/20 overflow-hidden">
                   <motion.div
                     initial={false}
                     animate={{ width: `${Math.min(100, (breathCount / breathGoal) * 100)}%` }}
@@ -236,6 +192,37 @@ export default function Videos() {
           </div>
         </motion.button>
       </div>
+
+      {/* Compact daily-goal marker — small, informational */}
+      <div className="mx-5">
+        <div
+          className="rounded-xl px-3.5 py-2.5 flex items-center gap-3 shadow-card"
+          style={{ background: "var(--bbdo-gradient)" }}
+        >
+          <div className="flex items-center gap-1.5 shrink-0 text-white">
+            <Target className="w-3.5 h-3.5" />
+            <span className="text-[10px] font-black uppercase tracking-[0.14em]">Daily goal</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="h-1.5 rounded-full bg-white/25 overflow-hidden">
+              <motion.div
+                initial={false}
+                animate={{ width: `${yogaPct}%` }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                className="h-full rounded-full"
+                style={{ background: yogaGoalMet ? "#10B981" : "#FFFFFF" }}
+              />
+            </div>
+          </div>
+          <span className="text-[11px] font-black tabular-nums text-white shrink-0">
+            {yogaMinutesToday}/{yogaGoalMin}m
+          </span>
+          {yogaGoalMet && (
+            <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
+          )}
+        </div>
+      </div>
+
 
 
 
