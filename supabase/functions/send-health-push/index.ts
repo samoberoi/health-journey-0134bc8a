@@ -328,13 +328,21 @@ Deno.serve(async (req) => {
 
     const jwt = iosTokens.length ? await createApnsJwt() : "";
     const hosts = apnsHosts();
+    // Use the explicit sound dictionary form so APNs plays audio on the lock
+    // screen even when Focus / silent modes are active. `volume: 1.0` sets max
+    // playback volume for the default system sound (no critical-alert
+    // entitlement required — that's only needed for `critical: 1`).
     const apnsPayload = {
       aps: {
         alert: { title, body },
-        sound: BBDO_PUSH_SOUND,
+        sound: {
+          name: "default",
+          volume: 1.0,
+        },
         badge: 1,
         "interruption-level": "time-sensitive",
         "relevance-score": 1,
+        "mutable-content": 1,
       },
       action_url: actionUrl,
       type: "app_notification",
