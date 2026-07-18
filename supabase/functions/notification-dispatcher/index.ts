@@ -172,6 +172,10 @@ Deno.serve(async (req) => {
       if (f.missed_fasting_today && fastedToday.has(userId)) return false;
       if (f.missed_yoga_today && watchedVideoToday.has(userId)) return false;
       if (f.missed_meal_log_today && loggedMealToday.has(userId)) return false;
+      if (f.missed_breath_today) {
+        const c = breathCountByUser.get(userId) ?? 0;
+        if (c >= BREATH_GOAL) return false;
+      }
       if (f.has_diet_plan && !hasDietPlan.has(userId)) return false;
       if (f.needs_bp_tracking) {
         if (!userNeedsBpTracking(userId)) return false;
