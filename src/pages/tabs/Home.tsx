@@ -1413,8 +1413,131 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
     );
   };
 
+  const openQuickLog = () => {
+    const fabBtn = document.querySelector('[data-fab-trigger]') as HTMLButtonElement | null;
+    fabBtn?.click();
+  };
+
+  const goToTab = (tab: string) => {
+    window.dispatchEvent(new CustomEvent("nav:set-tab", { detail: tab }));
+  };
+
+  const fastingRatio = isFastingDone
+    ? 1
+    : fastingTarget > 0
+      ? Math.min(1, fastingElapsedStatic / fastingTarget)
+      : 0;
+  const waterRatio = Math.min(1, waterGlasses / 8);
+  const exerciseRatio = EXERCISE_DAILY_GOAL > 0
+    ? Math.min(1, completedExercisesToday / EXERCISE_DAILY_GOAL)
+    : 0;
+  const yogaRatio = YOGA_DAILY_MINUTES > 0
+    ? Math.min(1, yogaMinutesToday / YOGA_DAILY_MINUTES)
+    : 0;
+  const dayCompletionPct = habits.length > 0
+    ? Math.round((completedVisibleHabits / habits.length) * 100)
+    : 0;
+  const todayDateLabel = new Date().toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+  });
+
+  const homeFocusItems: HomeFocusItem[] = [];
+  if (fastingState !== "no_plan" && fastingState !== "loading") {
+    homeFocusItems.push({
+      key: "fasting",
+      title: fastingState === "fasting" ? "Fasting active" : fastingState === "eating" ? "Eating window" : fastingState === "done" ? "Fast complete" : "Start fasting",
+      value: fastingState === "done" ? "Done" : fastingTarget ? `${Math.min(fastingElapsedStatic, fastingTarget).toFixed(1)}h` : "Ready",
+      hint: fastingState === "fasting" ? `${fastingTarget || 0}h target` : fastingState === "eating" ? "Log last meal when done" : fastingLabel,
+      ratio: fastingRatio,
+      icon: Timer,
+      accent: "var(--pillar-fasting)",
+      onClick: fastingState === "none" ? () => openMealTimePicker("fmod") : fastingState === "eating" ? () => openMealTimePicker("lmod") : undefined,
+    });
+  }
+  homeFocusItems.push({
+    key: "movement",
+    title: "Movement",
+    value: `${Math.round(movementRatio * 100)}%`,
+    hint: movementHint || "Phone activity",
+    ratio: movementRatio,
+    icon: Footprints,
+    accent: "var(--pillar-diet)",
+    onClick: () => goToTab("habits"),
+  });
+  homeFocusItems.push({
+    key: "exercise",
+    title: "Exercise",
+    value: `${Math.min(completedExercisesToday, EXERCISE_DAILY_GOAL).toLocaleString("en-IN", { maximumFractionDigits: 1 })}m`,
+    hint: `${EXERCISE_DAILY_GOAL} min goal`,
+    ratio: exerciseRatio,
+    icon: Dumbbell,
+    accent: "var(--bbdo-blue)",
+    onClick: () => goToTab("exercise"),
+  });
+  homeFocusItems.push({
+    key: "yoga",
+    title: "Stress & yoga",
+    value: `${Math.min(yogaMinutesToday, YOGA_DAILY_MINUTES).toLocaleString("en-IN", { maximumFractionDigits: 1 })}m`,
+    hint: `${YOGA_DAILY_MINUTES} min goal`,
+    ratio: yogaRatio,
+    icon: Wind,
+    accent: "var(--bbdo-violet)",
+    onClick: () => goToTab("videos"),
+  });
+  if (hasActiveSupplements) {
+    homeFocusItems.push({
+      key: "supplements",
+      title: "Supplements",
+      value: `${suppTakenCount}/${suppTotalCount}`,
+      hint: allSuppsTaken ? "All taken" : `${Math.max(0, suppTotalCount - suppTakenCount)} remaining`,
+      ratio: suppTotalCount > 0 ? suppTakenCount / suppTotalCount : 0,
+      icon: Pill,
+      accent: "var(--bbdo-amber)",
+      onClick: () => goToTab("supplements"),
+    });
+  }
+  homeFocusItems.push({
+    key: "water",
+    title: "Water",
+    value: `${waterGlasses}/8`,
+    hint: waterDone ? "Hydration complete" : "Glasses today",
+    ratio: waterRatio,
+    icon: Droplets,
+    accent: "var(--bbdo-teal)",
+    onClick: openQuickLog,
+  });
+  if (hasDiabetesFlag) {
+    homeFocusItems.push({
+      key: "diabetes",
+      title: "Blood sugar",
+      value: diabetesMorningDone && diabetesEveningDone ? "2/2" : diabetesMorningDone || diabetesEveningDone ? "1/2" : "0/2",
+      hint: hasTodayDiabetesLog ? "Logged today" : "Log morning or evening",
+      ratio: hasTodayDiabetesLog ? (diabetesMorningDone && diabetesEveningDone ? 1 : 0.5) : 0,
+      icon: Activity,
+      accent: "var(--bbdo-red)",
+      onClick: openQuickLog,
+    });
+  }
+
+  const heroPrimaryAction = fastingState === "none"
+    ? { label: packageKey === "foundation" ? "Log first meal" : "Build my plate", icon: UtensilsCrossed, onClick: () => openMealTimePicker("fmod") }
+    : fastingState === "eating"
+      ? { label: packageKey === "foundation" ? "Log last meal" : "Build my plate", icon: UtensilsCrossed, onClick: () => openMealTimePicker("lmod") }
+      : { label: "Track now", icon: Plus, onClick: openQuickLog };
+
+  const heroSecondaryAction = {
+    label: "Food guide",
+    icon: BookOpen,
+    onClick: () => {
+      try { localStorage.setItem("bbdo:openReference", "1"); } catch {}
+      goToTab("diet");
+    },
+  };
+
   return (
-    <div className="flex flex-col gap-6 px-5 md:px-8 xl:px-10 pt-3 md:pt-6 pb-6">
+    <div className="flex flex-col gap-4 px-4 md:px-8 xl:px-10 pt-3 md:pt-6 pb-6">
       {/* Override Alert */}
       {overrideTriggered && (
         <motion.div
@@ -1430,28 +1553,18 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
         </motion.div>
       )}
 
-      {/* Hero greeting — simple, warm, breathing room */}
-      <motion.div
-        className="pt-3 pb-2"
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <h1 className="text-[30px] sm:text-[34px] leading-[1.1] font-semibold tracking-[-0.03em] text-foreground">
-          {greeting || "Hello"}, {firstName} <span className="inline-block">👋</span>
-        </h1>
-      </motion.div>
-
-
-
-      {/* BBDO Global Streak */}
-      <GlobalStreakCard />
-
-      {/* Today's Yoga Class reminder */}
-      <TodaysYogaClass />
-
-
-
+      <HomeHeroPanel
+        greeting={greeting || "Good morning"}
+        firstName={firstName}
+        dateLabel={todayDateLabel}
+        healthScore={healthScore}
+        healthDelta={initialScore != null ? healthScore - initialScore : null}
+        completionPct={dayCompletionPct}
+        weight={latestWeight ?? (user.bodyMetrics.weight ?? "—")}
+        glucose={latestGlucose ?? "—"}
+        primaryAction={heroPrimaryAction}
+        secondaryAction={heroSecondaryAction}
+      />
 
       {/* ─── Awaiting Coach Meeting banner (paid plans, no upcoming meeting) ─── */}
       {packageKey && packageKey !== "foundation" && !nextMeeting && !hasCompletedMeeting && (
@@ -1564,121 +1677,11 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
         );
       })()}
 
-      {/* ─── Daily activity heart (hero) — single source of truth for today's habits ─── */}
-      {(() => {
-        const suppTaken = suppTakenCount;
-        const suppTotal = suppTotalCount;
-        const fastingRatio = isFastingDone
-          ? 1
-          : fastingTarget > 0
-            ? Math.min(1, fastingElapsedStatic / fastingTarget)
-            : 0;
-        const waterRatio = Math.min(1, waterGlasses / 8);
-        const exerciseRatio = EXERCISE_DAILY_GOAL > 0
-          ? Math.min(1, completedExercisesToday / EXERCISE_DAILY_GOAL)
-          : 0;
-        const yogaRatio = YOGA_DAILY_MINUTES > 0
-          ? Math.min(1, yogaMinutesToday / YOGA_DAILY_MINUTES)
-          : 0;
-        const rings: HeartRingItem[] = [];
-        if (fastingState !== "no_plan" && fastingState !== "loading") {
-          rings.push({
-            key: "fasting",
-            label: "Fasting",
-            ratio: fastingRatio,
-            color: "#0F1A3D",
-            hint: fastingTarget ? `${Math.min(fastingElapsedStatic, fastingTarget).toFixed(1)} / ${fastingTarget}h` : undefined,
-          });
-        }
-        if (hasActiveSupplements) {
-          rings.push({
-            key: "supplements",
-            label: "Supplements",
-            ratio: suppTaken / suppTotal,
-            color: "#F59E0B",
-            hint: `${suppTaken} / ${suppTotal} taken`,
-          });
-        }
-        rings.push({
-          key: "movement",
-          label: "Movement",
-          ratio: movementRatio,
-          color: "#10B981",
-          hint: movementHint || undefined,
-        });
-        rings.push({
-          key: "exercise",
-          label: "Exercise",
-          ratio: exerciseRatio,
-          color: "#248CCB",
-            hint: `${Math.min(completedExercisesToday, EXERCISE_DAILY_GOAL).toLocaleString("en-IN", { maximumFractionDigits: 1 })} / ${EXERCISE_DAILY_GOAL} min`,
-        });
-        // Yoga only if the user has a yoga booking on file OR a foundation-level plan expectation.
-        rings.push({
-          key: "yoga",
-          label: "Yoga & Stress",
-          ratio: yogaRatio,
-          color: "#8B5CF6",
-            hint: `${Math.min(yogaMinutesToday, YOGA_DAILY_MINUTES).toLocaleString("en-IN", { maximumFractionDigits: 1 })} / ${YOGA_DAILY_MINUTES} min`,
-        });
-        rings.push({
-          key: "water",
-          label: "Water",
-          ratio: waterRatio,
-          color: "#38BDF8",
-          hint: `${waterGlasses} / 8 glasses`,
-        });
-        if (hasDiabetesFlag) {
-          rings.push({
-            key: "diabetes",
-            label: "Blood sugar log",
-            ratio: hasTodayDiabetesLog ? 1 : 0,
-            color: "#E00101",
-            hint: hasTodayDiabetesLog ? "Logged today" : "Not logged yet",
-          });
-        }
-        return <DailyActivityDial items={rings} title="Close your rings" size="lg" />;
-      })()}
+      <TodayFocusBoard items={homeFocusItems} />
 
-      {/* ─── Today's Vitals: unified card with 3 rings ─── */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-        className="rounded-3xl border border-border/60 bg-card/60 p-4 backdrop-blur-xl"
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold tracking-[0.16em] uppercase text-muted-foreground">Your numbers</p>
-            <p className="text-sm font-black text-foreground leading-tight">Today's vitals</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-2 md:gap-3">
-          <MetricRing
-            value={healthScore}
-            label="Health"
-            delta={initialScore != null ? healthScore - initialScore : null}
-            ringColor={getRingColor("Health", healthScore, initialScore)}
-            dangerColor={getRingColor("Health", healthScore, initialScore)}
-          />
-          <MetricRing
-            value={latestWeight ?? (user.bodyMetrics.weight ?? "—")}
-            label="Weight"
-            unit="kg"
-            delta={initialWeight != null && latestWeight != null ? Math.round((latestWeight - initialWeight) * 10) / 10 : null}
-            ringColor={getRingColor("Weight", typeof latestWeight === "number" ? latestWeight : (user.bodyMetrics.weight ?? NaN), initialWeight)}
-            dangerColor={getRingColor("Weight", typeof latestWeight === "number" ? latestWeight : (user.bodyMetrics.weight ?? NaN), initialWeight)}
-          />
-          <MetricRing
-            value={latestGlucose ?? "—"}
-            label="Glucose"
-            unit="mg/dL"
-            delta={initialGlucose != null && latestGlucose != null ? Math.round(latestGlucose - initialGlucose) : null}
-            ringColor={getRingColor("Blood Glucose", typeof latestGlucose === "number" ? latestGlucose : NaN, initialGlucose)}
-            dangerColor={getRingColor("Blood Glucose", typeof latestGlucose === "number" ? latestGlucose : NaN, initialGlucose)}
-          />
-        </div>
-      </motion.div>
+      <TodaysYogaClass />
+
+      <GlobalStreakCard />
 
 
       {/* Health Markers from lab reports */}
