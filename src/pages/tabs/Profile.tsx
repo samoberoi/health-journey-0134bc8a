@@ -42,7 +42,7 @@ import BbdoBadgeGrid from "@/components/badges/BbdoBadgeGrid";
 import { playNotificationSound, getMasterVolume, setMasterVolume, getMuted, setMuted } from "@/lib/soundEngine";
 import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
 import { registerNativePush, registerNativePushWithToast, isNativePushSupported } from "@/lib/nativePush";
-import { sendLocalHealthAlert, sendRemoteHealthPushResult } from "@/lib/healthAlerts";
+import { sendRemoteHealthPushResult } from "@/lib/healthAlerts";
 
 const APP_VERSION = (globalThis as any).__APP_VERSION__ ?? "1.0.0";
 
@@ -892,11 +892,6 @@ export default function Profile({ onClose, isDark = true, onToggleTheme }: Profi
                   if (!user?.id) return;
                   setSendingTest(true);
                   try {
-                    // Trigger the in-app chime immediately, then send the real
-                    // native push so lock-screen sound uses the same backend path.
-                    const s = await getNotificationSoundSettings();
-                    if (!getMuted()) playNotificationSound(s.variant);
-                    await sendLocalHealthAlert("BBDO test alert", "If your ringer is on, this should beep as a native phone alert.");
                     if (isNativePushSupported()) {
                       const registration = await registerNativePush(user.id);
                       if (registration.ok === false) {
@@ -905,13 +900,15 @@ export default function Profile({ onClose, isDark = true, onToggleTheme }: Profi
                         toast.warning("Phone permission is on, but the push token is not ready yet. Try again in a few seconds.");
                       }
 
-                      const remote = await sendRemoteHealthPushResult("BBDO push test", "This is a real iPhone push notification test.");
+                      const remote = await sendRemoteHealthPushResult("BBDO push test", "Lock your phone — this should beep when it arrives.");
                       if (remote.ok) {
                         toast.success(`Phone push sent (${remote.sent ?? 0}/${remote.attempted ?? 0})`);
                       } else {
                         toast.error(remote.note ?? remote.error ?? "Phone push was not accepted yet");
                       }
                     } else {
+                      const s = await getNotificationSoundSettings();
+                      if (!getMuted()) playNotificationSound(s.variant);
                       toast.success("Test notification sent");
                     }
                   } catch (err: any) {
