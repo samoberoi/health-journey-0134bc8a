@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, CreditCard, Link2, Palette, Bell, Flame, TrendingUp, Salad } from "lucide-react";
+import { Shield, CreditCard, Link2, Palette, Bell, Flame, TrendingUp, Salad, Music4 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AdminRBAC from "./AdminRBAC";
 import AdminSubscriptions from "./AdminSubscriptions";
@@ -10,9 +10,10 @@ import AdminNotificationManager from "./AdminNotificationManager";
 import AdminGlobalStreak from "./AdminGlobalStreak";
 import AdminPnl from "./AdminPnl";
 import AdminDietTypes from "./AdminDietTypes";
+import SoundManagerCard from "@/components/admin/SoundManagerCard";
 
 import CsvToolbar from "@/components/admin/CsvToolbar";
-type Tab = "rbac" | "subscriptions" | "assignments" | "color_gauges" | "notifications" | "global_streak" | "pnl" | "diet_types";
+type Tab = "rbac" | "subscriptions" | "assignments" | "color_gauges" | "notifications" | "global_streak" | "pnl" | "diet_types" | "sound";
 
 const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "rbac", label: "Role-Based Access", icon: Shield },
@@ -20,6 +21,7 @@ const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "assignments", label: "Coach Assignments", icon: Link2 },
   { id: "color_gauges", label: "Color Gauge Manager", icon: Palette },
   { id: "notifications", label: "Notification Manager", icon: Bell },
+  { id: "sound", label: "Sound Manager", icon: Music4 },
   { id: "global_streak", label: "Global Streak", icon: Flame },
   { id: "pnl", label: "P&L Manager", icon: TrendingUp },
   { id: "diet_types", label: "Diet Types", icon: Salad },
@@ -76,6 +78,7 @@ export default function AdminControlCenter({ initialTab = "rbac" }: { initialTab
           {tab === "global_streak" && <AdminGlobalStreak />}
           {tab === "pnl" && <AdminPnl />}
           {tab === "diet_types" && <AdminDietTypes />}
+          {tab === "sound" && <div className="px-4 sm:px-6"><SoundManagerCard /></div>}
         </motion.div>
       </AnimatePresence>
     </div>

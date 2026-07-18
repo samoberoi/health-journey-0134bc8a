@@ -16,8 +16,8 @@ export interface NotificationSoundSettings {
 
 export const DEFAULT_SOUND_SETTINGS: NotificationSoundSettings = {
   enabled: true,
-  variant: "bbdo_signature",
-  volume: 0.8,
+  variant: "hummingbird",
+  volume: 1,
 };
 
 let cached: NotificationSoundSettings | null = null;
