@@ -135,6 +135,17 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!shouldGate) return;
     const sub = CapApp.addListener("appStateChange", ({ isActive }) => {
+      // Suppress re-lock if the native YouTube player was just used.
+      // iOS's fullscreen presentation puts the WKWebView into background
+      // and back — that should not force a Face ID re-prompt.
+      const suppressUntil = Number((window as any).__bbdoBiometricSuppressUntil || 0);
+      if (Date.now() < suppressUntil) {
+        if (isActive) {
+          lastAuthAt.current = Date.now();
+          setLocked(false);
+        }
+        return;
+      }
       if (!isActive) {
         lastAuthAt.current = 0;
         setLocked(true);
