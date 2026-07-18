@@ -13,10 +13,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { useLocation } from "react-router-dom";
 
+// NOTE: /tour is intentionally NOT gated — it runs once, immediately after
+// payment as part of onboarding. Gating it behind biometrics on Android was
+// leaving the page in a `pointer-events-none` state (Skip / Next unclickable).
 const BIOMETRIC_PROTECTED_ROUTES = new Set([
   "/home",
   "/dashboard",
-  "/tour",
   "/notifications",
   "/admin-dashboard",
   "/admin/users-insights",
