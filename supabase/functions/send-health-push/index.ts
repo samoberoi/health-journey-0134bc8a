@@ -11,6 +11,9 @@ const APNS_PRIVATE_KEY = Deno.env.get("APNS_PRIVATE_KEY") ?? "";
 const APNS_BUNDLE_ID = Deno.env.get("APNS_BUNDLE_ID") ?? "app.lovable.byebyediabetes";
 const APNS_ENVIRONMENT = (Deno.env.get("APNS_ENVIRONMENT") ?? "sandbox").toLowerCase();
 const FCM_SERVICE_ACCOUNT_JSON = Deno.env.get("FCM_SERVICE_ACCOUNT_JSON") ?? "";
+const BBDO_PUSH_CHANNEL_ID = "bbdo-push-v2";
+const BBDO_PUSH_SOUND_ANDROID = "bbdo_chime";
+const BBDO_PUSH_SOUND_IOS = "bbdo_chime.wav";
 
 type ApnsAttempt = {
   ok: boolean;
@@ -204,8 +207,8 @@ async function sendFcm(deviceToken: string, title: string, body: string, actionU
         android: {
           priority: "HIGH",
           notification: {
-            sound: "default",
-            channel_id: "bbdo-push",
+            sound: BBDO_PUSH_SOUND_ANDROID,
+            channel_id: BBDO_PUSH_CHANNEL_ID,
             default_vibrate_timings: true,
             default_light_settings: true,
             notification_priority: "PRIORITY_MAX",
@@ -297,7 +300,7 @@ Deno.serve(async (req) => {
     const apnsPayload = {
       aps: {
         alert: { title, body },
-        sound: "default",
+        sound: BBDO_PUSH_SOUND_IOS,
         badge: 1,
         "interruption-level": "time-sensitive",
         "relevance-score": 1,

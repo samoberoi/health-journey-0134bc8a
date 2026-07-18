@@ -15,6 +15,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const APP_VERSION = (globalThis as any).__APP_VERSION__ ?? "1.0.0";
+export const BBDO_PUSH_CHANNEL_ID = "bbdo-push-v2";
+export const BBDO_PUSH_SOUND = "bbdo_chime.wav";
 
 let registered = false;
 let activeUserId: string | null = null;
@@ -124,17 +126,18 @@ export async function registerNativePush(userId: string): Promise<
       console.warn("[push] local alert permission setup failed", err);
     }
 
-    // Android: ensure a high-importance channel with sound exists so FCM
-    // pushes ring instead of arriving silently on Android 8+.
+    // Android channels are immutable after first creation. Use a fresh channel
+    // id for the loud BBDO chime so previously-created silent channels do not
+    // keep muting lock-screen pushes after an app update.
     if (currentPlatform() === "android") {
       try {
         await LocalNotifications.createChannel({
-          id: "bbdo-push",
+          id: BBDO_PUSH_CHANNEL_ID,
           name: "BBDO notifications",
           description: "Reminders, coach messages, and health nudges",
           importance: 5,
           visibility: 1,
-          sound: "default",
+          sound: BBDO_PUSH_SOUND,
           vibration: true,
           lights: true,
         });
@@ -193,14 +196,14 @@ export async function registerNativePushWithToast(userId: string) {
   const res = await registerNativePush(userId);
   if (res.ok === true) {
     if (res.token) {
-      toast.success("Push notifications enabled for this iPhone");
+      toast.success("Push notifications enabled for this phone");
     } else {
-      toast.warning("Permission is on, but the iPhone token has not arrived yet. Try again in a few seconds.");
+      toast.warning("Permission is on, but the phone token has not arrived yet. Try again in a few seconds.");
     }
     return;
   }
   if (res.reason === "permission_denied") {
-    toast.error("Permission denied — enable notifications in iOS Settings.");
+    toast.error("Permission denied — enable notifications in phone settings.");
     return;
   }
   toast.error(`Push setup failed: ${res.reason}`);

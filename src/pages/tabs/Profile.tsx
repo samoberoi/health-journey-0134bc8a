@@ -41,7 +41,6 @@ import HealthScoreRing from "@/components/HealthScoreRing";
 import BbdoBadgeGrid from "@/components/badges/BbdoBadgeGrid";
 import { playNotificationSound, getMasterVolume, setMasterVolume, getMuted, setMuted } from "@/lib/soundEngine";
 import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
-import { createNotification } from "@/lib/notificationService";
 import { registerNativePush, registerNativePushWithToast, isNativePushSupported } from "@/lib/nativePush";
 import { sendLocalHealthAlert, sendRemoteHealthPushResult } from "@/lib/healthAlerts";
 
@@ -893,24 +892,17 @@ export default function Profile({ onClose, isDark = true, onToggleTheme }: Profi
                   if (!user?.id) return;
                   setSendingTest(true);
                   try {
-                    // Trigger the sound immediately so users hear it even if
-                    // realtime is slow, then insert a real notification row.
+                    // Trigger the in-app chime immediately, then send the real
+                    // native push so lock-screen sound uses the same backend path.
                     const s = await getNotificationSoundSettings();
                     if (!getMuted()) playNotificationSound(s.variant);
                     await sendLocalHealthAlert("BBDO test alert", "If your ringer is on, this should beep as a native phone alert.");
-                    await createNotification({
-                      user_id: user.id,
-                      title: "Test alert",
-                      body: "This is a test notification from BBDO.",
-                      type: "test",
-                      icon: "🔔",
-                    });
                     if (isNativePushSupported()) {
                       const registration = await registerNativePush(user.id);
                       if (registration.ok === false) {
-                        toast.error(registration.reason === "permission_denied" ? "Enable notifications in iOS Settings." : `Push setup failed: ${registration.reason}`);
+                        toast.error(registration.reason === "permission_denied" ? "Enable notifications in phone settings." : `Push setup failed: ${registration.reason}`);
                       } else if (!registration.token) {
-                        toast.warning("iPhone permission is on, but the push token is not ready yet. Try again in a few seconds.");
+                        toast.warning("Phone permission is on, but the push token is not ready yet. Try again in a few seconds.");
                       }
 
                       const remote = await sendRemoteHealthPushResult("BBDO push test", "This is a real iPhone push notification test.");
