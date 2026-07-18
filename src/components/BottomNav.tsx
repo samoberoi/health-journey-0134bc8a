@@ -174,59 +174,55 @@ export default function BottomNav({
         </DrawerContent>
       </Drawer>
 
-      {/* Compact dock — [ tab tab (+) tab … ]  */}
-      <div className="fixed bottom-4 left-4 right-4 z-50 md:hidden">
+      {/* Compact dock — icon-only, centered, slim */}
+      <div className="fixed bottom-4 left-0 right-0 z-50 md:hidden flex justify-center px-4">
         <div
-          className="rounded-[999px] px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
+          className="inline-flex items-center gap-1 rounded-full px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
           style={{
             background: "#ffffff",
             border: "1px solid var(--bbdo-line)",
-            boxShadow: "0 10px 32px -12px rgba(15,26,61,0.18)",
+            boxShadow: "0 12px 28px -12px rgba(15,26,61,0.22)",
           }}
         >
-          <div className="flex items-center gap-1">
-            {/* Left tabs */}
-            <div className="flex-1 min-w-0 flex items-stretch justify-around gap-1">
-              {primary.slice(0, LEFT_SLOTS).map((id) => renderTab(id))}
-            </div>
+          {/* Left tabs */}
+          {primary.slice(0, LEFT_SLOTS).map((id) => renderTab(id))}
 
-            {/* Center FAB */}
+          {/* Center FAB */}
+          <motion.button
+            onClick={onFABPress}
+            aria-label="Quick log"
+            whileTap={{ scale: 0.92 }}
+            transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+            className="shrink-0 w-12 h-12 mx-1 -my-1 rounded-full flex items-center justify-center"
+            style={{
+              background: "var(--bbdo-red, #EA6A5E)",
+              color: "#fff",
+              boxShadow: "0 8px 18px -6px rgba(234,106,94,0.55)",
+            }}
+          >
+            <Plus className="w-5 h-5" strokeWidth={2.4} />
+          </motion.button>
+
+          {/* Right tabs */}
+          {primary.slice(LEFT_SLOTS).map((id) => renderTab(id))}
+
+          {hasOverflow && (
             <motion.button
-              onClick={onFABPress}
-              aria-label="Quick log"
-              whileTap={{ scale: 0.94 }}
-              transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
-              className="shrink-0 w-14 h-14 -my-2 rounded-full flex items-center justify-center"
-              style={{
-                background: "var(--bbdo-red, #EA6A5E)",
-                color: "#fff",
-                boxShadow: "0 6px 16px -6px rgba(15,26,61,0.22)",
-              }}
+              key="more"
+              onClick={() => setExpanded(true)}
+              aria-label="More sections"
+              whileTap={{ scale: 0.9 }}
+              transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+              className="relative flex-none w-10 h-10 flex items-center justify-center rounded-full"
+              style={{ color: "var(--bbdo-ink-soft)" }}
             >
-              <Plus className="w-6 h-6" strokeWidth={2.2} />
+              <MoreHorizontal className="w-5 h-5" strokeWidth={1.9} />
+              <AttentionBadge count={overflowUnread} className="absolute -right-0.5 -top-0.5" />
             </motion.button>
-
-            {/* Right tabs + More */}
-            <div className="flex-1 min-w-0 flex items-stretch justify-around gap-1">
-              {primary.slice(LEFT_SLOTS).map((id) => renderTab(id))}
-              {hasOverflow && (
-                <motion.button
-                  key="more"
-                  onClick={() => setExpanded(true)}
-                  aria-label="More sections"
-                  whileTap={{ scale: 0.96 }}
-                  transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
-                  className="relative flex-none w-11 flex items-center justify-center h-11 rounded-full"
-                  style={{ color: "var(--bbdo-ink-soft)" }}
-                >
-                  <MoreHorizontal className="w-5 h-5" strokeWidth={1.8} />
-                  <AttentionBadge count={overflowUnread} className="absolute right-1 top-0.5" />
-                </motion.button>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </div>
+
 
     </>
   );
