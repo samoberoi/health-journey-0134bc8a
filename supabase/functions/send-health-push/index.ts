@@ -232,6 +232,11 @@ async function sendFcm(deviceToken: string, title: string, body: string, actionU
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const url = new URL(req.url);
+  if (req.method === "GET" && url.searchParams.get("diagnose") === "fcm") {
+    const creds = await getFcmAccessToken();
+    return json(200, { ok: true, fcmConfigured: Boolean(creds), fcmProjectId: creds?.projectId ?? null });
+  }
   if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" });
 
   try {
