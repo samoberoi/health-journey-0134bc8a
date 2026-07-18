@@ -17,13 +17,13 @@ export default function PageHeader({ eyebrow, title, subtitle, right, className 
     <header className={cn("px-5 pt-5 pb-4 flex items-start justify-between gap-4", className)}>
       <div className="flex-1 min-w-0">
         {eyebrow && (
-          <div className="bbdo-eyebrow mb-1.5 text-muted-foreground">{eyebrow}</div>
+          <div className="bbdo-eyebrow mb-1.5 text-muted-foreground break-words">{eyebrow}</div>
         )}
-        <h1 className="text-[26px] leading-[1.05] tracking-tight font-semibold text-foreground truncate">
+        <h1 className="text-[22px] sm:text-[26px] leading-[1.1] tracking-tight font-semibold text-foreground break-words">
           {title}
         </h1>
         {subtitle && (
-          <p className="mt-1 text-sm text-muted-foreground leading-snug">{subtitle}</p>
+          <p className="mt-1 text-sm text-muted-foreground leading-snug break-words">{subtitle}</p>
         )}
       </div>
       {right && <div className="flex items-center gap-2 shrink-0">{right}</div>}
