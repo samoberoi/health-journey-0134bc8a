@@ -1026,7 +1026,7 @@ function FoodRow({
       {/* Thumb */}
       <div className="relative w-[88px] h-[88px] rounded-xl overflow-hidden bg-muted shrink-0">
         {imgUrl ? (
-          <img src={imgUrl} alt={item.name} loading="lazy"
+          <img src={imgUrl} alt={item.name} loading="lazy" decoding="async" width={88} height={88}
                className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/60">
