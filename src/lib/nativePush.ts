@@ -15,7 +15,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const APP_VERSION = (globalThis as any).__APP_VERSION__ ?? "1.0.0";
-export const BBDO_PUSH_CHANNEL_ID = "bbdo-alerts-v4";
+export const BBDO_PUSH_CHANNEL_ID = "bbdo-alerts-v5";
+const ANDROID_TOKEN_RESET_KEY = `bbdo_fcm_token_reset_${BBDO_PUSH_CHANNEL_ID}`;
 
 let registered = false;
 let activeUserId: string | null = null;
@@ -101,6 +102,23 @@ function resolveTokenWaiters(token: string) {
   waiters.forEach((resolve) => resolve(token));
 }
 
+async function resetAndroidFcmTokenAfterChannelUpgrade() {
+  if (currentPlatform() !== "android") return;
+  if (localStorage.getItem(ANDROID_TOKEN_RESET_KEY) === "1") return;
+
+  try {
+    // Forces Android to mint a fresh FCM token after Firebase/channel changes.
+    // Stale tokens from an older Firebase sender are rejected by FCM with
+    // SENDER_ID_MISMATCH and never reach the phone.
+    await PushNotifications.unregister();
+  } catch (err) {
+    console.warn("[push] android token reset skipped", err);
+  } finally {
+    lastRegistrationToken = null;
+    localStorage.setItem(ANDROID_TOKEN_RESET_KEY, "1");
+  }
+}
+
 /**
  * Call once after the user is signed in. Safe to call again — listeners are
  * only attached the first time; permission is re-checked without prompting
@@ -139,6 +157,7 @@ export async function registerNativePush(userId: string): Promise<
     // reliably instead of depending on a custom file/channel created earlier.
     if (currentPlatform() === "android") {
       try {
+        await resetAndroidFcmTokenAfterChannelUpgrade();
         const channel = {
           id: BBDO_PUSH_CHANNEL_ID,
           name: "BBDO notifications",
