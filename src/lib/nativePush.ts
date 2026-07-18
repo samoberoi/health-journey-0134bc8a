@@ -17,7 +17,7 @@ import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
 import { getMuted, playNotificationSound, setMasterVolume } from "@/lib/soundEngine";
 
 const APP_VERSION = (globalThis as any).__APP_VERSION__ ?? "1.0.0";
-export const BBDO_PUSH_CHANNEL_ID = "bbdo-alerts-v6";
+export const BBDO_PUSH_CHANNEL_ID = "bbdo-alerts-v7";
 const ANDROID_TOKEN_RESET_KEY = `bbdo_fcm_token_reset_${BBDO_PUSH_CHANNEL_ID}`;
 
 const BBDONotifications = registerPlugin<{
@@ -201,6 +201,7 @@ export async function registerNativePush(userId: string): Promise<
           visibility: 1,
           vibration: true,
           lights: true,
+          sound: "bbdo_chime",
         } as const;
         await PushNotifications.createChannel(channel);
         await LocalNotifications.createChannel(channel);
