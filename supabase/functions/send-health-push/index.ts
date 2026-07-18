@@ -13,6 +13,7 @@ const APNS_ENVIRONMENT = (Deno.env.get("APNS_ENVIRONMENT") ?? "sandbox").toLower
 const FCM_SERVICE_ACCOUNT_JSON = Deno.env.get("FCM_SERVICE_ACCOUNT_JSON") ?? "";
 const BBDO_PUSH_CHANNEL_ID = "bbdo-alerts-v6";
 const BBDO_PUSH_SOUND = "default";
+const BBDO_IOS_PUSH_SOUND = "bbdo_chime.wav";
 
 type ApnsAttempt = {
   ok: boolean;
@@ -328,17 +329,13 @@ Deno.serve(async (req) => {
 
     const jwt = iosTokens.length ? await createApnsJwt() : "";
     const hosts = apnsHosts();
-    // Use the explicit sound dictionary form so APNs plays audio on the lock
-    // screen even when Focus / silent modes are active. `volume: 1.0` sets max
-    // playback volume for the default system sound (no critical-alert
-    // entitlement required — that's only needed for `critical: 1`).
+    // APNs normal alerts must use a plain sound string. The previous dictionary
+    // form is only reliable for critical-alert entitlement payloads and can be
+    // accepted by APNs while iOS still delivers the banner silently.
     const apnsPayload = {
       aps: {
         alert: { title, body },
-        sound: {
-          name: "default",
-          volume: 1.0,
-        },
+        sound: BBDO_IOS_PUSH_SOUND,
         badge: 1,
         "interruption-level": "time-sensitive",
         "relevance-score": 1,

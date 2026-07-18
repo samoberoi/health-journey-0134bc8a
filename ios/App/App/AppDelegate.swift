@@ -537,6 +537,42 @@ public class BBDONativeAuthStorePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 }
 
+@objc(BBDONotificationsPlugin)
+public class BBDONotificationsPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "BBDONotificationsPlugin"
+    public let jsName = "BBDONotifications"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "refreshAuthorization", returnType: CAPPluginReturnPromise)
+    ]
+
+    @objc func refreshAuthorization(_ call: CAPPluginCall) {
+        var options: UNAuthorizationOptions = [.alert, .sound, .badge]
+        if #available(iOS 15.0, *) {
+            options.insert(.timeSensitive)
+        }
+
+        UNUserNotificationCenter.current().requestAuthorization(options: options) { _, error in
+            if let error = error {
+                call.reject(error.localizedDescription, "notificationAuthorizationFailed")
+                return
+            }
+
+            UNUserNotificationCenter.current().getNotificationSettings { settings in
+                var result: [String: Any] = [
+                    "authorizationStatus": settings.authorizationStatus.rawValue,
+                    "soundSetting": settings.soundSetting.rawValue,
+                    "alertSetting": settings.alertSetting.rawValue
+                ]
+                if #available(iOS 15.0, *) {
+                    result["timeSensitiveSetting"] = settings.timeSensitiveSetting.rawValue
+                }
+                bbdoNativeLog("notification authorization refreshed authorization=\(settings.authorizationStatus.rawValue) sound=\(settings.soundSetting.rawValue)")
+                call.resolve(result)
+            }
+        }
+    }
+}
+
 @objc(BBDOBridgeViewController)
 class BBDOBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
@@ -546,6 +582,7 @@ class BBDOBridgeViewController: CAPBridgeViewController {
         bridge?.webView?.configuration.mediaTypesRequiringUserActionForPlayback = []
         bridge?.registerPluginInstance(BBDOBiometricsPlugin())
         bridge?.registerPluginInstance(BBDONativeAuthStorePlugin())
+        bridge?.registerPluginInstance(BBDONotificationsPlugin())
         bridge?.registerPluginInstance(BBDOHealthKitPlugin())
         bridge?.registerPluginInstance(BBDOYouTubePlayerPlugin())
         bbdoNativeLog("Custom native plugins registered")

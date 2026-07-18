@@ -8,15 +8,26 @@
  *
  * The server-side APNs sender reads this token from `device_push_tokens`.
  */
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
+import { getMuted, playNotificationSound, setMasterVolume } from "@/lib/soundEngine";
 
 const APP_VERSION = (globalThis as any).__APP_VERSION__ ?? "1.0.0";
 export const BBDO_PUSH_CHANNEL_ID = "bbdo-alerts-v6";
 const ANDROID_TOKEN_RESET_KEY = `bbdo_fcm_token_reset_${BBDO_PUSH_CHANNEL_ID}`;
+
+const BBDONotifications = registerPlugin<{
+  refreshAuthorization: () => Promise<{
+    authorizationStatus: number;
+    soundSetting: number;
+    alertSetting: number;
+    timeSensitiveSetting?: number;
+  }>;
+}>("BBDONotifications");
 
 let registered = false;
 let activeUserId: string | null = null;
@@ -102,6 +113,28 @@ function resolveTokenWaiters(token: string) {
   waiters.forEach((resolve) => resolve(token));
 }
 
+async function refreshIosNotificationAuthorization() {
+  if (currentPlatform() !== "ios") return;
+  try {
+    const settings = await BBDONotifications.refreshAuthorization();
+    console.log("[push] iOS notification authorization:", settings);
+  } catch (err) {
+    console.warn("[push] iOS notification authorization refresh failed", err);
+  }
+}
+
+async function playNativePushAppSound() {
+  try {
+    if (getMuted()) return;
+    const settings = await getNotificationSoundSettings();
+    if (!settings.enabled) return;
+    setMasterVolume(Math.max(settings.volume ?? 1, 1));
+    playNotificationSound(settings.variant);
+  } catch (err) {
+    console.warn("[push] app sound failed", err);
+  }
+}
+
 async function resetAndroidFcmTokenAfterChannelUpgrade() {
   if (currentPlatform() !== "android") return;
   if (localStorage.getItem(ANDROID_TOKEN_RESET_KEY) === "1") return;
@@ -140,6 +173,8 @@ export async function registerNativePush(userId: string): Promise<
     if (perm.receive !== "granted") {
       return { ok: false, reason: "permission_denied" };
     }
+
+    await refreshIosNotificationAuthorization();
 
     // Same iOS permission family, but request it explicitly so local health
     // alerts can show a banner + system beep immediately after an abnormal log.
@@ -197,12 +232,18 @@ export async function registerNativePush(userId: string): Promise<
 
       PushNotifications.addListener(
         "pushNotificationReceived",
-        (n) => console.log("[push] received in-app:", n),
+        (n) => {
+          console.log("[push] received in-app:", n);
+          void playNativePushAppSound();
+        },
       );
 
       PushNotifications.addListener(
         "pushNotificationActionPerformed",
-        (a) => console.log("[push] tapped:", a),
+        (a) => {
+          console.log("[push] tapped:", a);
+          void playNativePushAppSound();
+        },
       );
     }
 
