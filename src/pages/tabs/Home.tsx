@@ -1244,23 +1244,18 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
         </motion.div>
       )}
 
-      {/* Hero greeting — generous, warm, breathes */}
+      {/* Hero greeting — simple, warm, breathing room */}
       <motion.div
-        className="pt-2 pb-1"
+        className="pt-3 pb-2"
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
       >
-        <p className="text-[13px] font-semibold text-muted-foreground tracking-tight">
-          Hi there, {greeting?.toLowerCase() || "welcome back"}
-        </p>
-        <h1 className="mt-1.5 truncate text-[34px] leading-[1.05] font-semibold tracking-[-0.035em] text-foreground">
-          {firstName}
+        <h1 className="text-[30px] sm:text-[34px] leading-[1.1] font-semibold tracking-[-0.03em] text-foreground">
+          {greeting || "Hello"}, {firstName} <span className="inline-block">👋</span>
         </h1>
-        <p className="text-[13px] text-muted-foreground mt-2 leading-relaxed">
-          Here's your day, at a glance.
-        </p>
       </motion.div>
+
 
 
       {/* BBDO Global Streak */}
