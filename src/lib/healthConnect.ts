@@ -208,7 +208,7 @@ export async function fetchHealthConnectSnapshot(): Promise<HealthSnapshot | nul
       aggregate("BloodGlucose", daysAgo(7), endOfToday()),
     ]);
 
-  const stepsTotal = sum(steps, "count");
+  const stepsTotal = sumStepsDeduped(steps);
   const activeKcal = active ? active.reduce(
     (a: number, r: any) => a + Number(r?.energy?.value ?? r?.energy ?? 0),
     0,
