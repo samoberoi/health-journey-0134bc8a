@@ -126,37 +126,27 @@ export default function BottomNav({
       );
     }
 
+    const accent = TAB_COLOR[id] || "var(--bbdo-ink)";
     return (
       <motion.button
         key={id}
         onClick={() => setActiveTab(id)}
         aria-label={label}
-        whileTap={{ scale: 0.96 }}
-        transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
-        className={`relative flex items-center justify-center gap-1.5 h-11 rounded-full transition-colors ${
-          isActive ? "flex-1 min-w-0 px-3" : "flex-none w-11"
-        }`}
+        whileTap={{ scale: 0.9 }}
+        transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+        className="relative flex-none flex items-center justify-center w-10 h-10 rounded-full transition-colors"
         style={
           isActive
-            ? { background: "var(--bbdo-ink)", color: "#fff" }
-            : { color: "var(--bbdo-ink-soft)" }
+            ? { background: accent, color: "#fff" }
+            : { background: "transparent", color: "var(--bbdo-ink-soft)" }
         }
       >
-        <AppIcon name={ICON_FOR[id]} size={20} strokeWidth={1.7} />
-        {isActive && (
-          <motion.span
-            initial={{ opacity: 0, width: 0 }}
-            animate={{ opacity: 1, width: "auto" }}
-            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="text-[13px] font-semibold whitespace-nowrap overflow-hidden text-ellipsis"
-          >
-            {label}
-          </motion.span>
-        )}
-        <AttentionBadge count={attentionCounts?.[id] ?? 0} className="absolute right-1 top-0.5" />
+        <AppIcon name={ICON_FOR[id]} size={20} strokeWidth={isActive ? 2 : 1.7} />
+        <AttentionBadge count={attentionCounts?.[id] ?? 0} className="absolute -right-0.5 -top-0.5" />
       </motion.button>
     );
   };
+
 
 
   return (
