@@ -45,6 +45,8 @@ export default function Videos() {
   const [tag, setTag] = useState<(typeof videoTagFilters)[number]["id"]>("all");
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<VideoEntry | null>(null);
+  const [breathOpen, setBreathOpen] = useState(false);
+  const { count: breathCount, goal: breathGoal, completed: breathDone } = useBreathSessionsToday();
   const { resolve, loading: thumbnailsLoading } = useVideoThumbnails();
   const { resolveVideo, customVideos, disabledIds, loading: metadataLoading } = useVideoMetadata();
   const { getStatus, watched } = useVideoProgress();
