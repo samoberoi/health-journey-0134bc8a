@@ -1258,9 +1258,6 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
 
 
 
-      {/* BBDO Global Streak */}
-      <GlobalStreakCard />
-
       {/* Today's Yoga Class reminder */}
       <TodaysYogaClass />
 
@@ -1377,118 +1374,6 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
           </motion.div>
         );
       })()}
-
-      {/* ─── Daily activity heart (hero) — single source of truth for today's habits ─── */}
-      {(() => {
-        const suppTaken = suppTakenCount;
-        const suppTotal = suppTotalCount;
-        const fastingRatio = isFastingDone
-          ? 1
-          : fastingTarget > 0
-            ? Math.min(1, fastingElapsedStatic / fastingTarget)
-            : 0;
-        const waterRatio = Math.min(1, waterGlasses / 8);
-        const exerciseRatio = EXERCISE_DAILY_GOAL > 0
-          ? Math.min(1, completedExercisesToday / EXERCISE_DAILY_GOAL)
-          : 0;
-        const yogaRatio = YOGA_DAILY_MINUTES > 0
-          ? Math.min(1, yogaMinutesToday / YOGA_DAILY_MINUTES)
-          : 0;
-        const rings: HeartRingItem[] = [];
-        if (fastingState !== "no_plan" && fastingState !== "loading") {
-          rings.push({
-            key: "fasting",
-            label: "Fasting",
-            ratio: fastingRatio,
-            color: "#0F1A3D",
-            hint: fastingTarget ? `${Math.min(fastingElapsedStatic, fastingTarget).toFixed(1)} / ${fastingTarget}h` : undefined,
-          });
-        }
-        if (hasActiveSupplements) {
-          rings.push({
-            key: "supplements",
-            label: "Supplements",
-            ratio: suppTaken / suppTotal,
-            color: "#F59E0B",
-            hint: `${suppTaken} / ${suppTotal} taken`,
-          });
-        }
-        rings.push({
-          key: "movement",
-          label: "Movement",
-          ratio: movementRatio,
-          color: "#10B981",
-          hint: movementHint || undefined,
-        });
-        rings.push({
-          key: "exercise",
-          label: "Exercise",
-          ratio: exerciseRatio,
-          color: "#248CCB",
-            hint: `${Math.min(completedExercisesToday, EXERCISE_DAILY_GOAL).toLocaleString("en-IN", { maximumFractionDigits: 1 })} / ${EXERCISE_DAILY_GOAL} min`,
-        });
-        // Yoga only if the user has a yoga booking on file OR a foundation-level plan expectation.
-        rings.push({
-          key: "yoga",
-          label: "Yoga & Stress",
-          ratio: yogaRatio,
-          color: "#8B5CF6",
-            hint: `${Math.min(yogaMinutesToday, YOGA_DAILY_MINUTES).toLocaleString("en-IN", { maximumFractionDigits: 1 })} / ${YOGA_DAILY_MINUTES} min`,
-        });
-        rings.push({
-          key: "water",
-          label: "Water",
-          ratio: waterRatio,
-          color: "#38BDF8",
-          hint: `${waterGlasses} / 8 glasses`,
-        });
-        if (hasDiabetesFlag) {
-          rings.push({
-            key: "diabetes",
-            label: "Blood sugar log",
-            ratio: hasTodayDiabetesLog ? 1 : 0,
-            color: "#E00101",
-            hint: hasTodayDiabetesLog ? "Logged today" : "Not logged yet",
-          });
-        }
-        return <DailyActivityDial items={rings} title="Close your rings" size="lg" />;
-      })()}
-
-      {/* ─── 3 Metric Rings: Health Score, Weight, Sugar ─── */}
-      <div className="grid grid-cols-3 gap-3">
-
-        <MetricRing
-          value={healthScore}
-          label="Health"
-          delta={initialScore != null ? healthScore - initialScore : null}
-          ringColor={getRingColor("Health", healthScore, initialScore)}
-          dangerColor={getRingColor("Health", healthScore, initialScore)}
-        />
-        <MetricRing
-          value={latestWeight ?? (user.bodyMetrics.weight ?? "—")}
-          label="Weight"
-          unit="kg"
-          delta={initialWeight != null && latestWeight != null ? Math.round((latestWeight - initialWeight) * 10) / 10 : null}
-          ringColor={getRingColor("Weight", typeof latestWeight === "number" ? latestWeight : (user.bodyMetrics.weight ?? NaN), initialWeight)}
-          dangerColor={getRingColor("Weight", typeof latestWeight === "number" ? latestWeight : (user.bodyMetrics.weight ?? NaN), initialWeight)}
-        />
-
-        <MetricRing
-          value={latestGlucose ?? "—"}
-          label="Blood Glucose"
-          unit="mg/dL"
-          delta={initialGlucose != null && latestGlucose != null ? Math.round(latestGlucose - initialGlucose) : null}
-          ringColor={getRingColor("Blood Glucose", typeof latestGlucose === "number" ? latestGlucose : NaN, initialGlucose)}
-          dangerColor={getRingColor("Blood Glucose", typeof latestGlucose === "number" ? latestGlucose : NaN, initialGlucose)}
-        />
-
-      </div>
-
-
-      {/* Health Markers from lab reports */}
-      
-
-
 
       {/* ─── Achievement Share Prompt ─── */}
       {sharePrompt && (
@@ -1878,21 +1763,6 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
       )}
 
 
-      {/* ─── Today's Steps / Movement Card ─── */}
-      <TodayStepsCard onOpenMovement={() => {
-        const evt = new CustomEvent("nav:set-tab", { detail: "habits" });
-        window.dispatchEvent(evt);
-      }} />
-
-      {/* ─── Apple Health snapshot ─── */}
-      <AppleHealthSnapshotCard />
-
-      {/* ─── Apple Health 30-day trends ─── */}
-      <HealthTrendsCard days={30} />
-
-
-
-
       {/* ─── Supplement Tracker Card ─── */}
       {suppPlan && suppItems.length > 0 && (() => {
         const suppMap = Object.fromEntries(suppList.map((s) => [s.id, s]));
@@ -1987,54 +1857,7 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
         );
       })()}
 
-      {/* ─── Diabetes Check-in Card ─── */}
-      <motion.div
-        className="liquid-glass rounded-3xl p-5 relative overflow-hidden"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.27 }}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Activity className="w-5 h-5 text-primary" strokeWidth={1.6} />
-            </div>
-            <div>
-              <span className="text-foreground font-bold text-sm">Diabetes Check-in</span>
-              <p className="text-muted-foreground text-[10px] font-medium">
-                {diabetesMorningDone && diabetesEveningDone ? "2/2 logged" : diabetesMorningDone || diabetesEveningDone ? "1/2 logged" : "0/2 logged"}
-              </p>
-            </div>
-          </div>
-          <span className={`px-3 py-1.5 rounded-xl font-bold text-xs ${
-            diabetesMorningDone && diabetesEveningDone ? "bg-primary/15 text-primary" :
-            diabetesMorningDone || diabetesEveningDone ? "bg-warning-soft text-warning" :
-            "bg-muted text-muted-foreground"
-          }`}>
-            {diabetesMorningDone && diabetesEveningDone ? "Complete" : diabetesMorningDone || diabetesEveningDone ? "Incomplete" : "Pending"}
-          </span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <DiabetesSlot
-            slot="morning"
-            done={diabetesMorningDone}
-            value={diabetesMorningValue}
-            userId={authUser?.id}
-          />
-          <DiabetesSlot
-            slot="evening"
-            done={diabetesEveningDone}
-            value={diabetesEveningValue}
-            userId={authUser?.id}
-          />
-        </div>
-      </motion.div>
-
-      {/* Metric cards removed — deltas now surface directly on the Health / Weight / Blood Glucose rings above. */}
-
-
-
-      {/* Today's Habits card removed — the "Complete your heart" hero is now the single source of truth. */}
+      {/* Home dashboard widgets removed to restore the simpler home screen. Tracking stays available from the center + button and section tabs. */}
 
       {/* Package status moved to left sidebar (above Sign Out) */}
 
