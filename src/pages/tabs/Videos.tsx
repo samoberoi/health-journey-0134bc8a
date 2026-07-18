@@ -15,6 +15,9 @@ import { formatDuration } from "@/lib/videoProgressStore";
 import YogaUpsell from "@/components/YogaUpsell";
 import { useDailyYogaMinutes } from "@/hooks/useAppSettings";
 import SessionBreakdownCard from "@/components/shared/SessionBreakdownCard";
+import BreathProtocolDrawer from "@/components/BreathProtocolDrawer";
+import { useBreathSessionsToday } from "@/hooks/useBreathSessionsToday";
+import { BREATH_PROTOCOL_VIDEO } from "@/lib/breathProtocol";
 
 const VIDEO_ICON_MAP: Record<string, LucideIcon> = {
   Activity,
