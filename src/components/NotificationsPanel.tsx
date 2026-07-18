@@ -14,6 +14,7 @@ import {
 import { getNotificationSoundSettings } from "@/lib/notificationSoundService";
 import { playNotificationSound, setMasterVolume } from "@/lib/soundEngine";
 import { fireRealtimeHealthNotificationAlert } from "@/lib/healthAlerts";
+import { isNativePushSupported } from "@/lib/nativePush";
 
 const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
   supplement_reminder: { icon: Pill, color: "text-purple-500", bg: "bg-purple-500/10" },
@@ -76,6 +77,7 @@ export default function NotificationsPanel({ onClose, embedded = false }: Notifi
       .finally(() => setLoading(false));
     const unsub = subscribeToNotifications(user.id, (n) => {
       setItems((prev) => [n, ...prev]);
+      if (isNativePushSupported()) return;
       // Play the admin-configured BBDO sound for every incoming notification.
       getNotificationSoundSettings().then((s) => {
         if (!s.enabled) return;
