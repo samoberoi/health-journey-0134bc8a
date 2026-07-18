@@ -29,7 +29,6 @@ const config: CapacitorConfig = {
       androidScaleType: "FIT_CENTER",
     },
     LocalNotifications: {
-      sound: "bbdo_chime.wav",
       presentationOptions: ["badge", "sound", "banner", "list"],
     },
     PushNotifications: {
