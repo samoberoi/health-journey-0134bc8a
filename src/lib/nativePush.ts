@@ -46,7 +46,7 @@ async function upsertToken(userId: string, token: string) {
         app_version: APP_VERSION,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "user_id,token" },
+      { onConflict: "user_id,platform" },
     );
   if (error) throw error;
 
