@@ -19,6 +19,11 @@ export default function StartAssessment() {
     // Keep this tap path instant on Android. Native session recovery can be slow
     // or stuck on some WebView/keychain combinations, so do not block the first
     // onboarding action on any async auth check.
+    try {
+      sessionStorage.setItem("bb_skip_auth_prepare_once", "1");
+    } catch {
+      /* sessionStorage may be unavailable in rare WebView states */
+    }
     navigate("/auth", { replace: true });
   };
 

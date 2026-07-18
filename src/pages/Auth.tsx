@@ -61,7 +61,20 @@ export default function Auth() {
 
     const prepareSession = async () => {
       try {
-        const existingSession = await getExistingSessionUnlessLoggedOut();
+        if (sessionStorage.getItem("bb_skip_auth_prepare_once") === "1") {
+          sessionStorage.removeItem("bb_skip_auth_prepare_once");
+          if (!cancelled) setSessionPreparing(false);
+          return;
+        }
+      } catch {
+        /* continue with normal preparation */
+      }
+
+      try {
+        const existingSession = await Promise.race([
+          getExistingSessionUnlessLoggedOut(),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 1600)),
+        ]);
         if (existingSession) {
           const route = await resolvePostAuthRoute(existingSession.user.id, { missingProfileRoute: null });
           if (route) {
