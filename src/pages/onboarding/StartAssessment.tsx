@@ -4,8 +4,6 @@ import { motion } from "framer-motion";
 import { ArrowRight, Clock, ShieldCheck, ClipboardCheck } from "lucide-react";
 import SoundToggle from "@/components/SoundToggle";
 import { setPhase, setIntensity } from "@/lib/musicEngine";
-import { getExistingSessionUnlessLoggedOut } from "@/contexts/AuthContext";
-import { resolvePostAuthRoute } from "@/lib/accessControl";
 
 const features = [
   { icon: Clock, text: "Takes less than\n5 minutes" },
@@ -17,12 +15,14 @@ export default function StartAssessment() {
   const navigate = useNavigate();
   useEffect(() => { setPhase("hope"); setIntensity("low"); }, []);
 
-  const goToLogin = async () => {
-    const existingSession = await getExistingSessionUnlessLoggedOut();
-    if (existingSession) {
-      const route = await resolvePostAuthRoute(existingSession.user.id, { missingProfileRoute: null });
-      navigate(route ?? "/auth", { replace: true });
-      return;
+  const goToLogin = () => {
+    // Keep this tap path instant on Android. Native session recovery can be slow
+    // or stuck on some WebView/keychain combinations, so do not block the first
+    // onboarding action on any async auth check.
+    try {
+      sessionStorage.setItem("bb_skip_auth_prepare_once", "1");
+    } catch {
+      /* sessionStorage may be unavailable in rare WebView states */
     }
     navigate("/auth", { replace: true });
   };
@@ -55,7 +55,7 @@ export default function StartAssessment() {
         })}
       </div>
       <motion.div className="w-full max-w-sm mt-auto pt-4" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}>
-        <motion.button onClick={() => void goToLogin()} className="ob-cta" whileTap={{ scale: 0.98 }}>Get Started <ArrowRight className="h-4 w-4" /></motion.button>
+        <motion.button type="button" onClick={goToLogin} className="ob-cta" whileTap={{ scale: 0.98 }}>Get Started <ArrowRight className="h-4 w-4" /></motion.button>
       </motion.div>
     </div>
   );
