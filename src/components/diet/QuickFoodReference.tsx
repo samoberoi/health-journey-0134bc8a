@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { toast } from "sonner";
-import { getFoodImageUrl, primeFoodImages } from "@/lib/foodImageService";
+import { getFoodImageUrl, primeFoodImages, getCachedFoodImageUrl, subscribeFoodImages } from "@/lib/foodImageService";
 import FoodItemDetail from "./FoodItemDetail";
 import {
   type FoodCategory, type FoodFilter, type FoodItem, type DietType, type Recommendation,
@@ -970,11 +970,21 @@ function FoodRow({
   onClick: () => void;
   delay: number;
 }) {
-  const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [imgUrl, setImgUrl] = useState<string | null>(() => getCachedFoodImageUrl(item.id));
   useEffect(() => {
+    // Re-read cache when the batch prime signals new URLs.
+    const sync = () => {
+      const u = getCachedFoodImageUrl(item.id);
+      if (u) setImgUrl(u);
+    };
+    sync();
+    const unsub = subscribeFoodImages(sync);
+    // Fallback: if still nothing after batch (e.g. row missing image_url), lazily generate.
     let alive = true;
-    getFoodImageUrl(item.id).then((u) => { if (alive) setImgUrl(u); });
-    return () => { alive = false; };
+    if (!getCachedFoodImageUrl(item.id)) {
+      getFoodImageUrl(item.id).then((u) => { if (alive && u) setImgUrl(u); });
+    }
+    return () => { alive = false; unsub(); };
   }, [item.id]);
 
   const dietDotCls =
@@ -1016,7 +1026,7 @@ function FoodRow({
       {/* Thumb */}
       <div className="relative w-[88px] h-[88px] rounded-xl overflow-hidden bg-muted shrink-0">
         {imgUrl ? (
-          <img src={imgUrl} alt={item.name} loading="lazy"
+          <img src={imgUrl} alt={item.name} loading="lazy" decoding="async" width={88} height={88}
                className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/60">
