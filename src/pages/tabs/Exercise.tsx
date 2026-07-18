@@ -225,7 +225,7 @@ export default function ExerciseTab({ packageKey }: Props) {
     [user, loadTodayMinutes],
   );
 
-  const [activeTier, setActiveTier] = useState<ExerciseTier>(userTier);
+  const [activeTier, setActiveTier] = useState<ExerciseTier | "all">("all");
   const [activeCat, setActiveCat] = useState<string | "all">("all");
   const [watching, setWatching] = useState<Exercise | null>(null);
   const [todayLogs, setTodayLogs] = useState<LogRow[]>([]);
@@ -298,15 +298,16 @@ export default function ExerciseTab({ packageKey }: Props) {
   }, [accessibleExercises, allLogs]);
 
   useEffect(() => {
-    if (!visibleTiers.includes(activeTier)) setActiveTier(visibleTiers[0] ?? 1);
+    if (activeTier !== "all" && !visibleTiers.includes(activeTier)) setActiveTier("all");
   }, [visibleTiers, activeTier]);
 
   const filtered = useMemo(() => {
     return exercises
-      .filter((e) => e.tier === activeTier)
+      .filter((e) => visibleTiers.includes(e.tier as ExerciseTier))
+      .filter((e) => (activeTier === "all" ? true : e.tier === activeTier))
       .filter((e) => (activeCat === "all" ? true : e.category_id === activeCat))
-      .sort((a, b) => a.sort_order - b.sort_order);
-  }, [exercises, activeTier, activeCat]);
+      .sort((a, b) => (a.tier - b.tier) || (a.sort_order - b.sort_order));
+  }, [exercises, activeTier, activeCat, visibleTiers]);
 
   // Daily goal is admin-configured MINUTES of exercise watch time (default 30).
   const dailyGoalMinutes = useDailyExerciseGoal(DAILY_EXERCISE_GOAL);
@@ -456,8 +457,18 @@ export default function ExerciseTab({ packageKey }: Props) {
       />
 
       {/* Tier tabs */}
-      {visibleTiers.length > 1 && (
+      {visibleTiers.length >= 1 && (
         <div className="flex gap-2 overflow-x-auto -mx-1 px-1">
+          <button
+            onClick={() => setActiveTier("all")}
+            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
+              activeTier === "all"
+                ? "bg-[var(--bbdo-blue)] text-white shadow-card"
+                : "bg-[var(--bbdo-surface)] text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            All
+          </button>
           {visibleTiers.map((t) => (
             <button
               key={t}
