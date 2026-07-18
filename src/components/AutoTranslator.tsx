@@ -4,23 +4,29 @@ import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Real-time frontend translator.
- * Walks visible text nodes, translates uncached strings via the `translate`
- * edge function (Lovable AI), and swaps their textContent in-place. Original
- * English text is preserved so switching back to `en` restores instantly.
- * A MutationObserver keeps newly-mounted content translated as the user navigates.
+ * - Persistent shared cache (server) hydrates a local map instantly on lang change.
+ * - MutationObserver keeps navigation-triggered content translated with zero flash
+ *   when the string is already cached.
+ * - Only genuinely-new strings hit the AI, and those are persisted for everyone.
  */
 
 const SKIP_TAGS = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "CODE", "PRE", "TEXTAREA"]);
 const ORIGINAL = new WeakMap<Text, string>();
-const CACHE_PREFIX = "bb_tr_cache_v1::";
+const CACHE_PREFIX = "bb_tr_cache_v2::";
+// In-memory cache per language (also mirrored to localStorage for offline speed).
+const memoryCache: Record<string, Record<string, string>> = {};
+const primed: Record<string, boolean> = {};
 
 function loadCache(lang: string): Record<string, string> {
+  if (memoryCache[lang]) return memoryCache[lang];
   try {
     const raw = localStorage.getItem(CACHE_PREFIX + lang);
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
+    memoryCache[lang] = raw ? JSON.parse(raw) : {};
+  } catch { memoryCache[lang] = {}; }
+  return memoryCache[lang];
 }
 function saveCache(lang: string, cache: Record<string, string>) {
+  memoryCache[lang] = cache;
   try { localStorage.setItem(CACHE_PREFIX + lang, JSON.stringify(cache)); } catch { /* ignore */ }
 }
 
@@ -31,7 +37,6 @@ function shouldTranslate(node: Text): boolean {
   if (parent.closest("[data-no-translate]")) return false;
   const text = node.nodeValue ?? "";
   if (!text.trim()) return false;
-  // Skip pure numbers / symbols
   if (!/[A-Za-z]/.test(text)) return false;
   return true;
 }
@@ -46,6 +51,23 @@ function collectTextNodes(root: Node, out: Text[]) {
   while (n) { out.push(n as Text); n = walker.nextNode(); }
 }
 
+function applyToAll(lang: string) {
+  if (lang === "en") return;
+  const cache = loadCache(lang);
+  const nodes: Text[] = [];
+  collectTextNodes(document.body, nodes);
+  nodes.forEach((t) => {
+    const original = ORIGINAL.get(t) ?? t.nodeValue ?? "";
+    if (!ORIGINAL.has(t)) ORIGINAL.set(t, original);
+    const key = original.trim();
+    if (!key) return;
+    const hit = cache[key];
+    if (hit && t.nodeValue !== original.replace(key, hit)) {
+      t.nodeValue = original.replace(key, hit);
+    }
+  });
+}
+
 export default function AutoTranslator() {
   const { lang } = useLanguage();
   const pendingRef = useRef<Set<Text>>(new Set());
@@ -55,28 +77,43 @@ export default function AutoTranslator() {
   useEffect(() => {
     langRef.current = lang;
 
-    // Restore originals first when switching away from a translated state
-    document.querySelectorAll("*").forEach(() => { /* noop, walker below */ });
-    const nodes: Text[] = [];
-    collectTextNodes(document.body, nodes);
-
-    // Also include nodes whose current text is a translation (they'll be in the WeakMap)
+    // Restore originals when switching back to English
     if (lang === "en") {
-      // Restore
-      const all: Text[] = [];
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       let n: Node | null = walker.nextNode();
-      while (n) { all.push(n as Text); n = walker.nextNode(); }
-      all.forEach((t) => {
+      while (n) {
+        const t = n as Text;
         const orig = ORIGINAL.get(t);
         if (orig != null && t.nodeValue !== orig) t.nodeValue = orig;
-      });
+        n = walker.nextNode();
+      }
       return;
     }
 
-    const cache = loadCache(lang);
+    // Prime the shared server-side cache once per language per session.
+    // This makes tab switches instant because we already know every string.
+    const primeCache = async () => {
+      if (primed[lang]) return;
+      primed[lang] = true;
+      try {
+        const { data, error } = await supabase.functions.invoke("translate", {
+          body: { lang, prime: true },
+        });
+        if (error) throw error;
+        const serverMap: Record<string, string> = data?.cache ?? {};
+        const local = loadCache(lang);
+        const merged = { ...serverMap, ...local };
+        saveCache(lang, merged);
+        // Re-apply across DOM now that we have more entries
+        if (langRef.current === lang) applyToAll(lang);
+      } catch (e) {
+        console.warn("translate prime failed", e);
+      }
+    };
+    primeCache();
 
     const applyFromCache = (targets: Text[]) => {
+      const cache = loadCache(lang);
       const missing: Text[] = [];
       targets.forEach((t) => {
         const original = ORIGINAL.get(t) ?? t.nodeValue ?? "";
@@ -85,7 +122,8 @@ export default function AutoTranslator() {
         if (!key) return;
         const hit = cache[key];
         if (hit) {
-          if (t.nodeValue !== hit) t.nodeValue = original.replace(key, hit);
+          const next = original.replace(key, hit);
+          if (t.nodeValue !== next) t.nodeValue = next;
         } else {
           missing.push(t);
         }
@@ -100,7 +138,6 @@ export default function AutoTranslator() {
       const activeLang = langRef.current;
       if (activeLang === "en") return;
 
-      // Unique keys
       const keys: string[] = [];
       const seen = new Set<string>();
       pending.forEach((t) => {
@@ -109,8 +146,7 @@ export default function AutoTranslator() {
         if (key && !seen.has(key)) { seen.add(key); keys.push(key); }
       });
 
-      // Batch in chunks of 40 to stay well within model limits
-      const CHUNK = 40;
+      const CHUNK = 60;
       const merged: Record<string, string> = {};
       for (let i = 0; i < keys.length; i += CHUNK) {
         const slice = keys.slice(i, i + CHUNK);
@@ -122,14 +158,14 @@ export default function AutoTranslator() {
           const translations: string[] = data?.translations ?? [];
           slice.forEach((k, idx) => {
             const v = translations[idx];
-            if (typeof v === "string" && v.trim()) merged[k] = v;
+            if (typeof v === "string" && v.trim() && v !== k) merged[k] = v;
           });
         } catch (e) {
           console.warn("translate batch failed", e);
         }
       }
 
-      if (langRef.current !== activeLang) return; // user switched mid-flight
+      if (langRef.current !== activeLang) return;
       const currentCache = loadCache(activeLang);
       const nextCache = { ...currentCache, ...merged };
       saveCache(activeLang, nextCache);
@@ -144,7 +180,8 @@ export default function AutoTranslator() {
 
     const scheduleFlush = () => {
       if (flushTimerRef.current) window.clearTimeout(flushTimerRef.current);
-      flushTimerRef.current = window.setTimeout(flush, 150);
+      // Tight debounce so bursts of DOM changes ship together, but delay is imperceptible.
+      flushTimerRef.current = window.setTimeout(flush, 40);
     };
 
     const queue = (targets: Text[]) => {
@@ -154,9 +191,10 @@ export default function AutoTranslator() {
     };
 
     // Initial pass
+    const nodes: Text[] = [];
+    collectTextNodes(document.body, nodes);
     queue(nodes);
 
-    // Observe further DOM changes
     const observer = new MutationObserver((mutations) => {
       const targets: Text[] = [];
       mutations.forEach((m) => {
@@ -170,9 +208,17 @@ export default function AutoTranslator() {
         if (m.type === "characterData" && m.target.nodeType === Node.TEXT_NODE) {
           const t = m.target as Text;
           if (shouldTranslate(t)) {
-            // Text changed by app — treat new value as new original
-            ORIGINAL.set(t, t.nodeValue ?? "");
-            targets.push(t);
+            // Only reset the "original" if the current value truly differs from
+            // any translation we already know about — this prevents the flash
+            // back to English when React re-renders a translated node.
+            const known = ORIGINAL.get(t);
+            const cache = loadCache(langRef.current);
+            const val = t.nodeValue ?? "";
+            const isKnownTranslation = known ? cache[known.trim()] === val : false;
+            if (!isKnownTranslation) {
+              if (!known || known !== val) ORIGINAL.set(t, val);
+              targets.push(t);
+            }
           }
         }
       });
