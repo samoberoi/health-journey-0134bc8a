@@ -77,6 +77,33 @@ function WatchModal({
     [onProgress],
   );
 
+  // Wall-clock fallback: iOS native player and Android simple embed do not
+  // post progress events, so we track elapsed time while the modal is open
+  // and credit it on close (capped to avoid runaway values).
+  const wallClockOpenedAtRef = useRef<number>(Date.now());
+  const wallClockLastReportedAtRef = useRef<number>(Date.now());
+  const noPostMessagePath = useNativePlayer || useAndroidSimpleEmbed;
+
+  useEffect(() => {
+    if (!noPostMessagePath) return;
+    // Periodically credit seconds while the video is open.
+    const interval = window.setInterval(() => {
+      const now = Date.now();
+      const delta = Math.floor((now - wallClockLastReportedAtRef.current) / 1000);
+      if (delta > 0) {
+        wallClockLastReportedAtRef.current = now;
+        onProgress(delta, 0, false);
+      }
+    }, 10000);
+    return () => {
+      window.clearInterval(interval);
+      const now = Date.now();
+      const delta = Math.floor((now - wallClockLastReportedAtRef.current) / 1000);
+      if (delta > 0) onProgress(Math.min(delta, 3600), 0, false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noPostMessagePath]);
+
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (useAndroidSimpleEmbed || event.source !== iframeRef.current?.contentWindow) return;
