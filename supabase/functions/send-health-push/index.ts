@@ -226,6 +226,7 @@ async function sendFcm(deviceToken: string, title: string, body: string, actionU
   const text = await res.text();
   let parsed: unknown = text;
   try { parsed = JSON.parse(text); } catch { /* keep raw */ }
+  console.log("FCM send", { projectId: creds.projectId, tokenPrefix: deviceToken.slice(0, 12), status: res.status, ok: res.ok });
   return { ok: res.ok, status: res.status, response: parsed };
 }
 
