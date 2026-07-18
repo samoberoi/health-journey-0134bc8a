@@ -222,7 +222,7 @@ export default function Tour() {
         className="flex-1 overflow-y-auto overscroll-contain"
         style={{ WebkitOverflowScrolling: "touch" }}
       >
-      <div className="max-w-3xl mx-auto px-5 pt-5" style={{ paddingBottom: "calc(7rem + max(env(safe-area-inset-bottom), 28px))" }}>
+      <div className="max-w-3xl mx-auto px-5 pt-5" style={{ paddingBottom: "calc(7rem + max(env(safe-area-inset-bottom), 64px))" }}>
         <AnimatePresence mode="wait">
           {p ? (
             <motion.div
@@ -346,7 +346,7 @@ export default function Tour() {
         className="relative z-30 shrink-0 bg-background/98 backdrop-blur-xl shadow-[0_-10px_30px_rgba(15,26,61,0.08)]"
         style={{
           borderTop: "1px solid hsl(var(--border))",
-          paddingBottom: "max(env(safe-area-inset-bottom), 22px)",
+          paddingBottom: "max(env(safe-area-inset-bottom), 56px)",
         }}
       >
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-3 px-5 pt-3">
