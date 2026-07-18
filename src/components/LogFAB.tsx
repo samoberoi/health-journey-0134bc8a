@@ -52,6 +52,8 @@ export default function LogFAB({ packageKey }: { packageKey?: string | null }) {
   });
   const [open, setOpen] = useState(false);
   const [activeLog, setActiveLog] = useState<LogType>(null);
+  const [breathOpen, setBreathOpen] = useState(false);
+  const { count: breathCount, goal: breathGoal, completed: breathDone } = useBreathSessionsToday();
   const [saving, setSaving] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState(formatCurrentDateTime());
   const [keyboardInset, setKeyboardInset] = useState(0);
