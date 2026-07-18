@@ -45,10 +45,16 @@ const LABEL_FOR: Partial<Record<Tab, string>> = {
   messages: "Chat",
 };
 
-// Number of tabs to keep in the primary dock (excluding the FAB and "More" trigger).
+// Priority order — most-used first. Home is always the anchor.
+const PRIORITY: Tab[] = [
+  "home", "diet", "habits", "exercise", "fasting",
+  "supplements", "consult", "labs", "videos", "community", "messages",
+];
+
 // Layout: [tab] [tab] [ + ] [tab] [ ... ]  — plus sign lives in the middle.
 const PRIMARY_SLOTS = 3;
 const LEFT_SLOTS = 2; // tabs shown to the LEFT of the center FAB
+
 
 
 export default function BottomNav({
