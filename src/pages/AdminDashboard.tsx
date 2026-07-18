@@ -139,7 +139,7 @@ const navItems: NavItem[] = [
   { kind: "leaf", id: "videos", icon: Video, label: "Stress & Yoga" },
   { kind: "leaf", id: "exercises", icon: Dumbbell, label: "Exercise" },
   { kind: "leaf", id: "community", icon: MessageSquare, label: "Community" },
-  { kind: "leaf", id: "events", icon: CalendarDays, label: "Events" },
+  
   {
     kind: "group",
     id: "control-center",
@@ -198,7 +198,7 @@ const tabContentMap: Record<AdminTab, React.ReactNode> = {
   global_streak: <AdminGlobalStreak />,
   pnl: <AdminPnl />,
   diet_types: <AdminDietTypes />,
-  events: <AdminEvents />,
+  
   profile: null,
 };
 
@@ -231,7 +231,7 @@ const adminTabs = new Set<AdminTab>([
   "global_streak",
   "pnl",
   "diet_types",
-  "events",
+  
   "profile",
 ]);
 
