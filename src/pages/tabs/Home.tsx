@@ -37,7 +37,6 @@ import { fetchMovementOverview } from "@/lib/movementUserService";
 import { fetchUserStats } from "@/lib/userStatsService";
 import { useColorGauges } from "@/hooks/useColorGauges";
 import HealthScoreRing from "@/components/HealthScoreRing";
-import DailyActivityDial, { type DialRingItem as HeartRingItem } from "@/components/DailyActivityDial";
 import TodaysYogaClass from "@/components/home/TodaysYogaClass";
 import GlobalStreakCard from "@/components/home/GlobalStreakCard";
 import { Wind } from "lucide-react";
@@ -128,7 +127,7 @@ function MetricRing({
 
   return (
     <motion.div
-      className="rounded-2xl bg-background/60 border border-border/40 p-3 w-full min-w-0 flex flex-col items-center justify-between gap-1.5"
+      className="rounded-[22px] bg-background/70 border border-border/50 p-3 w-full min-w-0 flex flex-col items-center justify-between gap-1.5 shadow-sm"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
@@ -206,6 +205,184 @@ function MetricRing({
       </div>
 
     </motion.div>
+  );
+}
+
+type HomeFocusItem = {
+  key: string;
+  title: string;
+  value: string;
+  hint: string;
+  ratio: number;
+  icon: React.ElementType;
+  accent: string;
+  onClick?: () => void;
+};
+
+function ClampProgress({ value, accent }: { value: number; accent: string }) {
+  const pct = Math.max(0, Math.min(100, Math.round(value * 100)));
+  return (
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+      <motion.div
+        className="h-full rounded-full"
+        style={{ background: accent }}
+        initial={{ width: 0 }}
+        animate={{ width: `${pct}%` }}
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      />
+    </div>
+  );
+}
+
+function HomeHeroPanel({
+  greeting,
+  firstName,
+  dateLabel,
+  healthScore,
+  healthDelta,
+  completionPct,
+  weight,
+  glucose,
+  primaryAction,
+  secondaryAction,
+}: {
+  greeting: string;
+  firstName: string;
+  dateLabel: string;
+  healthScore: number;
+  healthDelta: number | null;
+  completionPct: number;
+  weight: number | string | null;
+  glucose: number | string | null;
+  primaryAction?: { label: string; icon: React.ElementType; onClick: () => void };
+  secondaryAction?: { label: string; icon: React.ElementType; onClick: () => void };
+}) {
+  const HealthToneIcon = healthDelta != null && healthDelta < 0 ? TrendingDown : TrendingUp;
+  const weightText = weight == null || weight === "—" ? "—" : `${weight} kg`;
+  const glucoseText = glucose == null || glucose === "—" ? "—" : `${glucose} mg/dL`;
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      className="relative overflow-hidden rounded-[30px] border border-primary/15 bg-primary p-5 text-primary-foreground shadow-hero md:p-6"
+    >
+      <div className="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/70">
+            {dateLabel}
+          </p>
+          <h1 className="mt-2 text-[31px] leading-[1.04] font-semibold tracking-normal text-primary-foreground sm:text-[38px]">
+            {greeting || "Good morning"}, {firstName} <span aria-hidden>👋</span>
+          </h1>
+          <div className="mt-5 grid grid-cols-3 gap-2.5">
+            <div className="rounded-2xl bg-primary-foreground/12 px-3 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary-foreground/60">Day</p>
+              <p className="mt-1 text-xl font-semibold leading-none tabular-nums">{completionPct}%</p>
+            </div>
+            <div className="rounded-2xl bg-primary-foreground/12 px-3 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary-foreground/60">Weight</p>
+              <p className="mt-1 truncate text-lg font-semibold leading-none tabular-nums">{weightText}</p>
+            </div>
+            <div className="rounded-2xl bg-primary-foreground/12 px-3 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary-foreground/60">Sugar</p>
+              <p className="mt-1 truncate text-lg font-semibold leading-none tabular-nums">{glucoseText}</p>
+            </div>
+          </div>
+          {(primaryAction || secondaryAction) && (
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              {primaryAction && (
+                <button
+                  type="button"
+                  onClick={primaryAction.onClick}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary-foreground px-4 text-sm font-semibold text-primary shadow-card active:scale-[0.98] transition-transform"
+                >
+                  <primaryAction.icon className="h-4 w-4" strokeWidth={2} />
+                  {primaryAction.label}
+                </button>
+              )}
+              {secondaryAction && (
+                <button
+                  type="button"
+                  onClick={secondaryAction.onClick}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-primary-foreground/25 bg-primary-foreground/10 px-4 text-sm font-semibold text-primary-foreground active:scale-[0.98] transition-transform"
+                >
+                  <secondaryAction.icon className="h-4 w-4" strokeWidth={2} />
+                  {secondaryAction.label}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="mx-auto flex w-full max-w-[210px] flex-col items-center rounded-[28px] bg-primary-foreground p-4 text-foreground shadow-lift md:w-[210px]">
+          <HealthScoreRing
+            score={healthScore}
+            size={146}
+            thickness={11}
+            showSubtitle={false}
+            scoreClassName="text-[42px]"
+          />
+          <div className="mt-2 flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+            <HealthToneIcon className="h-3.5 w-3.5" strokeWidth={2} />
+            {healthDelta == null ? "Health score" : healthDelta === 0 ? "No change" : `${healthDelta > 0 ? "+" : ""}${healthDelta} points`}
+          </div>
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
+function TodayFocusBoard({ items }: { items: HomeFocusItem[] }) {
+  const done = items.filter((item) => item.ratio >= 1).length;
+  const displayItems = items.slice(0, 6);
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      className="rounded-[28px] border border-border/60 bg-card p-4 shadow-card md:p-5"
+    >
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Today</p>
+          <h2 className="text-[19px] font-semibold leading-tight tracking-normal text-foreground">Your next best moves</h2>
+        </div>
+        <div className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary tabular-nums">
+          {done}/{items.length}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {displayItems.map((item) => {
+          const Icon = item.icon;
+          const Wrapper = item.onClick ? motion.button : motion.div;
+          return (
+            <Wrapper
+              key={item.key}
+              {...(item.onClick ? { type: "button", onClick: item.onClick, whileTap: { scale: 0.985 } } : {})}
+              className="no-pill w-full rounded-[22px] border border-border/60 bg-background p-3.5 text-left transition-colors hover:border-primary/25"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ background: `${item.accent}16`, color: item.accent }}>
+                  <Icon className="h-5 w-5" strokeWidth={2} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="truncate text-sm font-semibold leading-tight text-foreground">{item.title}</p>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums" style={{ color: item.accent }}>{item.value}</span>
+                  </div>
+                  <p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">{item.hint}</p>
+                  <div className="mt-3">
+                    <ClampProgress value={item.ratio} accent={item.accent} />
+                  </div>
+                </div>
+              </div>
+            </Wrapper>
+          );
+        })}
+      </div>
+    </motion.section>
   );
 }
 
