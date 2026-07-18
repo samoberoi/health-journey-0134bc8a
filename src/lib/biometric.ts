@@ -174,7 +174,7 @@ export function setBiometricEnabled(_on = true) {
 }
 
 export async function authenticateWithBiometrics(
-  reason = "Unlock bye bye diabetes"
+  reason = "Unlock BBDO"
 ): Promise<boolean> {
   if (isNative()) {
     try {
