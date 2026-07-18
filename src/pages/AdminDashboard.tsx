@@ -70,7 +70,7 @@ import AdminExercises from "./admin/AdminExercises";
 import AdminGlobalStreak from "./admin/AdminGlobalStreak";
 import AdminPnl from "./admin/AdminPnl";
 import AdminDietTypes from "./admin/AdminDietTypes";
-import AdminEvents from "./admin/AdminEvents";
+
 import NotificationsPanel from "@/components/NotificationsPanel";
 import { useAttentionCounts } from "@/hooks/useAttentionCounts";
 import { RoleBottomNav, RoleTopBar, type RoleNavItem } from "@/components/shared";
@@ -105,7 +105,7 @@ export type AdminTab =
   | "global_streak"
   | "pnl"
   | "diet_types"
-  | "events"
+  
   | "profile";
 
 
