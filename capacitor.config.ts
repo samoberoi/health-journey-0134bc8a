@@ -24,6 +24,9 @@ const config: CapacitorConfig = {
       showSpinner: false,
       splashFullScreen: true,
       splashImmersive: true,
+      // FIT_CENTER preserves aspect ratio and avoids the zoomed/blurred logo
+      // seen with the default CENTER_CROP scale on Android.
+      androidScaleType: "FIT_CENTER",
     },
     LocalNotifications: {
       presentationOptions: ["badge", "sound", "banner", "list"],
