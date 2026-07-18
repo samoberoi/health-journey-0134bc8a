@@ -124,6 +124,25 @@ export async function registerNativePush(userId: string): Promise<
       console.warn("[push] local alert permission setup failed", err);
     }
 
+    // Android: ensure a high-importance channel with sound exists so FCM
+    // pushes ring instead of arriving silently on Android 8+.
+    if (currentPlatform() === "android") {
+      try {
+        await LocalNotifications.createChannel({
+          id: "bbdo-push",
+          name: "BBDO notifications",
+          description: "Reminders, coach messages, and health nudges",
+          importance: 5,
+          visibility: 1,
+          sound: "default",
+          vibration: true,
+          lights: true,
+        });
+      } catch (err) {
+        console.warn("[push] android channel setup failed", err);
+      }
+    }
+
     if (!registered) {
       registered = true;
 

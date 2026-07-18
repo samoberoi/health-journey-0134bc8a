@@ -201,7 +201,16 @@ async function sendFcm(deviceToken: string, title: string, body: string, actionU
         token: deviceToken,
         notification: { title, body },
         data: { action_url: actionUrl, type: "app_notification" },
-        android: { priority: "HIGH", notification: { sound: "default", default_vibrate_timings: true } },
+        android: {
+          priority: "HIGH",
+          notification: {
+            sound: "default",
+            channel_id: "bbdo-push",
+            default_vibrate_timings: true,
+            default_light_settings: true,
+            notification_priority: "PRIORITY_MAX",
+          },
+        },
       },
     }),
   });
