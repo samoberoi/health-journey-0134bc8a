@@ -447,14 +447,8 @@ export default function ExerciseTab({ packageKey }: Props) {
         </div>
       </motion.div>
 
-      {/* Ideal daily plan (admin-configured) */}
-      <SessionBreakdownCard
-        totalKey="exercise_daily_minutes"
-        sessionsKey="exercise_sessions"
-        moduleLabel="exercise"
-        accent="var(--pillar-exercise)"
-        progressMinutes={todayMinutes}
-      />
+      {/* Fasting-window session breakdown removed for end users —
+          the live daily-goal ring already reflects the active fasting protocol. */}
 
       {/* Tier tabs */}
       {visibleTiers.length >= 1 && (
