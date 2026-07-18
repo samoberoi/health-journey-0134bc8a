@@ -9,13 +9,13 @@ export default function LabTestsTab({ foundationMode = false }: { foundationMode
         style={{ background: foundationMode ? "var(--pillar-supplements)" : "var(--bbdo-ink)" }}
       >
         <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-        <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-white/80">
+        <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-white/80 break-words">
           {foundationMode ? "Foundation Essentials" : "Your Reports"}
         </p>
-        <h1 className="text-2xl md:text-3xl font-black tracking-tight mt-1">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight mt-1 break-words leading-tight">
           {foundationMode ? "Pick a panel. Book in one tap." : "Recommended tests & reports"}
         </h1>
-        <p className="text-sm text-white/85 mt-1 max-w-xl">
+        <p className="text-sm text-white/85 mt-1 max-w-xl break-words">
           {foundationMode
             ? "Curated metabolic panels with home sample collection. View what's included, book online, and see your reports here."
             : "Tests recommended by your coach plus all your past reports in one place."}
