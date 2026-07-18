@@ -142,15 +142,15 @@ export default function BottomNav({
         aria-label={label}
         whileTap={{ scale: 0.9 }}
         transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
-        className="relative flex-none flex items-center justify-center w-10 h-10 rounded-full transition-colors"
+        className="relative flex-1 flex items-center justify-center h-11 rounded-full transition-colors"
         style={
           isActive
             ? { background: accent, color: "#fff" }
             : { background: "transparent", color: "var(--bbdo-ink-soft)" }
         }
       >
-        <AppIcon name={ICON_FOR[id]} size={20} strokeWidth={isActive ? 2 : 1.7} />
-        <AttentionBadge count={attentionCounts?.[id] ?? 0} className="absolute -right-0.5 -top-0.5" />
+        <AppIcon name={ICON_FOR[id]} size={22} strokeWidth={isActive ? 2 : 1.7} />
+        <AttentionBadge count={attentionCounts?.[id] ?? 0} className="absolute right-1 top-1" />
       </motion.button>
     );
   };
