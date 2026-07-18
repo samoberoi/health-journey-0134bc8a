@@ -201,6 +201,7 @@ export async function registerNativePush(userId: string): Promise<
           visibility: 1,
           vibration: true,
           lights: true,
+          sound: "bbdo_chime",
         } as const;
         await PushNotifications.createChannel(channel);
         await LocalNotifications.createChannel(channel);
