@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "1014208892770",
-    "project_id": "bbdo-dcfaa",
-    "storage_bucket": "bbdo-dcfaa.firebasestorage.app"
+    "project_number": "73939371932",
+    "project_id": "bbdoapp",
+    "storage_bucket": "bbdoapp.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1014208892770:android:d37f1b25ae92cdae08663b",
+        "mobilesdk_app_id": "1:73939371932:android:4f918ee41d7f50b2ecaa59",
         "android_client_info": {
           "package_name": "app.lovable.byebyediabetes"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCX2wkoayw7DQxSAa5HCf7eIgI8NZY40Bk"
+          "current_key": "AIzaSyCCc5KuP163xhH81wjqSNcbfPZKxK77JvU"
         }
       ],
       "services": {
