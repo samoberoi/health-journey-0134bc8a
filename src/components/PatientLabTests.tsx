@@ -449,13 +449,13 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
                 </div>
               )}
               <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
                     style={{ background: "var(--bbdo-gradient)" }}>
                     <FlaskConical className="w-5 h-5 text-white" />
                   </div>
-                  <div>
-                    <p className="text-sm font-black tracking-tight leading-tight">{t.product_name}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-black tracking-tight leading-tight break-words">{t.product_name}</p>
                     <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${tier.tone}`}>{tier.label}</span>
                   </div>
                 </div>
