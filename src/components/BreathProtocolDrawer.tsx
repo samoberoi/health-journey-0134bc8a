@@ -27,7 +27,9 @@ export default function BreathProtocolDrawer({
   }, []);
 
   const embedSrc = useMemo(() => {
-    if (isNativeIOSApp()) return youtubePlayerProxyUrl(videoId);
+    // iOS WKWebView blocks YT's JS iframe API (error 153). Use the simple
+    // bare-iframe proxy path on native iOS so the video just plays.
+    if (isNativeIOSApp()) return youtubePlayerProxyUrl(videoId, { simple: true });
     return `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&enablejsapi=1`;
   }, [videoId]);
 
