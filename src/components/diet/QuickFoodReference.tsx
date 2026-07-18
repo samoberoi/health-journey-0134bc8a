@@ -970,11 +970,21 @@ function FoodRow({
   onClick: () => void;
   delay: number;
 }) {
-  const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [imgUrl, setImgUrl] = useState<string | null>(() => getCachedFoodImageUrl(item.id));
   useEffect(() => {
+    // Re-read cache when the batch prime signals new URLs.
+    const sync = () => {
+      const u = getCachedFoodImageUrl(item.id);
+      if (u) setImgUrl(u);
+    };
+    sync();
+    const unsub = subscribeFoodImages(sync);
+    // Fallback: if still nothing after batch (e.g. row missing image_url), lazily generate.
     let alive = true;
-    getFoodImageUrl(item.id).then((u) => { if (alive) setImgUrl(u); });
-    return () => { alive = false; };
+    if (!getCachedFoodImageUrl(item.id)) {
+      getFoodImageUrl(item.id).then((u) => { if (alive && u) setImgUrl(u); });
+    }
+    return () => { alive = false; unsub(); };
   }, [item.id]);
 
   const dietDotCls =
