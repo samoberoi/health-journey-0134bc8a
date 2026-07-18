@@ -51,13 +51,9 @@ export function useVideoProgressSync() {
       const t = setTimeout(() => {
         timers.current.delete(videoId);
         if (record) {
-          upsertVideoProgress(uid, videoId, record, youtubeId)
-            .then(() => window.dispatchEvent(new CustomEvent("bbdo:video-progress-synced")))
-            .catch(console.error);
+          upsertVideoProgress(uid, videoId, record, youtubeId).catch(console.error);
         } else {
-          deleteVideoProgress(uid, videoId)
-            .then(() => window.dispatchEvent(new CustomEvent("bbdo:video-progress-synced")))
-            .catch(console.error);
+          deleteVideoProgress(uid, videoId).catch(console.error);
         }
       }, 1200);
       timers.current.set(videoId, t);

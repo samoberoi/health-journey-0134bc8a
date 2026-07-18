@@ -11,11 +11,6 @@ type Row = {
   watched_at: string;
 };
 
-function localDateKey(value: Date | number = Date.now()) {
-  const d = value instanceof Date ? value : new Date(value);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 export async function fetchVideoProgress(userId: string): Promise<Record<string, WatchRecord>> {
   const { data, error } = await supabase
     .from("video_progress")
@@ -27,16 +22,11 @@ export async function fetchVideoProgress(userId: string): Promise<Record<string,
   }
   const map: Record<string, WatchRecord> = {};
   for (const r of (data || []) as Row[]) {
-    const watchedAt = new Date(r.watched_at).getTime();
-    const sessionDate = localDateKey(watchedAt);
-    const isToday = sessionDate === localDateKey();
     map[r.video_id] = {
-      watchedAt,
+      watchedAt: new Date(r.watched_at).getTime(),
       progressSec: r.progress_sec || 0,
       durationSec: r.duration_sec || 0,
       completed: !!r.completed,
-      sessionDate,
-      todayWatchedSec: isToday ? (r.progress_sec || 0) : 0,
     };
   }
   return map;
@@ -57,21 +47,14 @@ export async function upsertVideoProgress(
   rec: WatchRecord,
   youtubeId?: string,
 ) {
-  // The backend `progress_sec` column is also used for daily minute goals.
-  // Native iOS / Android embeds cannot always report exact playback position,
-  // so upload today's accumulated watched seconds when available.
-  const uploadedProgressSec =
-    rec.sessionDate === localDateKey() && typeof rec.todayWatchedSec === "number" && rec.todayWatchedSec > 0
-      ? rec.todayWatchedSec
-      : rec.progressSec || 0;
   const { error } = await supabase.from("video_progress").upsert(
     {
       user_id: userId,
       video_id: videoId,
       youtube_id: youtubeId ?? null,
-      progress_sec: Math.round(uploadedProgressSec),
+      progress_sec: Math.round(rec.progressSec || 0),
       duration_sec: Math.round(rec.durationSec || 0),
-      completed: !!rec.completed || (rec.durationSec > 0 && uploadedProgressSec / rec.durationSec >= 0.9),
+      completed: !!rec.completed,
       watched_at: new Date(rec.watchedAt || Date.now()).toISOString(),
     },
     { onConflict: "user_id,video_id" },

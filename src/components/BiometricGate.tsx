@@ -12,7 +12,6 @@ import {
 } from "@/lib/biometric";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "react-router-dom";
-import { isNativeVideoPlaybackSuppressed } from "@/lib/youtubeEmbed";
 
 // NOTE: /tour is intentionally NOT gated — it runs once, immediately after
 // payment as part of onboarding. Gating it behind biometrics on Android was
@@ -62,13 +61,6 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
     (shouldGate && (locked || authenticating || lastAuthAt.current === 0));
 
   const runAuth = useCallback(async () => {
-    if (isNativeVideoPlaybackSuppressed()) {
-      lastAuthAt.current = Date.now();
-      setLocked(false);
-      setAuthenticating(false);
-      authenticatingRef.current = false;
-      return;
-    }
     if (authenticatingRef.current) return;
     authenticatingRef.current = true;
     setLocked(true);
@@ -126,13 +118,6 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
       lastAuthAt.current = 0;
       return;
     }
-    if (isNativeVideoPlaybackSuppressed()) {
-      lastAuthAt.current = Date.now();
-      setLocked(false);
-      setAuthenticating(false);
-      setBiometryChecked(true);
-      return;
-    }
     let cancelled = false;
     setLocked(true);
     setBiometryChecked(false);
@@ -153,11 +138,11 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
       // Suppress re-lock if the native YouTube player was just used.
       // iOS's fullscreen presentation puts the WKWebView into background
       // and back — that should not force a Face ID re-prompt.
-      if (isNativeVideoPlaybackSuppressed()) {
+      const suppressUntil = Number((window as any).__bbdoBiometricSuppressUntil || 0);
+      if (Date.now() < suppressUntil) {
         if (isActive) {
           lastAuthAt.current = Date.now();
           setLocked(false);
-          setAuthenticating(false);
         }
         return;
       }

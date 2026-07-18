@@ -41,14 +41,6 @@
         var retryButton = document.getElementById("retry-youtube");
         var player;
         var progressTimer;
-        var captionTimer;
-
-        function disableCaptions() {
-          try { player && player.unloadModule && player.unloadModule("captions"); } catch (_) {}
-          try { player && player.unloadModule && player.unloadModule("cc"); } catch (_) {}
-          try { player && player.setOption && player.setOption("captions", "track", {}); } catch (_) {}
-          try { player && player.setOption && player.setOption("captions", "fontSize", -1); } catch (_) {}
-        }
 
         function targetOrigin() {
           return window.location.origin && window.location.origin !== "null" ? window.location.origin : "*";
@@ -70,7 +62,7 @@
             fs: params.get("fs") || "1",
             start: params.get("start") || "0",
             cc_load_policy: "0",
-            cc_lang_pref: "en",
+            cc_lang_pref: "none",
             hl: "en",
             iv_load_policy: "3"
           });
@@ -135,7 +127,7 @@
               widget_referrer: window.location.origin,
               start: params.get("start") || "0",
               cc_load_policy: 0,
-              cc_lang_pref: "en",
+              cc_lang_pref: "none",
               hl: "en",
               iv_load_policy: 3
             },
@@ -143,9 +135,9 @@
               onReady: function () {
                 var frame = document.querySelector("iframe");
                 if (frame) frame.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
-                disableCaptions();
-                captionTimer = window.setInterval(disableCaptions, 750);
-                window.setTimeout(function () { if (captionTimer) window.clearInterval(captionTimer); }, 7000);
+                try { player.unloadModule && player.unloadModule("captions"); } catch (_) {}
+                try { player.unloadModule && player.unloadModule("cc"); } catch (_) {}
+                try { player.setOption && player.setOption("captions", "track", {}); } catch (_) {}
                 document.body.classList.add("ready");
                 post("ready", snapshot());
                 progressTimer = window.setInterval(function () {
@@ -153,10 +145,8 @@
                 }, 1000);
               },
               onStateChange: function (event) {
-                if (event.data === 1 || event.data === 2 || event.data === 3) disableCaptions();
                 post("state", Object.assign({ state: event.data }, snapshot()));
               },
-              onApiChange: disableCaptions,
               onError: function (event) {
                 showFallback(event && event.data);
               }

@@ -73,8 +73,7 @@ export function accumulateWatched(videoId: string, deltaSec: number, durationSec
   const sameDay = prev?.sessionDate === day;
   const next: WatchRecord = {
     watchedAt: Date.now(),
-    // Keep progressSec moving for backend consumers that only know this field.
-    progressSec: (sameDay ? (prev?.todayWatchedSec ?? prev?.progressSec ?? 0) : 0) + deltaSec,
+    progressSec: prev?.progressSec ?? 0,
     durationSec: durationSec || prev?.durationSec || 0,
     completed: !!prev?.completed,
     totalWatchedSec: (prev?.totalWatchedSec ?? 0) + deltaSec,

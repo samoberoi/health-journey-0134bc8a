@@ -27,13 +27,7 @@ import { EmptyState } from "@/components/shared";
 
 import { getTodayExerciseMinutes } from "@/lib/yogaProgressService";
 import NativeYouTubePlayer from "@/components/exercises/NativeYouTubePlayer";
-import {
-  extendNativeVideoSuppression,
-  isNativeAndroidApp,
-  isNativeIOSApp,
-  isYoutubePlayerMessage,
-  youtubePlayerProxyUrl,
-} from "@/lib/youtubeEmbed";
+import { isNativeAndroidApp, isNativeIOSApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 interface Props {
   packageKey: string | null;
@@ -92,39 +86,23 @@ function WatchModal({
 
   useEffect(() => {
     if (!noPostMessagePath) return;
-    if (useNativePlayer) extendNativeVideoSuppression(30);
     // Periodically credit seconds while the video is open.
     const interval = window.setInterval(() => {
       const now = Date.now();
-      const total = Math.floor((now - wallClockOpenedAtRef.current) / 1000);
-      if (total > lastReportedSecRef.current) {
+      const delta = Math.floor((now - wallClockLastReportedAtRef.current) / 1000);
+      if (delta > 0) {
         wallClockLastReportedAtRef.current = now;
-        reportDelta(total, 0, false);
+        onProgress(delta, 0, false);
       }
     }, 10000);
     return () => {
-      if (useNativePlayer) extendNativeVideoSuppression(10);
       window.clearInterval(interval);
       const now = Date.now();
-      const total = Math.min(3600, Math.floor((now - wallClockOpenedAtRef.current) / 1000));
-      if (total > lastReportedSecRef.current) reportDelta(total, 0, false);
+      const delta = Math.floor((now - wallClockLastReportedAtRef.current) / 1000);
+      if (delta > 0) onProgress(Math.min(delta, 3600), 0, false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noPostMessagePath, reportDelta, useNativePlayer]);
-
-  useEffect(() => {
-    if (!useNativePlayer) return;
-    const onNativeClosed = (event: Event) => {
-      const detail = (event as CustomEvent).detail as { videoId?: string; watchedSec?: number } | undefined;
-      if (detail?.videoId && detail.videoId !== videoId) return;
-      const watchedSec = Math.max(0, Number(detail?.watchedSec) || 0);
-      if (watchedSec > lastReportedSecRef.current) reportDelta(watchedSec, 0, false);
-      extendNativeVideoSuppression(10);
-      onClose();
-    };
-    window.addEventListener("bbdo:native-player-close", onNativeClosed);
-    return () => window.removeEventListener("bbdo:native-player-close", onNativeClosed);
-  }, [onClose, reportDelta, useNativePlayer, videoId]);
+  }, [noPostMessagePath]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {

@@ -1,20 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { registerPlugin } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { Maximize2, Play, RotateCcw } from "lucide-react";
-import {
-  clearNativeVideoActive,
-  extendNativeVideoSuppression,
-  isNativeAndroidApp,
-  isNativeIOSApp,
-  youtubePlayerProxyUrl,
-} from "@/lib/youtubeEmbed";
+import { isNativeAndroidApp, isNativeIOSApp, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 type BBDOYouTubePlayerPlugin = {
-  open(options: { videoId: string; title?: string; start?: number }): Promise<{ opened: boolean; watchedSec?: number }>;
+  open(options: { videoId: string; title?: string; start?: number }): Promise<{ opened: boolean }>;
 };
 
-const BBDOYouTubePlayer = ((globalThis as any).__bbdoYouTubePlayerPlugin ??=
-  registerPlugin<BBDOYouTubePlayerPlugin>("BBDOYouTubePlayer")) as BBDOYouTubePlayerPlugin;
+const BBDOYouTubePlayer = registerPlugin<BBDOYouTubePlayerPlugin>("BBDOYouTubePlayer");
 
 type NativeYouTubePlayerProps = {
   videoId: string;
@@ -52,21 +45,19 @@ export default function NativeYouTubePlayer({
       // Suppress biometric re-lock for a generous window; the fullscreen
       // native player briefly resigns the WKWebView. We don't want Face ID
       // to fire when the user closes the video.
-      extendNativeVideoSuppression(30);
+      (window as any).__bbdoBiometricSuppressUntil = Date.now() + 30 * 60 * 1000;
       // Announce open so JS parents can record start time for wall-clock credit.
       window.dispatchEvent(new CustomEvent("bbdo:native-player-open", { detail: { videoId } }));
-      const result = await BBDOYouTubePlayer.open({
+      await BBDOYouTubePlayer.open({
         videoId,
         title,
         start: Math.max(0, Math.floor(start || 0)),
       });
-      window.dispatchEvent(new CustomEvent("bbdo:native-player-close", { detail: { videoId, watchedSec: result?.watchedSec || 0 } }));
       openedRef.current = true;
     } catch (error) {
       console.error("[native-youtube] iOS player failed", error);
       setFailed(true);
     } finally {
-      clearNativeVideoActive(10);
       setLaunching(false);
     }
   }, [launching, start, title, videoId]);

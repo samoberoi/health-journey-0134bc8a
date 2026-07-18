@@ -16,13 +16,7 @@ import {
   accumulateWatched,
 } from "@/lib/videoProgressStore";
 import NativeYouTubePlayer from "@/components/exercises/NativeYouTubePlayer";
-import {
-  extendNativeVideoSuppression,
-  isNativeAndroidApp,
-  isNativeIOSApp,
-  isYoutubePlayerMessage,
-  youtubePlayerProxyUrl,
-} from "@/lib/youtubeEmbed";
+import { isNativeAndroidApp, isNativeIOSApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 
 const VIDEO_ICON_MAP: Record<string, LucideIcon> = {
   Activity,
@@ -52,7 +46,6 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
   const lastPosRef = useRef<number>(0);
   const currentTimeRef = useRef<number>(0);
   const durationRef = useRef<number>(0);
-  const wallClockReportedRef = useRef<number>(0);
   const [resumeFrom, setResumeFrom] = useState<number>(0);
   const [restarted, setRestarted] = useState(false);
   const [playerError, setPlayerError] = useState(false);
@@ -156,7 +149,6 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
   // Wall-clock fallback for iOS native / Android simple (no postMessage).
   useEffect(() => {
     if (!useNativePlayer && !useAndroidSimpleEmbed) return;
-    if (useNativePlayer) extendNativeVideoSuppression(30);
     const startedAt = Date.now();
     let lastAt = startedAt;
     const interval = window.setInterval(() => {
@@ -165,34 +157,19 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
       lastAt = now;
       if (delta > 0 && delta < 60) {
         watchedSecRef.current += delta;
-        wallClockReportedRef.current += delta;
         accumulateWatched(video.id, delta, durationRef.current || 0, video.youtubeId);
       }
     }, 10000);
     return () => {
-      if (useNativePlayer) extendNativeVideoSuppression(10);
       window.clearInterval(interval);
       const delta = Math.min(3600, (Date.now() - lastAt) / 1000);
       if (delta > 0) {
         watchedSecRef.current += delta;
-        wallClockReportedRef.current += delta;
         accumulateWatched(video.id, delta, durationRef.current || 0, video.youtubeId);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useNativePlayer, useAndroidSimpleEmbed, video.id, video.youtubeId, restarted]);
-
-  useEffect(() => {
-    if (!useNativePlayer) return;
-    const onNativeClosed = (event: Event) => {
-      const detail = (event as CustomEvent).detail as { videoId?: string; watchedSec?: number } | undefined;
-      if (detail?.videoId && detail.videoId !== video.youtubeId) return;
-      extendNativeVideoSuppression(10);
-      onClose();
-    };
-    window.addEventListener("bbdo:native-player-close", onNativeClosed);
-    return () => window.removeEventListener("bbdo:native-player-close", onNativeClosed);
-  }, [onClose, useNativePlayer, video.youtubeId]);
 
   const handleRestart = () => {
     resetProgress(video.id);

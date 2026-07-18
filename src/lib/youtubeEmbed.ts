@@ -67,29 +67,3 @@ export function isNativeAndroidApp() {
     return /android/i.test(window.navigator.userAgent) && isNativeMobileApp();
   }
 }
-
-const NATIVE_VIDEO_SUPPRESS_KEY = "bbdo:native-video-suppress-until";
-
-export function extendNativeVideoSuppression(minutes = 30) {
-  if (typeof window === "undefined") return;
-  const until = Date.now() + minutes * 60 * 1000;
-  (window as any).__bbdoBiometricSuppressUntil = until;
-  (window as any).__bbdoNativeVideoActive = true;
-  try { window.localStorage.setItem(NATIVE_VIDEO_SUPPRESS_KEY, String(until)); } catch { /* ignore */ }
-}
-
-export function clearNativeVideoActive(keepSuppressedMinutes = 10) {
-  if (typeof window === "undefined") return;
-  (window as any).__bbdoNativeVideoActive = false;
-  const until = Date.now() + keepSuppressedMinutes * 60 * 1000;
-  (window as any).__bbdoBiometricSuppressUntil = until;
-  try { window.localStorage.setItem(NATIVE_VIDEO_SUPPRESS_KEY, String(until)); } catch { /* ignore */ }
-}
-
-export function isNativeVideoPlaybackSuppressed() {
-  if (typeof window === "undefined") return false;
-  const memoryUntil = Number((window as any).__bbdoBiometricSuppressUntil || 0);
-  let storedUntil = 0;
-  try { storedUntil = Number(window.localStorage.getItem(NATIVE_VIDEO_SUPPRESS_KEY) || 0); } catch { /* ignore */ }
-  return Boolean((window as any).__bbdoNativeVideoActive) || Date.now() < Math.max(memoryUntil, storedUntil);
-}
