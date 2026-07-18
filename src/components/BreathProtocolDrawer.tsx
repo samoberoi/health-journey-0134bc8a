@@ -20,6 +20,8 @@ export default function BreathProtocolDrawer({
   const { count, goal, completed, refresh } = useBreathSessionsToday();
   const [saving, setSaving] = useState(false);
   const [videoId, setVideoId] = useState(BREATH_PROTOCOL_VIDEO.youtubeId);
+  const [useNativePlayer] = useState(() => isNativeIOSApp());
+
 
   useEffect(() => {
     let cancelled = false;
