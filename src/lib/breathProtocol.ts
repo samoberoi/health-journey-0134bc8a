@@ -6,14 +6,14 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const BREATH_DAILY_GOAL = 4;
 
-// Video id can be overridden by an admin via app_settings("bbdo_breath_protocol_youtube_id")
-// but this default is a well-known short 4-7-8 breathing walkthrough.
-export const BREATH_DEFAULT_YOUTUBE_ID = "LiUnFJ8P4gM";
+// Reuses the existing admin-uploaded "The 4-7-8 Breathing Protocol" custom video.
+// Can still be overridden via app_settings("bbdo_breath_protocol_youtube_id").
+export const BREATH_DEFAULT_YOUTUBE_ID = "Pn8Qc0Lej7o";
 
 export const BREATH_PROTOCOL_VIDEO = {
-  id: "bbdo-daily-breath-protocol",
-  name: "BBDO Daily Breath Protocol",
-  description: "BBDO 76 seconds daily breath protocol — 4-7-8 breathing. Complete 4 rounds every day to close the loop.",
+  id: "custom-0758e7e6",
+  name: "The 4-7-8 Breathing Protocol",
+  description: "BBDO 76 seconds daily breath protocol — the 4-7-8 breathing method. Complete 4 rounds every day to close the loop.",
   category: "BBDO Ritual · Pranayama",
   youtubeId: BREATH_DEFAULT_YOUTUBE_ID,
   durationSec: 76,

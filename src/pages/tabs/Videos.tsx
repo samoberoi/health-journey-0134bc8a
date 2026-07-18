@@ -52,7 +52,9 @@ export default function Videos() {
   const { getStatus, watched } = useVideoProgress();
 
   const allResolved = useMemo(
-    () => [...videos.map(resolveVideo), ...customVideos].filter((v) => !disabledIds.has(v.id) && v.youtubeId),
+    () => [...videos.map(resolveVideo), ...customVideos].filter(
+      (v) => !disabledIds.has(v.id) && v.youtubeId && v.youtubeId !== BREATH_PROTOCOL_VIDEO.youtubeId,
+    ),
     [resolveVideo, customVideos, disabledIds],
   );
 
@@ -219,7 +221,7 @@ export default function Videos() {
                   </span>
                 )}
               </div>
-              <h2 className="text-[15px] md:text-lg font-black leading-tight mt-1.5 truncate">BBDO Daily Breath Protocol</h2>
+              <h2 className="text-[15px] md:text-lg font-black leading-tight mt-1.5 truncate">The 4-7-8 Breathing Protocol</h2>
               <p className="text-[11px] md:text-xs text-white/85 mt-1 line-clamp-2 leading-snug">
                 BBDO 76 seconds daily breath protocol · 4-7-8 breathing. Complete 4 rounds every day.
               </p>
