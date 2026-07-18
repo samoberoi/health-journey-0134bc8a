@@ -177,51 +177,60 @@ export default function BottomNav({
         </DrawerContent>
       </Drawer>
 
-      {/* Compact dock */}
-      <div className="fixed bottom-4 left-4 right-4 z-50 md:hidden flex items-center gap-2">
+      {/* Compact dock — [ tab tab (+) tab … ]  */}
+      <div className="fixed bottom-4 left-4 right-4 z-50 md:hidden">
         <div
-          className="flex-1 min-w-0 rounded-[999px] px-1.5 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
+          className="rounded-[999px] px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
           style={{
             background: "#ffffff",
             border: "1px solid var(--bbdo-line)",
             boxShadow: "0 10px 32px -12px rgba(15,26,61,0.18)",
           }}
         >
-          <div className="flex items-stretch gap-1">
-            {primary.map((id) => renderTab(id))}
-            {hasOverflow && (
-              <motion.button
-                key="more"
-                onClick={() => setExpanded(true)}
-                aria-label="More sections"
-                whileTap={{ scale: 0.96 }}
-                transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
-                className="relative flex-none w-11 flex items-center justify-center h-11 rounded-full"
-                style={{ color: "var(--bbdo-ink-soft)" }}
-              >
-                <MoreHorizontal className="w-5 h-5" strokeWidth={1.8} />
-                <AttentionBadge count={overflowUnread} className="absolute right-1 top-0.5" />
-              </motion.button>
-            )}
+          <div className="flex items-center gap-1">
+            {/* Left tabs */}
+            <div className="flex-1 min-w-0 flex items-stretch justify-around gap-1">
+              {primary.slice(0, LEFT_SLOTS).map((id) => renderTab(id))}
+            </div>
+
+            {/* Center FAB */}
+            <motion.button
+              onClick={onFABPress}
+              aria-label="Quick log"
+              whileTap={{ scale: 0.94 }}
+              transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
+              className="shrink-0 w-14 h-14 -my-2 rounded-full flex items-center justify-center"
+              style={{
+                background: "var(--bbdo-red, #EA6A5E)",
+                color: "#fff",
+                boxShadow: "0 6px 16px -6px rgba(15,26,61,0.22)",
+              }}
+            >
+              <Plus className="w-6 h-6" strokeWidth={2.2} />
+            </motion.button>
+
+            {/* Right tabs + More */}
+            <div className="flex-1 min-w-0 flex items-stretch justify-around gap-1">
+              {primary.slice(LEFT_SLOTS).map((id) => renderTab(id))}
+              {hasOverflow && (
+                <motion.button
+                  key="more"
+                  onClick={() => setExpanded(true)}
+                  aria-label="More sections"
+                  whileTap={{ scale: 0.96 }}
+                  transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
+                  className="relative flex-none w-11 flex items-center justify-center h-11 rounded-full"
+                  style={{ color: "var(--bbdo-ink-soft)" }}
+                >
+                  <MoreHorizontal className="w-5 h-5" strokeWidth={1.8} />
+                  <AttentionBadge count={overflowUnread} className="absolute right-1 top-0.5" />
+                </motion.button>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* Inline quick-log FAB */}
-        <motion.button
-          onClick={onFABPress}
-          aria-label="Quick log"
-          whileTap={{ scale: 0.96 }}
-          transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
-          className="shrink-0 w-14 h-14 rounded-full flex items-center justify-center"
-          style={{
-            background: "var(--bbdo-red, #EA6A5E)",
-            color: "#fff",
-            boxShadow: "0 6px 16px -6px rgba(15,26,61,0.22)",
-          }}
-        >
-          <Plus className="w-6 h-6" strokeWidth={2} />
-        </motion.button>
       </div>
+
     </>
   );
 }
