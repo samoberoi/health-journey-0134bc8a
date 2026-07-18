@@ -42,6 +42,12 @@ export default function NativeYouTubePlayer({
     setLaunching(true);
     setFailed(false);
     try {
+      // Suppress biometric re-lock for a generous window; the fullscreen
+      // native player briefly resigns the WKWebView. We don't want Face ID
+      // to fire when the user closes the video.
+      (window as any).__bbdoBiometricSuppressUntil = Date.now() + 30 * 60 * 1000;
+      // Announce open so JS parents can record start time for wall-clock credit.
+      window.dispatchEvent(new CustomEvent("bbdo:native-player-open", { detail: { videoId } }));
       await BBDOYouTubePlayer.open({
         videoId,
         title,
