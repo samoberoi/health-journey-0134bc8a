@@ -125,6 +125,11 @@ Deno.serve(async (req) => {
     const hasDietPlan = new Set((dietPref.data ?? []).map((r: any) => r.user_id));
     const hasFastingProtocol = new Set((protocols.data ?? []).map((r: any) => r.user_id));
     const watchedVideoToday = new Set((videoProgress.data ?? []).map((r: any) => r.user_id));
+    const breathCountByUser = new Map<string, number>();
+    for (const r of breathSessions.data ?? []) {
+      breathCountByUser.set(r.user_id, (breathCountByUser.get(r.user_id) ?? 0) + 1);
+    }
+    const BREATH_GOAL = 4;
     const profileMap = new Map<string, any>();
     for (const p of profiles.data ?? []) profileMap.set(p.user_id, p);
 
