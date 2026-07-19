@@ -21,6 +21,8 @@ type KeyMarker = { code: string; label: string; value: number; unit: string; sta
  */
 export default function FoundationLabCard({ userId }: Props) {
   const [hasResults, setHasResults] = useState<boolean | null>(null);
+  const [markers, setMarkers] = useState<KeyMarker[]>([]);
+  const [reportDate, setReportDate] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [basicCode, setBasicCode] = useState<string | null>(null);
   const [booking, setBooking] = useState(false);
@@ -29,11 +31,36 @@ export default function FoundationLabCard({ userId }: Props) {
     if (!userId) return;
     let cancelled = false;
     (async () => {
-      const { count } = await supabase
+      const { data } = await supabase
         .from("lab_results" as any)
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", userId);
-      if (!cancelled) setHasResults((count ?? 0) > 0);
+        .select("parameter_code, parameter_name, value_numeric, unit, status, observed_at")
+        .eq("user_id", userId)
+        .order("observed_at", { ascending: false });
+      const rows = ((data as any) || []) as any[];
+      if (cancelled) return;
+      setHasResults(rows.length > 0);
+      if (rows.length > 0) {
+        setReportDate(rows[0].observed_at);
+        // Pick 4 key markers for the home tile
+        const priority = ["FBS", "HBA1C", "LDL", "SCRE"];
+        const iconMap: Record<string, any> = { FBS: Droplet, HBA1C: Activity, LDL: Heart, SCRE: Beaker };
+        const labelMap: Record<string, string> = { FBS: "Blood Sugar", HBA1C: "HbA1c", LDL: "LDL", SCRE: "Creatinine" };
+        const pick: KeyMarker[] = [];
+        for (const code of priority) {
+          const r = rows.find((x) => x.parameter_code === code);
+          if (r && r.value_numeric != null) {
+            pick.push({
+              code,
+              label: labelMap[code] || r.parameter_name,
+              value: Number(r.value_numeric),
+              unit: r.unit || "",
+              status: r.status || "normal",
+              icon: iconMap[code] || Activity,
+            });
+          }
+        }
+        setMarkers(pick);
+      }
     })();
     return () => { cancelled = true; };
   }, [userId]);
