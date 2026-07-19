@@ -8,6 +8,24 @@ type BBDOYouTubePlayerPlugin = {
 };
 
 const BBDOYouTubePlayer = registerPlugin<BBDOYouTubePlayerPlugin>("BBDOYouTubePlayer");
+const VIDEO_BIOMETRIC_SUPPRESS_KEY = "bbdo_video_biometric_suppress_until";
+const NATIVE_PLAYER_ACTIVE_KEY = "bbdo_native_player_active";
+
+function markNativePlayerOpen() {
+  const until = Date.now() + 45 * 60 * 1000;
+  (window as any).__bbdoNativePlayerActive = true;
+  (window as any).__bbdoBiometricSuppressUntil = until;
+  sessionStorage.setItem(NATIVE_PLAYER_ACTIVE_KEY, "1");
+  sessionStorage.setItem(VIDEO_BIOMETRIC_SUPPRESS_KEY, String(until));
+}
+
+function markNativePlayerClosed() {
+  const until = Date.now() + 45 * 60 * 1000;
+  (window as any).__bbdoNativePlayerActive = false;
+  (window as any).__bbdoBiometricSuppressUntil = until;
+  sessionStorage.removeItem(NATIVE_PLAYER_ACTIVE_KEY);
+  sessionStorage.setItem(VIDEO_BIOMETRIC_SUPPRESS_KEY, String(until));
+}
 
 type NativeYouTubePlayerProps = {
   videoId: string;
@@ -44,26 +62,39 @@ export default function NativeYouTubePlayer({
     setLaunching(true);
     setFailed(false);
     let didLaunch = false;
+    let closeNotified = false;
+    const notifyClosed = () => {
+      if (closeNotified) return;
+      closeNotified = true;
+      markNativePlayerClosed();
+      window.dispatchEvent(new CustomEvent("bbdo:native-player-close", { detail: { videoId } }));
+      setLaunching(false);
+      onNativeClose?.();
+    };
     try {
-      (window as any).__bbdoBiometricSuppressUntil = Date.now() + 45 * 60 * 1000;
+      markNativePlayerOpen();
       window.dispatchEvent(new CustomEvent("bbdo:native-player-open", { detail: { videoId } }));
+      const safetyTimer = window.setTimeout(notifyClosed, 1200);
       await BBDOYouTubePlayer.open({
         videoId,
         title,
         start: Math.max(0, Math.floor(start || 0)),
       });
+      window.clearTimeout(safetyTimer);
       didLaunch = true;
       openedRef.current = true;
     } catch (error) {
       console.error("[native-youtube] iOS player failed", error);
       setFailed(true);
     } finally {
-      (window as any).__bbdoBiometricSuppressUntil = Date.now() + 45 * 60 * 1000;
-      window.dispatchEvent(new CustomEvent("bbdo:native-player-close", { detail: { videoId } }));
-      setLaunching(false);
       // Always notify parent so the React overlay unmounts even if the native
       // VC dismissed via a non-standard path.
-      if (didLaunch) onNativeClose?.();
+      if (didLaunch) notifyClosed();
+      else {
+        markNativePlayerClosed();
+        window.dispatchEvent(new CustomEvent("bbdo:native-player-close", { detail: { videoId } }));
+        setLaunching(false);
+      }
     }
   }, [launching, onNativeClose, start, title, videoId]);
 
