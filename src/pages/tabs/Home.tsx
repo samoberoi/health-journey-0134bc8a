@@ -1244,15 +1244,17 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
         </motion.div>
       )}
 
-      {/* Hero greeting — simple, warm, breathing room */}
+      {/* Hero greeting — simple, warm, breathing room. Safe-area top padding
+          ensures the greeting is never hidden behind the Android status bar. */}
       <motion.div
-        className="pt-3 pb-2"
+        className="pb-2"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
       >
         <h1 className="text-[30px] sm:text-[34px] leading-[1.1] font-semibold tracking-[-0.03em] text-foreground">
-          {greeting || "Hello"}, {firstName} <span className="inline-block">👋</span>
+          {greeting || "Good morning"}, {firstName} <span className="inline-block">👋</span>
         </h1>
       </motion.div>
 
