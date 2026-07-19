@@ -78,16 +78,6 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [bookingRec, setBookingRec] = useState<Rec | null>(null);
-  const [form, setForm] = useState({
-    name: "", age: "", gender: "Male", mobile: "", email: "",
-    pincode: "", address: "", collection_date: "", collection_slot: "",
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [pinChecking, setPinChecking] = useState(false);
-  const [pinOk, setPinOk] = useState<boolean | null>(null);
-  const [slots, setSlots] = useState<{ start: string; end: string | null; available: boolean }[]>([]);
-  const [slotsLoading, setSlotsLoading] = useState(false);
-  const [slotsSource, setSlotsSource] = useState<string | null>(null);
 
 
   useEffect(() => {
