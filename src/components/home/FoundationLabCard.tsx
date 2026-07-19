@@ -119,8 +119,9 @@ export default function FoundationLabCard({ userId }: Props) {
               </p>
               <button
                 type="button"
-                onClick={goToLabs}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold text-white active:scale-[0.98] transition-transform"
+                onClick={openBooking}
+                disabled={!basicCode}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold text-white active:scale-[0.98] transition-transform disabled:opacity-60"
                 style={{ background: "var(--bbdo-red)" }}
               >
                 Book lab test <ChevronRight className="w-3.5 h-3.5" />
