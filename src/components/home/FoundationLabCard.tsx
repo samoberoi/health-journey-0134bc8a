@@ -160,6 +160,14 @@ export default function FoundationLabCard({ userId }: Props) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <LabBookingDialog
+        open={booking}
+        onClose={() => setBooking(false)}
+        productCodes={basicCode ? [basicCode] : []}
+        onBooked={() => setHasResults((v) => v)}
+      />
     </>
   );
 }
+
