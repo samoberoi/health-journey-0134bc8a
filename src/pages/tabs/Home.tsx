@@ -175,13 +175,14 @@ function MetricRing({
             </defs>
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="stat-number text-xl text-foreground leading-none">{value}</span>
-            {unit && value !== "—" && <span className="text-muted-foreground text-[9px] font-medium mt-0.5">{unit}</span>}
+            <span className="stat-number text-base text-foreground leading-none">{value}</span>
+            {unit && value !== "—" && <span className="text-muted-foreground text-[8px] font-medium mt-0.5">{unit}</span>}
           </div>
         </div>
       )}
-      <span className="text-muted-foreground text-[10px] font-bold uppercase tracking-[0.14em]">{label}</span>
-      <div className="min-h-[22px] flex items-center justify-center">
+      <span className="text-muted-foreground text-[9px] font-bold uppercase tracking-[0.12em] text-center leading-tight">{label}</span>
+      <div className="min-h-[18px] flex items-center justify-center">
+
         {delta !== null && value !== "—" ? (
           delta === 0 ? (
             <div className="flex items-center gap-0.5 text-[11px] font-bold px-2 py-0.5 rounded-full text-muted-foreground bg-muted">
