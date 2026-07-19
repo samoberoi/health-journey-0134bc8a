@@ -20,24 +20,42 @@ import { toast } from "sonner";
 import { fetchUserResults } from "@/lib/labResultsService";
 import { inferConditionsFromLabs } from "@/lib/labInferConditions";
 
-const Field = ({ label, icon: Icon, value, onChange, placeholder, type = "text" }: {
+const Field = ({ label, icon: Icon, value, onChange, placeholder, type = "text", readOnly, hint }: {
   label: string; icon: React.ElementType; value: string;
   onChange: (v: string) => void; placeholder: string; type?: string;
+  readOnly?: boolean; hint?: string;
 }) => (
-  <div className="min-w-0 space-y-1">
+  <div className="min-w-0 space-y-1 w-full">
     <Label className="text-muted-foreground text-[11px] font-medium flex items-center gap-1.5 leading-tight">
       <Icon className="w-3.5 h-3.5 shrink-0" strokeWidth={1.8} />
       {label}
     </Label>
-    <Input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="bg-white border border-border/70 text-foreground text-sm rounded-lg h-10 px-3 py-2 min-w-0 w-full max-w-full box-border shadow-none"
-    />
+    <div className="w-full min-w-0 overflow-hidden">
+      <Input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        readOnly={readOnly}
+        style={{ minWidth: 0, maxWidth: "100%", width: "100%" }}
+        className={`bg-white border border-border/70 text-foreground text-sm rounded-lg h-10 px-3 py-2 min-w-0 w-full max-w-full box-border shadow-none appearance-none [&::-webkit-date-and-time-value]:text-left [&::-webkit-date-and-time-value]:min-h-0 ${readOnly ? "opacity-70" : ""}`}
+      />
+    </div>
+    {hint && <p className="text-[10px] text-muted-foreground leading-tight">{hint}</p>}
   </div>
 );
+
+function computeAgeFromDob(dob: string): number | null {
+  if (!dob) return null;
+  const d = new Date(dob);
+  if (isNaN(d.getTime())) return null;
+  const now = new Date();
+  if (d > now) return 0;
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+  return Math.max(0, age);
+}
 
 const formatLabel = (val: string | undefined | null): string => {
   if (!val) return "—";
