@@ -260,6 +260,7 @@ export default function ExerciseTab({ packageKey }: Props) {
   const [earnedKeys, setEarnedKeys] = useState<Set<string>>(new Set());
   const [todayMinutes, setTodayMinutes] = useState(0);
   const [loading, setLoading] = useState(true);
+  const hasLoadedOnceRef = useRef(false);
 
   /** Sum today's watched seconds from video_progress (exercise-namespaced). */
   const loadTodayMinutes = useCallback(async () => {
@@ -330,13 +331,14 @@ export default function ExerciseTab({ packageKey }: Props) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setLoading(true);
+      if (!hasLoadedOnceRef.current) setLoading(true);
       try {
         const [cats, exs, bds] = await Promise.all([listCategories(), listExercises(), listBadges()]);
         if (cancelled) return;
         setCategories(cats);
         setExercises(exs.filter((e) => e.enabled));
         setBadges(bds.filter((b) => b.enabled));
+        hasLoadedOnceRef.current = true;
         if (!cancelled) setLoading(false);
         await Promise.all([loadLogs(), loadTodayMinutes()]);
       } catch (e: any) {
