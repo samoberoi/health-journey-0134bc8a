@@ -129,7 +129,7 @@ function MetricRing({
 
   return (
     <motion.div
-      className="liquid-glass-strong rounded-[24px] p-3.5 w-full h-[204px] min-w-0 flex flex-col items-center justify-between gap-2"
+      className="liquid-glass-strong rounded-[20px] p-2.5 w-full min-w-0 flex flex-col items-center justify-between gap-1.5"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
