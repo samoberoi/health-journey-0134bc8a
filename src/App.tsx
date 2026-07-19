@@ -10,7 +10,7 @@ import PageTransition from "@/components/PageTransition";
 import AppErrorBoundary from "@/components/AppErrorBoundary";
 import BiometricGate from "@/components/BiometricGate";
 import { isNative } from "@/lib/biometric";
-import { isNativeVideoSuppressionActive } from "@/lib/nativeVideoSession";
+import { isNativeVideoSuppressionActive, isNativeVideoTransitionActive } from "@/lib/nativeVideoSession";
 
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProfileSyncProvider } from "@/components/ProfileSyncProvider";
@@ -180,7 +180,7 @@ function SubscriptionGate({ children }: { children: ReactNode }) {
     };
   }, [loading, navigate, paidRoute, ready, session, location.pathname]);
 
-  const nativeVideoTransition = isNative() && isNativeVideoSuppressionActive() && (loading || !!session);
+  const nativeVideoTransition = isNative() && isNativeVideoTransitionActive() && (loading || !!session);
 
   if (!nativeVideoTransition && paidRoute && (loading || !ready || checking || !session || allowedPath !== location.pathname)) {
     return (
