@@ -185,39 +185,8 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
           for (const t of ((tt as any) || []) as Test[]) map[t.product_code] = t;
           setTestsByCode(map);
         }
-        if (prof.data) {
-          const p: any = prof.data;
-          let age = p.age ? String(p.age) : "";
-          if (!age && p.birth_date) {
-            const b = new Date(p.birth_date);
-            if (!isNaN(b.getTime())) {
-              const now = new Date();
-              let a = now.getFullYear() - b.getFullYear();
-              const m = now.getMonth() - b.getMonth();
-              if (m < 0 || (m === 0 && now.getDate() < b.getDate())) a--;
-              if (a > 0 && a < 130) age = String(a);
-            }
-          }
-          const g = (p.gender || "").toString().toLowerCase();
-          const gender = g.startsWith("f") ? "Female" : g.startsWith("m") ? "Male" : g ? "Other" : "Male";
-          const addressParts = [p.address_line1, p.address_line2, p.city, p.state].filter(Boolean);
-          const phone = (p.phone || "").replace(/^\+?91/, "").trim();
-          setForm((f) => ({
-            ...f,
-            name: p.name || "",
-            mobile: phone || p.phone || "",
-            email: user.email || "",
-            age,
-            gender,
-            pincode: p.pincode || "",
-            address: addressParts.join(", "),
-          }));
-          if (p.pincode && /^\d{6}$/.test(p.pincode)) {
-            void checkPin(p.pincode);
-          }
-        } else {
-          setForm((f) => ({ ...f, email: user.email || "" }));
-        }
+        // Profile prefill is handled inside LabBookingDialog.
+
       } catch (e) {
         console.error("[PatientLabTests] load failed", e);
         setLoadError(e instanceof Error ? e.message : "Couldn't load lab tests.");
