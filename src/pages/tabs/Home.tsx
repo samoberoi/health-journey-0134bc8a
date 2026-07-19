@@ -2107,21 +2107,21 @@ function DiabetesSlot({
   }
 
   return (
-    <div className={`p-3.5 rounded-2xl transition-colors border ${editing ? "sm:col-span-2" : ""} ${
+    <div className={`p-2.5 rounded-xl transition-colors border ${editing ? "col-span-2" : ""} ${
       done ? "bg-primary/10 border-primary/25" : "bg-card border-border"
     }`}>
-      <div className="flex items-center gap-2.5 mb-3">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+      <div className="flex items-center gap-2 mb-2">
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
           done ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"
         }`}>
-          {done ? <Check className="w-4.5 h-4.5" strokeWidth={1.75} /> : <SlotIcon className="w-4.5 h-4.5" strokeWidth={1.75} />}
+          {done ? <Check className="w-3.5 h-3.5" strokeWidth={2} /> : <SlotIcon className="w-3.5 h-3.5" strokeWidth={2} />}
         </div>
         <div className="flex-1 min-w-0">
-          <p className={`text-[13px] font-bold leading-tight ${done ? "text-primary" : "text-foreground"}`}>
+          <p className={`text-[12px] font-bold leading-tight ${done ? "text-primary" : "text-foreground"}`}>
             {label}
           </p>
-          <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
-            {done ? `${value} mg/dL logged` : "Tap to add glucose"}
+          <p className="text-[10px] text-muted-foreground font-medium mt-0.5 truncate">
+            {done ? `${value} mg/dL` : "Add glucose"}
           </p>
         </div>
       </div>
