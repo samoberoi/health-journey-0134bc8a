@@ -97,52 +97,52 @@ export default function FoundationLabCard({ userId }: Props) {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full text-left rounded-3xl p-5 text-white shadow-card relative overflow-hidden active:scale-[0.99] transition-transform"
+          className="w-full text-left rounded-2xl p-4 text-white shadow-card relative overflow-hidden active:scale-[0.99] transition-transform"
           style={{ background: "var(--bbdo-gradient)" }}
         >
           <div className="absolute -right-16 -top-16 w-52 h-52 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-          <div className="relative flex items-start justify-between gap-3 mb-4">
+          <div className="relative flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/80">
+              <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/80">
                 Your health profile
               </p>
-              <h3 className="text-lg font-black leading-tight mt-0.5">
+              <h3 className="text-sm font-black leading-tight mt-0.5">
                 Baseline report ready
               </h3>
               {reportDate && (
-                <p className="text-[11px] text-white/75 mt-1">
-                  Reported {new Date(reportDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                <p className="text-[10px] text-white/75 mt-0.5">
+                  {new Date(reportDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                 </p>
               )}
             </div>
-            <ChevronRight className="w-5 h-5 text-white/90 shrink-0 mt-1" />
+            <ChevronRight className="w-4 h-4 text-white/90 shrink-0 mt-1" />
           </div>
           {markers.length > 0 && (
-            <div className="relative grid grid-cols-2 gap-2">
+            <div className="relative grid grid-cols-2 gap-1.5">
               {markers.map((m) => {
                 const Icon = m.icon;
                 const bad = m.status === "high" || m.status === "low";
                 return (
-                  <div key={m.code} className="rounded-2xl bg-white/15 backdrop-blur px-3 py-2.5 ring-1 ring-white/20">
-                    <div className="flex items-center gap-1.5 text-white/80 text-[10px] font-bold uppercase tracking-wider">
-                      <Icon className="w-3 h-3" />
+                  <div key={m.code} className="rounded-xl bg-white/15 backdrop-blur px-2 py-1.5 ring-1 ring-white/20 min-w-0">
+                    <div className="flex items-center gap-1 text-white/80 text-[9px] font-bold uppercase tracking-wider">
+                      <Icon className="w-2.5 h-2.5 shrink-0" />
                       <span className="truncate">{m.label}</span>
                     </div>
-                    <div className="flex items-baseline gap-1 mt-1">
-                      <span className="text-base font-black leading-none">{m.value}</span>
-                      <span className="text-[10px] text-white/70">{m.unit}</span>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-sm font-black leading-none">{m.value}</span>
+                      <span className="text-[9px] text-white/70 truncate">{m.unit}</span>
+                      <span className={`ml-auto text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full ${bad ? "bg-amber-300 text-amber-900" : "bg-emerald-300 text-emerald-900"}`}>
+                        {bad ? m.status : "OK"}
+                      </span>
                     </div>
-                    <span className={`inline-block mt-1 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full ${bad ? "bg-amber-300 text-amber-900" : "bg-emerald-300 text-emerald-900"}`}>
-                      {bad ? m.status : "Normal"}
-                    </span>
                   </div>
                 );
               })}
             </div>
           )}
-          <div className="relative mt-4 flex items-center gap-1.5 text-xs font-bold text-white/95">
-            Tap to see your full body map & marker trends
-            <ChevronRight className="w-3.5 h-3.5" />
+          <div className="relative mt-3 flex items-center gap-1.5 text-[11px] font-bold text-white/95">
+            Tap for body map & trends
+            <ChevronRight className="w-3 h-3" />
           </div>
         </motion.button>
       ) : (
