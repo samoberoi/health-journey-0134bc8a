@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FlaskConical, ChevronRight, X, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import LabHistorySection from "@/components/lab/LabHistorySection";
+import ThyrocarePoweredBy from "@/components/lab/ThyrocarePoweredBy";
 
 interface Props {
   userId: string;
@@ -82,14 +83,19 @@ export default function FoundationLabCard({ userId }: Props) {
               <FlaskConical className="w-5 h-5 text-white" strokeWidth={1.8} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: "var(--bbdo-red)" }}>
-                Day-1 essential
-              </p>
-              <h3 className="text-base font-black text-foreground mt-1 leading-tight">
-                Get your baseline: BBDO Basic
-              </h3>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: "var(--bbdo-red)" }}>
+                    Day-1 essential
+                  </p>
+                  <h3 className="text-base font-black text-foreground mt-1 leading-tight">
+                    Book your BBDO Basic lab test
+                  </h3>
+                </div>
+                <ThyrocarePoweredBy variant="dark" className="ml-auto" />
+              </div>
               <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-                A lab test is critical to personalise your journey. We strongly recommend booking <span className="font-bold text-foreground">BBDO Basic</span> now — your Health Profile & body map unlock as soon as your report is in.
+                This first test helps personalise your plan. Once your report is ready, your Health Profile and body map will unlock on Home.
               </p>
               <button
                 type="button"
@@ -97,13 +103,8 @@ export default function FoundationLabCard({ userId }: Props) {
                 className="mt-3 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold text-white active:scale-[0.98] transition-transform"
                 style={{ background: "var(--bbdo-red)" }}
               >
-                Book BBDO Basic <ChevronRight className="w-3.5 h-3.5" />
+                Book lab test <ChevronRight className="w-3.5 h-3.5" />
               </button>
-              <div className="mt-2.5 inline-flex items-center gap-1.5">
-                <span className="text-[9px] font-black tracking-[0.18em] text-muted-foreground uppercase">Powered by</span>
-                <span className="text-[11px] font-black tracking-tight text-foreground">Thyrocare</span>
-              </div>
-
             </div>
           </div>
         </motion.div>

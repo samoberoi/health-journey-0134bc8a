@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { patientPriceFor, useLabTestMarkup } from "@/lib/labTestMarkup";
 import LabOrderDetails from "@/components/lab/LabOrderDetails";
+import ThyrocarePoweredBy from "@/components/lab/ThyrocarePoweredBy";
 
 
 type Rec = {
@@ -447,14 +448,21 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
             <div className="absolute -top-2.5 left-5 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide text-[var(--bbdo-red)] bg-white shadow">
               RECOMMENDED · START HERE
             </div>
+            <div className="relative flex items-start justify-between gap-4 mb-4">
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/80">Day-1 essential</p>
+                <h4 className="text-lg md:text-xl font-black leading-tight mt-1">Book your BBDO Basic lab test</h4>
+              </div>
+              <ThyrocarePoweredBy variant="light" className="ml-auto" />
+            </div>
             <div className="relative flex flex-col md:flex-row md:items-center gap-4">
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
                   <FlaskConical className="w-6 h-6 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/80">Your baseline</p>
-                  <h4 className="text-lg md:text-xl font-black leading-tight">{basicTest.product_name}</h4>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/80">Recommended test</p>
+                  <h5 className="text-base md:text-lg font-black leading-tight">{basicTest.product_name}</h5>
                   <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[11px] text-white/85">
                     {count > 0 && <span className="inline-flex items-center gap-1"><Check className="w-3 h-3" /> {count} parameters</span>}
                     <span className="inline-flex items-center gap-1"><Home className="w-3 h-3" /> Free home collection</span>

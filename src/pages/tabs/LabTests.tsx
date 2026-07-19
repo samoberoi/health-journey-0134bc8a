@@ -1,5 +1,6 @@
 import PatientLabTests from "@/components/PatientLabTests";
 import AppErrorBoundary from "@/components/AppErrorBoundary";
+import ThyrocarePoweredBy from "@/components/lab/ThyrocarePoweredBy";
 
 export default function LabTestsTab({ foundationMode = false }: { foundationMode?: boolean } = {}) {
   return (
@@ -9,20 +10,21 @@ export default function LabTestsTab({ foundationMode = false }: { foundationMode
         style={{ background: foundationMode ? "var(--pillar-supplements)" : "var(--bbdo-ink)" }}
       >
         <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-        <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-white/80 break-words">
-          {foundationMode ? "Day-1 Essential" : "Your Reports"}
-        </p>
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight mt-1 break-words leading-tight">
-          {foundationMode ? "Get your baseline — BBDO Basic" : "Recommended tests & reports"}
-        </h1>
-        <p className="text-sm text-white/85 mt-1 max-w-xl break-words">
-          {foundationMode
-            ? "A lab test is critical to personalise your plan. We strongly recommend BBDO Basic to lock in your baseline. Once your report is in, your Health Profile & body map unlock on Home."
-            : "Tests recommended by your coach plus all your past reports in one place."}
-        </p>
-        <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 backdrop-blur px-2.5 py-1 ring-1 ring-white/25">
-          <span className="text-[9px] font-black tracking-[0.18em] text-white/70 uppercase">Powered by</span>
-          <span className="text-[11px] font-black tracking-tight text-white">Thyrocare</span>
+        <div className="relative flex items-start justify-between gap-4">
+          <div className="min-w-0 max-w-2xl pr-1">
+            <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-white/80 break-words">
+              {foundationMode ? "Day-1 Essential" : "Your Reports"}
+            </p>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight mt-1 break-words leading-tight">
+              {foundationMode ? "Book your BBDO Basic lab test" : "Recommended tests & reports"}
+            </h1>
+            <p className="text-sm text-white/85 mt-1 max-w-xl break-words leading-relaxed">
+              {foundationMode
+                ? "This first test helps personalise your plan. Once your report is ready, your Health Profile and body map will unlock on Home."
+                : "Tests recommended by your coach plus all your past reports in one place."}
+            </p>
+          </div>
+          {foundationMode && <ThyrocarePoweredBy variant="light" className="ml-auto mt-0.5" />}
         </div>
       </div>
 
