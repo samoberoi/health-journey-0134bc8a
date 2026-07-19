@@ -69,6 +69,8 @@ export default function NativeYouTubePlayer({
       markNativePlayerClosed();
       window.dispatchEvent(new CustomEvent("bbdo:native-player-close", { detail: { videoId } }));
       setLaunching(false);
+      // Unmount the React video modal immediately so the user lands on the
+      // underlying app page — no spinner / empty screen while React catches up.
       onNativeClose?.();
     };
     try {
@@ -85,8 +87,6 @@ export default function NativeYouTubePlayer({
       console.error("[native-youtube] iOS player failed", error);
       setFailed(true);
     } finally {
-      // Always notify parent so the React overlay unmounts even if the native
-      // VC dismissed via a non-standard path.
       if (didLaunch) notifyClosed();
       else {
         markNativePlayerClosed();
@@ -95,6 +95,8 @@ export default function NativeYouTubePlayer({
       }
     }
   }, [launching, onNativeClose, start, title, videoId]);
+
+
 
   useEffect(() => {
     if (!useIOSNativePlayer || !autoOpen || openedRef.current) return;

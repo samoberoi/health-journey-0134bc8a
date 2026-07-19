@@ -108,11 +108,13 @@ export default function Videos() {
         sec += d > 0 ? Math.min(p, d) : p;
       }
     }
-    return Math.floor(sec / 60);
+    // Round to 0.1 min so short first sessions show progress (e.g. "0.9/2m")
+    // instead of flooring to 0 while Home shows a decimal.
+    return sec > 0 ? Math.round((sec / 60) * 10) / 10 : 0;
   }, [watched, allResolved]);
   const yogaPct = Math.min(100, Math.round((yogaMinutesToday / Math.max(1, yogaGoalMin)) * 100));
   const yogaGoalMet = yogaMinutesToday >= yogaGoalMin;
-  const yogaRemaining = Math.max(0, yogaGoalMin - yogaMinutesToday);
+  const yogaRemaining = Math.max(0, Math.round((yogaGoalMin - yogaMinutesToday) * 10) / 10);
   const thumbnailsReady = !(thumbnailsLoading || metadataLoading);
 
   return (
