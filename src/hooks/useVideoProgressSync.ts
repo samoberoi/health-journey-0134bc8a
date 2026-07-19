@@ -49,20 +49,21 @@ export function useVideoProgressSync() {
       // Debounce per video to avoid flooding during playback polling
       const existing = timers.current.get(videoId);
       if (existing) clearTimeout(existing);
-      const persist = () => {
+      const persist = async () => {
         timers.current.delete(videoId);
         if (record) {
-          upsertVideoProgress(uid, videoId, record, youtubeId).catch(console.error);
+          await upsertVideoProgress(uid, videoId, record, youtubeId).catch(console.error);
         } else {
-          deleteVideoProgress(uid, videoId).catch(console.error);
+          await deleteVideoProgress(uid, videoId).catch(console.error);
         }
+        window.dispatchEvent(new CustomEvent("bbdo:video-progress-synced", { detail: { videoId } }));
       };
       if (flush) {
-        persist();
+        void persist();
         return;
       }
       const t = setTimeout(() => {
-        persist();
+        void persist();
       }, 1200);
       timers.current.set(videoId, t);
     };

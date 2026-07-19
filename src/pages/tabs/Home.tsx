@@ -403,10 +403,12 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
     const onSaved = () => void load();
     window.addEventListener("exercise-log-saved", onSaved);
     window.addEventListener("bbdo:video-progress-changed", onSaved);
+    window.addEventListener("bbdo:video-progress-synced", onSaved);
     const iv = setInterval(load, 60_000);
     return () => {
       window.removeEventListener("exercise-log-saved", onSaved);
       window.removeEventListener("bbdo:video-progress-changed", onSaved);
+      window.removeEventListener("bbdo:video-progress-synced", onSaved);
       clearInterval(iv);
     };
   }, [authUser?.id, packageKey, todayKey]);
@@ -420,9 +422,11 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
     const iv = setInterval(load, 60_000);
     const onProgress = () => void load();
     window.addEventListener("bbdo:video-progress-changed", onProgress);
+    window.addEventListener("bbdo:video-progress-synced", onProgress);
     return () => {
       clearInterval(iv);
       window.removeEventListener("bbdo:video-progress-changed", onProgress);
+      window.removeEventListener("bbdo:video-progress-synced", onProgress);
     };
   }, [authUser?.id, todayKey]);
 

@@ -28,7 +28,9 @@ import { EmptyState } from "@/components/shared";
 import { getTodayExerciseMinutes } from "@/lib/yogaProgressService";
 import NativeYouTubePlayer from "@/components/exercises/NativeYouTubePlayer";
 import { isNativeAndroidApp, isNativeIOSApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
-import { accumulateWatched, markCompleted, saveDuration } from "@/lib/videoProgressStore";
+import { accumulateWatched, loadWatched, markCompleted, recordProgress, saveDuration } from "@/lib/videoProgressStore";
+
+const FALLBACK_SHORT_VIDEO_SEC = 120;
 
 interface Props {
   packageKey: string | null;
@@ -53,12 +55,13 @@ function WatchModal({
   onClose: () => void;
   onCompleted: () => void;
   /** Fired with newly watched seconds so repeats keep counting toward minutes. */
-  onProgress: (deltaSec: number, durationSec: number, completed: boolean) => void;
+  onProgress: (deltaSec: number, durationSec: number, completed: boolean, flush?: boolean) => void;
 }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const firedRef = useRef(false);
   const lastWatchedRef = useRef({ watched: 0, duration: 0, completed: false });
   const lastReportedSecRef = useRef(0);
+  const onProgressRef = useRef(onProgress);
   const videoId = extractYoutubeId(exercise.youtube_url);
   const [playerError, setPlayerError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
@@ -68,41 +71,59 @@ function WatchModal({
     ? youtubePlayerProxyUrl(videoId, { autoplay: !useAndroidSimpleEmbed, simple: useAndroidSimpleEmbed })
     : "";
 
+  useEffect(() => {
+    onProgressRef.current = onProgress;
+  }, [onProgress]);
+
   const reportDelta = useCallback(
-    (watchedSec: number, durationSec: number, completed: boolean) => {
+    (watchedSec: number, durationSec: number, completed: boolean, flush = false) => {
       const safeWatched = Math.max(0, Math.floor(watchedSec || 0));
       const deltaSec = Math.max(0, safeWatched - lastReportedSecRef.current);
-      if (deltaSec > 0) onProgress(deltaSec, durationSec, completed);
+      if (deltaSec > 0) onProgressRef.current(deltaSec, durationSec, completed, flush);
+      else if (flush) onProgressRef.current(0, durationSec, completed, true);
       lastReportedSecRef.current = Math.max(lastReportedSecRef.current, safeWatched);
     },
-    [onProgress],
+    [],
   );
 
   // Wall-clock fallback: iOS native player and Android simple embed do not
   // post progress events, so we track elapsed time while the modal is open
   // and credit it on close (capped to avoid runaway values).
-  const wallClockLastReportedAtRef = useRef<number>(Date.now());
+  const wallClockStartedAtRef = useRef<number>(Date.now());
   const noPostMessagePath = useNativePlayer || useAndroidSimpleEmbed;
+
+  const wallClockElapsedSec = useCallback(
+    (overrideSec?: number) => Math.min(4 * 60 * 60, Math.max(0, Math.floor(overrideSec ?? ((Date.now() - wallClockStartedAtRef.current) / 1000)))),
+    [],
+  );
+
+  const handleClose = useCallback(
+    (nativeResult?: { elapsedSec?: number }) => {
+      if (noPostMessagePath) {
+        reportDelta(wallClockElapsedSec(nativeResult?.elapsedSec), FALLBACK_SHORT_VIDEO_SEC, false, true);
+      } else {
+        const { watched, duration, completed } = lastWatchedRef.current;
+        reportDelta(watched, duration, completed, true);
+      }
+      onClose();
+    },
+    [noPostMessagePath, onClose, reportDelta, wallClockElapsedSec],
+  );
 
   useEffect(() => {
     if (!noPostMessagePath) return;
+    wallClockStartedAtRef.current = Date.now();
+    lastReportedSecRef.current = 0;
     // Periodically credit seconds while the video is open.
     const interval = window.setInterval(() => {
-      const now = Date.now();
-      const delta = Math.floor((now - wallClockLastReportedAtRef.current) / 1000);
-      if (delta > 0) {
-        wallClockLastReportedAtRef.current = now;
-        if (delta < 30) onProgress(delta, 0, false);
-      }
+      reportDelta(wallClockElapsedSec(), FALLBACK_SHORT_VIDEO_SEC, false);
     }, 1000);
     return () => {
       window.clearInterval(interval);
-      const now = Date.now();
-      const delta = Math.floor((now - wallClockLastReportedAtRef.current) / 1000);
-      if (delta > 0) onProgress(Math.min(delta, 3600), 0, false);
+      reportDelta(wallClockElapsedSec(), FALLBACK_SHORT_VIDEO_SEC, false, true);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noPostMessagePath]);
+  }, [noPostMessagePath, reportDelta, wallClockElapsedSec]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -125,7 +146,7 @@ function WatchModal({
         firedRef.current = true;
         const duration = Math.floor(event.data.duration || lastWatchedRef.current.duration || 0);
         lastWatchedRef.current = { watched: duration, duration, completed: true };
-        reportDelta(duration, duration, true);
+        reportDelta(duration, duration, true, true);
         onCompleted();
       }
     };
@@ -134,7 +155,7 @@ function WatchModal({
     return () => {
       window.removeEventListener("message", onMessage);
       const { watched, duration, completed } = lastWatchedRef.current;
-      if (watched > 0) reportDelta(watched, duration, completed);
+      if (watched > 0) reportDelta(watched, duration, completed, true);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useAndroidSimpleEmbed, videoId]);
@@ -142,7 +163,7 @@ function WatchModal({
   return (
     <div
       className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
-      onClick={onClose}
+      onClick={() => handleClose()}
     >
       <div
         className="w-full max-w-2xl rounded-2xl overflow-hidden bg-black ring-1 ring-white/10"
@@ -151,7 +172,7 @@ function WatchModal({
         <div className="relative aspect-video">
           {videoId ? (
             useNativePlayer ? (
-              <NativeYouTubePlayer key={`${videoId}-${retryKey}`} videoId={videoId} title={exercise.name} onNativeClose={onClose} />
+              <NativeYouTubePlayer key={`${videoId}-${retryKey}`} videoId={videoId} title={exercise.name} onNativeClose={handleClose} />
             ) : (
               <iframe
                 key={`${videoId}-${retryKey}`}
@@ -188,7 +209,7 @@ function WatchModal({
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={() => handleClose()}
             className="text-white/80 text-xs font-bold px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15"
           >
             Close
@@ -219,19 +240,34 @@ export default function ExerciseTab({ packageKey }: Props) {
 
   /** Save watched seconds locally first, then let the shared video sync push it to the backend. */
   const saveWatchProgress = useCallback(
-    async (ex: Exercise, deltaSec: number, durationSec: number, completed: boolean) => {
-      if (!user || deltaSec < 1) return;
+    async (ex: Exercise, deltaSec: number, durationSec: number, completed: boolean, flush = false) => {
+      if (!user) return;
       const videoKey = `exercise:${ex.id}`;
       const youtube = extractYoutubeId(ex.youtube_url) || undefined;
-      const roundedDelta = Math.max(1, Math.round(deltaSec));
-      if (youtube && durationSec > 0) saveDuration(youtube, durationSec);
-      accumulateWatched(videoKey, roundedDelta, durationSec, youtube);
-      if (completed) markCompleted(videoKey, Math.max(durationSec, roundedDelta), youtube);
+      const previous = loadWatched()[videoKey];
+      const safeDuration = Math.max(durationSec || 0, previous?.durationSec || 0, FALLBACK_SHORT_VIDEO_SEC);
+      const roundedDelta = Math.max(0, Math.round(deltaSec));
+      if (youtube && safeDuration > 0) saveDuration(youtube, safeDuration);
+      if (roundedDelta < 1) {
+        if (flush && previous) {
+          recordProgress(videoKey, previous.progressSec || previous.todayWatchedSec || 0, safeDuration, youtube, { flush: true });
+        }
+        return;
+      }
+      accumulateWatched(videoKey, roundedDelta, safeDuration, youtube, { flush });
+      recordProgress(videoKey, Math.min(safeDuration, (previous?.progressSec ?? 0) + roundedDelta), safeDuration, youtube, { flush });
+      if (completed) markCompleted(videoKey, safeDuration, youtube, { flush });
       setTodayMinutes((prev) => prev + roundedDelta / 60);
-      window.setTimeout(() => void loadTodayMinutes(), 1800);
+      window.setTimeout(() => void loadTodayMinutes(), flush ? 250 : 1800);
     },
     [user, loadTodayMinutes],
   );
+
+  useEffect(() => {
+    const refresh = () => void loadTodayMinutes();
+    window.addEventListener("bbdo:video-progress-synced", refresh);
+    return () => window.removeEventListener("bbdo:video-progress-synced", refresh);
+  }, [loadTodayMinutes]);
 
   const [activeTier, setActiveTier] = useState<ExerciseTier | "all">("all");
   const [activeCat, setActiveCat] = useState<string | "all">("all");
@@ -728,8 +764,8 @@ export default function ExerciseTab({ packageKey }: Props) {
             setWatching(null);
             void logSetFromWatch(ex);
           }}
-          onProgress={(watchedSec, durationSec, completed) => {
-            void saveWatchProgress(watching, watchedSec, durationSec, completed);
+          onProgress={(watchedSec, durationSec, completed, flush) => {
+            void saveWatchProgress(watching, watchedSec, durationSec, completed, flush);
           }}
         />
       )}

@@ -12,6 +12,11 @@ import {
 } from "@/lib/biometric";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "react-router-dom";
+import {
+  extendNativeVideoSuppression,
+  isNativeVideoContextActive,
+  readNativeVideoSuppressUntil,
+} from "@/lib/nativeVideoSession";
 
 // NOTE: /tour is intentionally NOT gated — it runs once, immediately after
 // payment as part of onboarding. Gating it behind biometrics on Android was
@@ -25,28 +30,6 @@ const BIOMETRIC_PROTECTED_ROUTES = new Set([
   "/coach-dashboard",
   "/partner-dashboard",
 ]);
-
-const VIDEO_BIOMETRIC_SUPPRESS_KEY = "bbdo_video_biometric_suppress_until";
-const NATIVE_PLAYER_ACTIVE_KEY = "bbdo_native_player_active";
-
-function readVideoSuppressUntil() {
-  if (typeof window === "undefined") return 0;
-  const memoryValue = Number((window as any).__bbdoBiometricSuppressUntil || 0);
-  const storedValue = Number(sessionStorage.getItem(VIDEO_BIOMETRIC_SUPPRESS_KEY) || 0);
-  return Math.max(memoryValue, storedValue);
-}
-
-function extendVideoBiometricSuppression() {
-  if (typeof window === "undefined") return;
-  const until = Date.now() + 45 * 60 * 1000;
-  (window as any).__bbdoBiometricSuppressUntil = until;
-  sessionStorage.setItem(VIDEO_BIOMETRIC_SUPPRESS_KEY, String(until));
-}
-
-function isNativeVideoContextActive() {
-  if (typeof window === "undefined") return false;
-  return Boolean((window as any).__bbdoNativePlayerActive) || sessionStorage.getItem(NATIVE_PLAYER_ACTIVE_KEY) === "1";
-}
 
 function isAndroidNativeApp() {
   return typeof navigator !== "undefined" && /android/i.test(navigator.userAgent);
@@ -74,7 +57,7 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
   const inactiveStartedAt = useRef<number | null>(null);
 
   const isVideoSuppressActive = useCallback(() => {
-    return Date.now() < readVideoSuppressUntil() || isNativeVideoContextActive();
+    return Date.now() < readNativeVideoSuppressUntil() || isNativeVideoContextActive();
   }, []);
 
   // Native biometric gate runs on both iOS (Face ID / Touch ID) and Android
@@ -183,7 +166,7 @@ export default function BiometricGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!native) return;
     const suppressVideoUnlock = () => {
-      extendVideoBiometricSuppression();
+      extendNativeVideoSuppression();
       lastAuthAt.current = Date.now();
       setLocked(false);
       setAuthenticating(false);

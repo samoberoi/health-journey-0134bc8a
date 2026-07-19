@@ -436,7 +436,7 @@ final class BBDOYouTubePlayerViewController: UIViewController, WKNavigationDeleg
         webView?.stopLoading()
         webView?.removeFromSuperview()
         webView = nil
-        dismiss(animated: true)
+        dismiss(animated: false)
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -478,8 +478,9 @@ public class BBDOYouTubePlayerPlugin: CAPPlugin, CAPBridgedPlugin {
                 call.reject("Player is unavailable", "playerUnavailable")
                 return
             }
+            let playerStart = Date()
             let player = BBDOYouTubePlayerViewController(videoId: videoId, title: title, start: start) {
-                call.resolve(["closed": true])
+                call.resolve(["closed": true, "elapsedSec": max(1, Int(Date().timeIntervalSince(playerStart).rounded()))])
             }
             presenter.present(player, animated: true)
         }
