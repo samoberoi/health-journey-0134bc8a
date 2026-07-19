@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Capacitor, registerPlugin } from "@capacitor/core";
+import { registerPlugin } from "@capacitor/core";
 import { Maximize2, Play, RotateCcw } from "lucide-react";
 import { isNativeAndroidApp, isNativeIOSApp, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 import { markNativeVideoClosed, markNativeVideoOpen } from "@/lib/nativeVideoSession";
