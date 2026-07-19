@@ -126,13 +126,6 @@ export default function Plans() {
             {expiredSub ? (<>Your plan<br />has expired</>) : currentPlanKey ? (<>Upgrade<br />your plan</>) : (<>Pick your<br />reset plan</>)}
           </h1>
         </div>
-          <span className="text-xs font-medium text-primary uppercase tracking-widest">
-            {expiredSub ? "Renew Access" : "Choose Your Path"}
-          </span>
-          <h1 className="text-3xl font-black text-foreground mt-1">
-            {expiredSub ? (<>Your plan<br />has expired</>) : (<>Pick your<br />reset plan</>)}
-          </h1>
-        </div>
 
         {expiredSub && (
           <div className="mb-5 rounded-2xl p-4 border border-destructive/40 bg-destructive/10 flex items-start gap-3">
