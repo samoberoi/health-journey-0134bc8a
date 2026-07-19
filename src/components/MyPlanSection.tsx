@@ -36,15 +36,12 @@ export default function MyPlanSection({ onBack }: MyPlanSectionProps) {
     (async () => {
       const s = await fetchActiveSubscription(authUser.id);
       setSub(s);
-      if (s) {
-        const [pkg, ups] = await Promise.all([
-          fetchPackageByPlanKey(s.plan_id),
-          fetchUpgradeOptions(s.plan_id),
-        ]);
-        setPkgDetails(pkg);
-        setUpgradeOptions(ups);
-      }
       setLoading(false);
+      if (s) {
+        // Defer non-critical fetches so the screen paints immediately
+        fetchPackageByPlanKey(s.plan_id).then(setPkgDetails);
+        fetchUpgradeOptions(s.plan_id).then(setUpgradeOptions);
+      }
     })();
     fetchProfile(authUser.id).then((p) => {
       if (p?.name) setUserName(p.name);

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Check, ChevronRight, Star, Loader2, ShieldCheck, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Star, Loader2, ShieldCheck, AlertTriangle } from "lucide-react";
 import SoundToggle from "@/components/SoundToggle";
 import { setPhase } from "@/lib/musicEngine";
 import {
@@ -43,9 +43,16 @@ export default function Plans() {
         user ? fetchActiveSubscription(user.id) : Promise.resolve(null),
         user ? fetchLatestSubscription(user.id) : Promise.resolve(null),
       ]);
-      const visible = data.filter((p) => p.show_in_onboarding !== false);
-      setPkgs(visible);
       const activeKey = normalizePlanKey(activeSub?.plan_id);
+      let visible = data.filter((p) => p.show_in_onboarding !== false);
+      // When user already has an active plan, only show upgrades (higher sort_order)
+      if (activeKey) {
+        const current = data.find((p) => p.plan_key === activeKey);
+        if (current) {
+          visible = visible.filter((p) => p.sort_order > current.sort_order);
+        }
+      }
+      setPkgs(visible);
       setCurrentPlanKey(activeKey);
       const expired = !activeSub && isSubscriptionExpired(latestSub) ? latestSub : null;
       setExpiredSub(expired);
@@ -103,13 +110,20 @@ export default function Plans() {
   return (
     <div className="phone-container min-h-dvh flex flex-col px-6 pt-14 pb-10 overflow-y-auto bg-background">
       <SoundToggle />
+      <button
+        onClick={() => navigate(-1)}
+        aria-label="Back"
+        className="absolute top-12 left-4 z-20 w-10 h-10 rounded-full liquid-glass flex items-center justify-center"
+      >
+        <ArrowLeft className="w-4 h-4 text-foreground" strokeWidth={2} />
+      </button>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col flex-1">
-        <div className="mb-5">
+        <div className="mb-5 mt-10">
           <span className="text-xs font-medium text-primary uppercase tracking-widest">
-            {expiredSub ? "Renew Access" : "Choose Your Path"}
+            {expiredSub ? "Renew Access" : currentPlanKey ? "Upgrade Your Plan" : "Choose Your Path"}
           </span>
           <h1 className="text-3xl font-black text-foreground mt-1">
-            {expiredSub ? (<>Your plan<br />has expired</>) : (<>Pick your<br />reset plan</>)}
+            {expiredSub ? (<>Your plan<br />has expired</>) : currentPlanKey ? (<>Upgrade<br />your plan</>) : (<>Pick your<br />reset plan</>)}
           </h1>
         </div>
 
