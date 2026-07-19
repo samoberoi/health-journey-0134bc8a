@@ -61,6 +61,9 @@ function WatchModal({
   const firedRef = useRef(false);
   const lastWatchedRef = useRef({ watched: 0, duration: 0, completed: false });
   const lastReportedSecRef = useRef(0);
+  const creditedWatchedRef = useRef(0);
+  const lastTickRef = useRef<number | null>(null);
+  const lastPosRef = useRef(0);
   const onProgressRef = useRef(onProgress);
   const videoId = extractYoutubeId(exercise.youtube_url);
   const [playerError, setPlayerError] = useState(false);
@@ -114,6 +117,7 @@ function WatchModal({
     if (!noPostMessagePath) return;
     wallClockStartedAtRef.current = Date.now();
     lastReportedSecRef.current = 0;
+    creditedWatchedRef.current = 0;
     // Periodically credit seconds while the video is open.
     const interval = window.setInterval(() => {
       reportDelta(wallClockElapsedSec(), FALLBACK_SHORT_VIDEO_SEC, false);
@@ -136,17 +140,41 @@ function WatchModal({
       }
 
       if (event.data.type === "progress" || event.data.type === "ready") {
-        const watched = Math.max(lastWatchedRef.current.watched, Math.floor(event.data.currentTime || 0));
+        const currentTime = Number(event.data.currentTime || 0);
+        const now = Date.now();
         const duration = Math.floor(event.data.duration || 0);
-        lastWatchedRef.current = { watched, duration, completed: lastWatchedRef.current.completed };
-        if (watched - lastReportedSecRef.current >= 15) reportDelta(watched, duration, false);
+        lastWatchedRef.current = { watched: Math.max(lastWatchedRef.current.watched, Math.floor(currentTime)), duration, completed: lastWatchedRef.current.completed };
+        if (event.data.type === "ready") {
+          lastPosRef.current = currentTime;
+          return;
+        }
+        const wall = lastTickRef.current ? (now - lastTickRef.current) / 1000 : 0;
+        const posDelta = currentTime - lastPosRef.current;
+        if (lastTickRef.current && wall > 0 && posDelta > 0 && posDelta <= wall + 1.5) {
+          creditedWatchedRef.current += posDelta;
+          if (creditedWatchedRef.current - lastReportedSecRef.current >= 5) {
+            reportDelta(creditedWatchedRef.current, duration, false);
+          }
+        }
+        lastTickRef.current = now;
+        lastPosRef.current = currentTime;
+      }
+
+      if (event.data.type === "state") {
+        const currentTime = Number(event.data.currentTime || 0);
+        if (event.data.state === 1) {
+          lastTickRef.current = Date.now();
+          lastPosRef.current = currentTime;
+        } else {
+          lastTickRef.current = null;
+        }
       }
 
       if (event.data.type === "state" && event.data.state === 0 && !firedRef.current) {
         firedRef.current = true;
         const duration = Math.floor(event.data.duration || lastWatchedRef.current.duration || 0);
         lastWatchedRef.current = { watched: duration, duration, completed: true };
-        reportDelta(duration, duration, true, true);
+        reportDelta(Math.max(creditedWatchedRef.current, duration), duration, true, true);
         onCompleted();
       }
     };
@@ -155,7 +183,8 @@ function WatchModal({
     return () => {
       window.removeEventListener("message", onMessage);
       const { watched, duration, completed } = lastWatchedRef.current;
-      if (watched > 0) reportDelta(watched, duration, completed, true);
+      const credited = Math.max(creditedWatchedRef.current, completed ? duration : 0);
+      if (watched > 0 || credited > 0) reportDelta(credited || watched, duration, completed, true);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useAndroidSimpleEmbed, videoId]);
@@ -308,6 +337,7 @@ export default function ExerciseTab({ packageKey }: Props) {
         setCategories(cats);
         setExercises(exs.filter((e) => e.enabled));
         setBadges(bds.filter((b) => b.enabled));
+        if (!cancelled) setLoading(false);
         await Promise.all([loadLogs(), loadTodayMinutes()]);
       } catch (e: any) {
         toast.error(e?.message || "Couldn't load exercises");
@@ -566,7 +596,7 @@ export default function ExerciseTab({ packageKey }: Props) {
           const hasVideo = !!ex.youtube_url && !!extractYoutubeId(ex.youtube_url);
           const ytId = extractYoutubeId(ex.youtube_url);
           const thumbSrc = ex.image_url || (ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : null);
-          const canWatch = hasVideo && !complete;
+          const canWatch = hasVideo;
           return (
             <motion.div
               key={ex.id}
@@ -644,9 +674,9 @@ export default function ExerciseTab({ packageKey }: Props) {
                     <span className={complete ? "text-success" : "text-foreground/70"}>
                       {done}/{target} sets today
                     </span>
-                    {!complete && (
+                    {hasVideo && (
                       <span className="text-muted-foreground">
-                        {done === 0 ? "Watch to log set 1" : `Watch again for set ${done + 1}`}
+                        {complete ? "Watch again to add minutes" : done === 0 ? "Watch to log set 1" : `Watch again for set ${done + 1}`}
                       </span>
                     )}
                   </div>
@@ -665,7 +695,7 @@ export default function ExerciseTab({ packageKey }: Props) {
 
                 <button
                   onClick={() => canWatch && setWatching(ex)}
-                  disabled={!hasVideo || complete}
+                  disabled={!hasVideo}
                   className="w-full h-9 px-3 rounded-xl text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
                   style={{
                     background: complete
@@ -678,13 +708,13 @@ export default function ExerciseTab({ packageKey }: Props) {
                     !hasVideo
                       ? "No video available yet"
                       : complete
-                      ? "Already complete"
+                      ? "Watch again to add minutes"
                       : "Watch the full video to log this set"
                   }
                 >
                   {complete ? (
                     <>
-                      <Check className="w-3.5 h-3.5" /> Completed
+                      <Play className="w-3.5 h-3.5" /> Watch again
                     </>
                   ) : !hasVideo ? (
                     <>

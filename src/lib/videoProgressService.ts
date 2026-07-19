@@ -11,6 +11,24 @@ type Row = {
   watched_at: string;
 };
 
+function todayStartMs() {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  return todayStart.getTime();
+}
+
+function isWatchedToday(watchedAt?: string | null) {
+  if (!watchedAt) return false;
+  return new Date(watchedAt).getTime() >= todayStartMs();
+}
+
+function todayProgressFromRecord(rec: WatchRecord) {
+  if (rec.sessionDate === getVideoProgressTodayKey() && typeof rec.todayWatchedSec === "number" && rec.todayWatchedSec > 0) {
+    return Math.round(rec.todayWatchedSec);
+  }
+  return Math.round(rec.progressSec || 0);
+}
+
 export async function fetchVideoProgress(userId: string): Promise<Record<string, WatchRecord>> {
   const { data, error } = await supabase
     .from("video_progress")
@@ -22,11 +40,9 @@ export async function fetchVideoProgress(userId: string): Promise<Record<string,
   }
   const map: Record<string, WatchRecord> = {};
   const today = getVideoProgressTodayKey();
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
   for (const r of (data || []) as Row[]) {
     const watchedAt = new Date(r.watched_at).getTime();
-    const watchedToday = watchedAt >= todayStart.getTime();
+    const watchedToday = watchedAt >= todayStartMs();
     map[r.video_id] = {
       watchedAt,
       progressSec: r.progress_sec || 0,
@@ -54,17 +70,25 @@ export async function upsertVideoProgress(
   rec: WatchRecord,
   youtubeId?: string,
 ) {
-  const todayProgressSec = rec.sessionDate === getVideoProgressTodayKey() && typeof rec.todayWatchedSec === "number" && rec.todayWatchedSec > 0
-    ? Math.round(rec.todayWatchedSec)
-    : Math.round(rec.progressSec || 0);
+  const incomingTodayProgressSec = todayProgressFromRecord(rec);
+  const { data: current } = await supabase
+    .from("video_progress")
+    .select("progress_sec, duration_sec, completed, watched_at")
+    .eq("user_id", userId)
+    .eq("video_id", videoId)
+    .maybeSingle();
+  const currentProgressSec = isWatchedToday((current as any)?.watched_at)
+    ? Math.max(0, Number((current as any)?.progress_sec) || 0)
+    : 0;
+  const todayProgressSec = Math.max(currentProgressSec, incomingTodayProgressSec);
   const { error } = await supabase.from("video_progress").upsert(
     {
       user_id: userId,
       video_id: videoId,
       youtube_id: youtubeId ?? null,
       progress_sec: todayProgressSec,
-      duration_sec: Math.round(rec.durationSec || 0),
-      completed: !!rec.completed,
+      duration_sec: Math.max(Math.round(rec.durationSec || 0), Math.round(Number((current as any)?.duration_sec) || 0)),
+      completed: !!rec.completed || !!(current as any)?.completed,
       watched_at: new Date(rec.watchedAt || Date.now()).toISOString(),
     },
     { onConflict: "user_id,video_id" },
