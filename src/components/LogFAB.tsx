@@ -9,9 +9,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { insertHealthLog, fetchHealthLogs, formatLogDate } from "@/lib/healthLogsService";
 import { toast } from "sonner";
 import { useUserStore } from "@/hooks/useUserStore";
-import { useDailyExerciseGoal } from "@/hooks/useAppSettings";
 import { useBreathSessionsToday } from "@/hooks/useBreathSessionsToday";
 import BreathProtocolDrawer from "@/components/BreathProtocolDrawer";
+import { useTodayExerciseProgress } from "@/hooks/useTodayExerciseProgress";
 
 type LogType = "diabetes" | "bp" | "weight" | "water" | null;
 type TimeOfDay = "morning" | "afternoon" | "evening";
@@ -43,8 +43,8 @@ export default function LogFAB({ packageKey }: { packageKey?: string | null }) {
   const storedUser = useUserStore();
   const hasDiabetesFlag = !!(storedUser.clinical?.hasDiabetes || (storedUser.deepProfiling as any)?.hba1cInput != null || (storedUser.deepProfiling as any)?.fastingGlucose != null);
   const hasHypertensionFlag = !!(storedUser.clinical?.hasHypertension || (storedUser.clinical as any)?.bpMedication);
-  const [completedExercisesToday, setCompletedExercisesToday] = useState(0);
-  const EXERCISE_GOAL = useDailyExerciseGoal(5);
+  const { minutes: exerciseMinutesToday, goal: EXERCISE_GOAL, done: exerciseDone } = useTodayExerciseProgress(5);
+  const exerciseBadgeValue = `${Math.min(exerciseMinutesToday, EXERCISE_GOAL).toLocaleString("en-IN", { maximumFractionDigits: 1 })}/${EXERCISE_GOAL}`;
   const visibleActions = actions.filter((a) => {
     if (a.id === "diabetes") return hasDiabetesFlag;
     if (a.id === "bp") return hasHypertensionFlag;
@@ -113,23 +113,6 @@ export default function LogFAB({ packageKey }: { packageKey?: string | null }) {
     const timer = setInterval(() => setCurrentDateTime(formatCurrentDateTime()), 60_000);
     return () => clearInterval(timer);
   }, [activeLog]);
-
-  // Load today's completed exercise count (each exercise must finish its target sets)
-  useEffect(() => {
-    if (!user) return;
-    const load = async () => {
-      const { countCompletedExercisesToday } = await import("@/lib/exerciseService");
-      setCompletedExercisesToday(await countCompletedExercisesToday(user.id, packageKey));
-    };
-    void load();
-    const onSaved = () => void load();
-    window.addEventListener("exercise-log-saved", onSaved);
-    const iv = setInterval(load, 60_000);
-    return () => {
-      window.removeEventListener("exercise-log-saved", onSaved);
-      clearInterval(iv);
-    };
-  }, [user, packageKey]);
 
   // Auto-detect time of day when diabetes drawer opens
   useEffect(() => {
@@ -359,7 +342,7 @@ export default function LogFAB({ packageKey }: { packageKey?: string | null }) {
                 className="w-11 h-11 rounded-xl flex items-center justify-center"
                 style={{
                   background:
-                    completedExercisesToday >= EXERCISE_GOAL ? "#10B981" : "var(--bbdo-blue)",
+                    exerciseDone ? "#10B981" : "var(--bbdo-blue)",
                 }}
               >
                 <Dumbbell className="w-5 h-5 text-white" strokeWidth={1.7} />
@@ -370,17 +353,16 @@ export default function LogFAB({ packageKey }: { packageKey?: string | null }) {
                     className="text-[9px] font-black px-1.5 py-0.5 rounded-md"
                   style={{
                     background:
-                      completedExercisesToday >= EXERCISE_GOAL
+                      exerciseDone
                         ? "#10B98122"
                         : "var(--bbdo-blue-soft)",
                     color:
-                      completedExercisesToday >= EXERCISE_GOAL
+                      exerciseDone
                         ? "#10B981"
                         : "var(--bbdo-blue)",
                   }}
                 >
-                  {completedExercisesToday}/{EXERCISE_GOAL}
-                  {completedExercisesToday >= EXERCISE_GOAL ? "+" : ""}
+                  {exerciseBadgeValue}
                 </span>
               </span>
             </motion.button>

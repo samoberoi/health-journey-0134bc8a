@@ -22,10 +22,9 @@ import {
   TIER_COLOR,
   PLAN_FOR_TIER,
 } from "@/lib/exerciseService";
-import { useDailyExerciseGoal } from "@/hooks/useAppSettings";
+import { useTodayExerciseProgress } from "@/hooks/useTodayExerciseProgress";
 import { EmptyState } from "@/components/shared";
 
-import { getTodayExerciseMinutes } from "@/lib/yogaProgressService";
 import NativeYouTubePlayer from "@/components/exercises/NativeYouTubePlayer";
 import { isNativeAndroidApp, isNativeIOSApp, isYoutubePlayerMessage, youtubePlayerProxyUrl } from "@/lib/youtubeEmbed";
 import { accumulateWatched, loadWatched, markCompleted, recordProgress, saveDuration } from "@/lib/videoProgressStore";
@@ -258,15 +257,9 @@ export default function ExerciseTab({ packageKey }: Props) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [badges, setBadges] = useState<ExerciseBadge[]>([]);
   const [earnedKeys, setEarnedKeys] = useState<Set<string>>(new Set());
-  const [todayMinutes, setTodayMinutes] = useState(0);
+  const { minutes: todayMinutes, setMinutes: setTodayMinutes, refresh: loadTodayMinutes, goal: dailyGoalMinutes } = useTodayExerciseProgress(DAILY_EXERCISE_GOAL);
   const [loading, setLoading] = useState(true);
   const hasLoadedOnceRef = useRef(false);
-
-  /** Sum today's watched seconds from video_progress (exercise-namespaced). */
-  const loadTodayMinutes = useCallback(async () => {
-    if (!user) return;
-    setTodayMinutes(await getTodayExerciseMinutes(user.id));
-  }, [user]);
 
   /** Save watched seconds locally first, then let the shared video sync push it to the backend. */
   const saveWatchProgress = useCallback(
@@ -292,12 +285,6 @@ export default function ExerciseTab({ packageKey }: Props) {
     },
     [user, loadTodayMinutes],
   );
-
-  useEffect(() => {
-    const refresh = () => void loadTodayMinutes();
-    window.addEventListener("bbdo:video-progress-synced", refresh);
-    return () => window.removeEventListener("bbdo:video-progress-synced", refresh);
-  }, [loadTodayMinutes]);
 
   const [activeTier, setActiveTier] = useState<ExerciseTier | "all">("all");
   const [activeCat, setActiveCat] = useState<string | "all">("all");
@@ -385,8 +372,7 @@ export default function ExerciseTab({ packageKey }: Props) {
       .sort((a, b) => (a.tier - b.tier) || (a.sort_order - b.sort_order));
   }, [exercises, activeTier, activeCat, visibleTiers]);
 
-  // Daily goal is admin-configured MINUTES of exercise watch time (default 30).
-  const dailyGoalMinutes = useDailyExerciseGoal(DAILY_EXERCISE_GOAL);
+  // Daily goal is admin-configured MINUTES of exercise watch time.
   const todayProgress = useMemo(
     () => summarizeExerciseProgress(accessibleExercises, todayLogs, 5),
     [accessibleExercises, todayLogs],

@@ -41,8 +41,9 @@ import DailyActivityDial, { type DialRingItem as HeartRingItem } from "@/compone
 import TodaysYogaClass from "@/components/home/TodaysYogaClass";
 import GlobalStreakCard from "@/components/home/GlobalStreakCard";
 import { Wind } from "lucide-react";
-import { useDailyExerciseGoal, useDailyYogaMinutes } from "@/hooks/useAppSettings";
-import { getTodayYogaMinutes, getTodayExerciseMinutes } from "@/lib/yogaProgressService";
+import { useDailyYogaMinutes } from "@/hooks/useAppSettings";
+import { getTodayYogaMinutes } from "@/lib/yogaProgressService";
+import { useTodayExerciseProgress } from "@/hooks/useTodayExerciseProgress";
 import { createNotification } from "@/lib/notificationService";
 import { whatsappCallUrl, isMeetingCallable } from "@/lib/coachAvailability";
 import { Phone } from "lucide-react";
@@ -337,9 +338,8 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
    const [diabetesEveningValue, setDiabetesEveningValue] = useState<number | null>(null);
   const [waterDone, setWaterDone] = useState(false);
   const [waterGlasses, setWaterGlasses] = useState(0);
-  const [completedExercisesToday, setCompletedExercisesToday] = useState(0);
+  const { minutes: completedExercisesToday, goal: EXERCISE_DAILY_GOAL } = useTodayExerciseProgress();
   const [yogaMinutesToday, setYogaMinutesToday] = useState(0);
-  const EXERCISE_DAILY_GOAL = useDailyExerciseGoal();
   const YOGA_DAILY_MINUTES = useDailyYogaMinutes();
    const [movementDone, setMovementDone] = useState(false);
    const [movementRatio, setMovementRatio] = useState(0);
@@ -391,27 +391,6 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
     const h = user.bodyMetrics?.height;
     if (typeof h === "number" && h !== userHeightCm) setUserHeightCm(h);
   }, [user.bodyMetrics?.height, userHeightCm]);
-
-  // Today's exercise progress in MINUTES watched (video_progress rows keyed 'exercise:*').
-  useEffect(() => {
-    if (!authUser?.id) return;
-    setCompletedExercisesToday(0);
-    const load = async () => {
-      setCompletedExercisesToday(await getTodayExerciseMinutes(authUser.id));
-    };
-    void load();
-    const onSaved = () => void load();
-    window.addEventListener("exercise-log-saved", onSaved);
-    window.addEventListener("bbdo:video-progress-changed", onSaved);
-    window.addEventListener("bbdo:video-progress-synced", onSaved);
-    const iv = setInterval(load, 60_000);
-    return () => {
-      window.removeEventListener("exercise-log-saved", onSaved);
-      window.removeEventListener("bbdo:video-progress-changed", onSaved);
-      window.removeEventListener("bbdo:video-progress-synced", onSaved);
-      clearInterval(iv);
-    };
-  }, [authUser?.id, packageKey, todayKey]);
 
   // Today's yoga minutes (Pranayama / Yoga Asana / Bandha)
   useEffect(() => {
