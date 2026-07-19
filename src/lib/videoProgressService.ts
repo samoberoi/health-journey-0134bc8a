@@ -54,8 +54,8 @@ export async function upsertVideoProgress(
   rec: WatchRecord,
   youtubeId?: string,
 ) {
-  const todayProgressSec = rec.sessionDate === getVideoProgressTodayKey()
-    ? Math.round(Math.max(rec.progressSec || 0, rec.todayWatchedSec || 0))
+  const todayProgressSec = rec.sessionDate === getVideoProgressTodayKey() && typeof rec.todayWatchedSec === "number" && rec.todayWatchedSec > 0
+    ? Math.round(rec.todayWatchedSec)
     : Math.round(rec.progressSec || 0);
   const { error } = await supabase.from("video_progress").upsert(
     {
