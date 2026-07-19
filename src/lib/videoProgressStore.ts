@@ -16,6 +16,7 @@ export type WatchRecord = {
 
 type WatchMap = Record<string, WatchRecord>;
 type DurationMap = Record<string, number>;
+type SaveOptions = { flush?: boolean };
 
 function safeParse<T>(raw: string | null, fallback: T): T {
   if (!raw) return fallback;
@@ -42,17 +43,17 @@ export function saveWatched(map: WatchMap) {
   window.dispatchEvent(new CustomEvent("bbdo:video-progress-changed"));
 }
 
-function emitChange(videoId: string, record: WatchRecord | null, youtubeId?: string) {
+function emitChange(videoId: string, record: WatchRecord | null, youtubeId?: string, options: SaveOptions = {}) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
     new CustomEvent("bbdo:video-progress-updated", {
-      detail: { videoId, record, youtubeId },
+      detail: { videoId, record, youtubeId, flush: !!options.flush },
     }),
   );
 }
 
 /** Update the resume position only. Does NOT change lifetime/today accumulators. */
-export function recordProgress(videoId: string, progressSec: number, durationSec: number, youtubeId?: string) {
+export function recordProgress(videoId: string, progressSec: number, durationSec: number, youtubeId?: string, options: SaveOptions = {}) {
   const map = loadWatched();
   const prev = map[videoId];
   const completed = durationSec > 0 && progressSec / durationSec >= 0.9;
@@ -65,11 +66,11 @@ export function recordProgress(videoId: string, progressSec: number, durationSec
   };
   map[videoId] = next;
   saveWatched(map);
-  emitChange(videoId, next, youtubeId);
+  emitChange(videoId, next, youtubeId, options);
 }
 
 /** Add a small increment of real playback time. Replays keep adding up. */
-export function accumulateWatched(videoId: string, deltaSec: number, durationSec: number, youtubeId?: string) {
+export function accumulateWatched(videoId: string, deltaSec: number, durationSec: number, youtubeId?: string, options: SaveOptions = {}) {
   if (!deltaSec || deltaSec <= 0) return;
   const map = loadWatched();
   const prev = map[videoId];
@@ -87,10 +88,10 @@ export function accumulateWatched(videoId: string, deltaSec: number, durationSec
   };
   map[videoId] = next;
   saveWatched(map);
-  emitChange(videoId, next, youtubeId);
+  emitChange(videoId, next, youtubeId, options);
 }
 
-export function markCompleted(videoId: string, durationSec: number, youtubeId?: string) {
+export function markCompleted(videoId: string, durationSec: number, youtubeId?: string, options: SaveOptions = {}) {
   const map = loadWatched();
   const prev = map[videoId];
   const next: WatchRecord = {
@@ -102,7 +103,7 @@ export function markCompleted(videoId: string, durationSec: number, youtubeId?: 
   };
   map[videoId] = next;
   saveWatched(map);
-  emitChange(videoId, next, youtubeId);
+  emitChange(videoId, next, youtubeId, options);
 }
 
 export function resetProgress(videoId: string) {

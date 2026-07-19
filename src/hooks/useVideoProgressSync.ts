@@ -41,20 +41,28 @@ export function useVideoProgressSync() {
         videoId: string;
         record: WatchRecord | null;
         youtubeId?: string;
+        flush?: boolean;
       } | undefined;
       if (!detail?.videoId) return;
-      const { videoId, record, youtubeId } = detail;
+      const { videoId, record, youtubeId, flush } = detail;
 
       // Debounce per video to avoid flooding during playback polling
       const existing = timers.current.get(videoId);
       if (existing) clearTimeout(existing);
-      const t = setTimeout(() => {
+      const persist = () => {
         timers.current.delete(videoId);
         if (record) {
           upsertVideoProgress(uid, videoId, record, youtubeId).catch(console.error);
         } else {
           deleteVideoProgress(uid, videoId).catch(console.error);
         }
+      };
+      if (flush) {
+        persist();
+        return;
+      }
+      const t = setTimeout(() => {
+        persist();
       }, 1200);
       timers.current.set(videoId, t);
     };
