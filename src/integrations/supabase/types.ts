@@ -5181,6 +5181,13 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cleanup_orphan_storage: {
+        Args: never
+        Returns: {
+          bucket: string
+          deleted_count: number
+        }[]
+      }
       coach_owns_patient: {
         Args: { _patient_user_id: string }
         Returns: boolean
