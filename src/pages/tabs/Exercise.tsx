@@ -263,6 +263,12 @@ export default function ExerciseTab({ packageKey }: Props) {
     [user, loadTodayMinutes],
   );
 
+  useEffect(() => {
+    const refresh = () => void loadTodayMinutes();
+    window.addEventListener("bbdo:video-progress-synced", refresh);
+    return () => window.removeEventListener("bbdo:video-progress-synced", refresh);
+  }, [loadTodayMinutes]);
+
   const [activeTier, setActiveTier] = useState<ExerciseTier | "all">("all");
   const [activeCat, setActiveCat] = useState<string | "all">("all");
   const [watching, setWatching] = useState<Exercise | null>(null);
