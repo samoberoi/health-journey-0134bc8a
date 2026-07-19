@@ -292,11 +292,11 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="relative rounded-3xl p-5 md:p-6 text-white shadow-lift overflow-hidden"
+            className="relative rounded-3xl p-5 md:p-6 pt-8 text-white shadow-lift overflow-hidden"
             style={{ background: "var(--bbdo-gradient)" }}
           >
             <div className="absolute -right-12 -top-12 w-44 h-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-            <div className="absolute -top-2.5 left-5 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide text-[var(--bbdo-red)] bg-white shadow">
+            <div className="absolute top-3 left-5 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide text-[var(--bbdo-red)] bg-white shadow">
               RECOMMENDED · START HERE
             </div>
             <div className="relative flex items-start justify-between gap-4 mb-4">
