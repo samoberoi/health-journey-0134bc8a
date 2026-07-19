@@ -441,9 +441,13 @@ final class BBDOYouTubePlayerViewController: UIViewController, WKNavigationDeleg
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        // Safety net: if the VC is being dismissed via any path other than
-        // our ✕ button (system gesture, parent dismiss, etc.), still resolve
-        // the JS promise so the React overlay unmounts.
+        // YouTube's own fullscreen media controller can temporarily cover this
+        // view and trigger viewWillDisappear. Do NOT resolve the JS promise in
+        // that case, otherwise React thinks the video has closed while playback
+        // is still active and the app can show the lock/loading shield on exit.
+        guard isBeingDismissed || navigationController?.isBeingDismissed == true else { return }
+        // Safety net: if the VC is truly being dismissed via any path other
+        // than our ✕ button, still resolve the JS promise.
         webView?.stopLoading()
         webView = nil
         if let callback = onClose {
