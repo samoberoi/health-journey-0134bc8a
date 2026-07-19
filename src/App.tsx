@@ -10,7 +10,7 @@ import PageTransition from "@/components/PageTransition";
 import AppErrorBoundary from "@/components/AppErrorBoundary";
 import BiometricGate from "@/components/BiometricGate";
 import { isNative } from "@/lib/biometric";
-import { isNativeVideoSuppressionActive, isNativeVideoTransitionActive } from "@/lib/nativeVideoSession";
+import { isNativeVideoTransitionActive } from "@/lib/nativeVideoSession";
 
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProfileSyncProvider } from "@/components/ProfileSyncProvider";
@@ -262,7 +262,7 @@ function GlobalRealtimeAlerts() {
 function NativeAuthStartupGate({ children }: { children: ReactNode }) {
   const { loading, ready } = useAuth();
 
-  if (isNative() && !isNativeVideoSuppressionActive() && (loading || !ready)) {
+  if (isNative() && !isNativeVideoTransitionActive() && (loading || !ready)) {
     return (
       <div className="min-h-dvh w-full bg-background flex items-center justify-center text-foreground">
         <div className="h-6 w-6 rounded-full border-2 border-primary/25 border-t-primary animate-spin" />
