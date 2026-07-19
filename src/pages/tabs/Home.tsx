@@ -129,7 +129,7 @@ function MetricRing({
 
   return (
     <motion.div
-      className="liquid-glass-strong rounded-[24px] p-3.5 w-full h-[204px] min-w-0 flex flex-col items-center justify-between gap-2"
+      className="liquid-glass-strong rounded-[20px] p-2.5 w-full min-w-0 flex flex-col items-center justify-between gap-1.5"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
@@ -137,14 +137,14 @@ function MetricRing({
       {label === "Health" && typeof value === "number" ? (
         <HealthScoreRing
           score={value}
-          size={92}
-          thickness={7}
+          size={72}
+          thickness={6}
           showSubtitle={false}
-          scoreClassName="stat-number text-xl"
+          scoreClassName="stat-number text-lg"
           className="mx-auto shrink-0"
         />
       ) : (
-        <div className="relative mx-auto w-full aspect-square shrink-0" style={{ maxWidth: Math.min(size, 92) }}>
+        <div className="relative mx-auto w-full aspect-square shrink-0" style={{ maxWidth: 72 }}>
           <svg viewBox="0 0 92 92" className="h-full w-full -rotate-90 block">
             <circle cx={46} cy={46} r={ringRadius} fill="none" stroke="var(--bbdo-line)" strokeWidth={7} />
             <circle
@@ -175,13 +175,14 @@ function MetricRing({
             </defs>
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="stat-number text-xl text-foreground leading-none">{value}</span>
-            {unit && value !== "—" && <span className="text-muted-foreground text-[9px] font-medium mt-0.5">{unit}</span>}
+            <span className="stat-number text-base text-foreground leading-none">{value}</span>
+            {unit && value !== "—" && <span className="text-muted-foreground text-[8px] font-medium mt-0.5">{unit}</span>}
           </div>
         </div>
       )}
-      <span className="text-muted-foreground text-[10px] font-bold uppercase tracking-[0.14em]">{label}</span>
-      <div className="min-h-[22px] flex items-center justify-center">
+      <span className="text-muted-foreground text-[9px] font-bold uppercase tracking-[0.12em] text-center leading-tight">{label}</span>
+      <div className="min-h-[18px] flex items-center justify-center">
+
         {delta !== null && value !== "—" ? (
           delta === 0 ? (
             <div className="flex items-center gap-0.5 text-[11px] font-bold px-2 py-0.5 rounded-full text-muted-foreground bg-muted">
@@ -1573,47 +1574,46 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
         </motion.div>
       ) : fastingState === "no_plan" ? (
         <motion.div
-          className="liquid-glass rounded-3xl p-5 relative overflow-hidden"
+          className="liquid-glass rounded-2xl p-3.5 relative overflow-hidden"
           initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
         >
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Timer className="w-5 h-5 text-primary" strokeWidth={1.6} />
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Timer className="w-4 h-4 text-primary" strokeWidth={1.6} />
             </div>
-            <div>
-              <p className="text-foreground font-bold text-sm">
+            <div className="min-w-0">
+              <p className="text-foreground font-bold text-[13px] leading-tight">
                 {packageKey === "foundation" ? "Start your fasting journey" : "Awaiting meeting with your coach"}
               </p>
               <p className="text-muted-foreground text-[10px] font-medium">
-                {packageKey === "foundation" ? "Pick a plan to begin 24 weeks" : "Your coach will assign your fasting protocol"}
+                {packageKey === "foundation" ? "Pick a plan to begin 24 weeks" : "Your coach will assign your protocol"}
               </p>
             </div>
           </div>
           {packageKey === "foundation" ? (
-            <div className="mt-4 space-y-2.5">
+            <div className="mt-3 space-y-1.5">
               {availableProtos.map((p) => {
                 const isStarting = startingProtoId === p.id;
                 return (
-                  <div key={p.id} className="rounded-2xl bg-muted/40 p-3 flex items-center justify-between gap-3">
+                  <div key={p.id} className="rounded-xl bg-muted/40 p-2.5 flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-foreground truncate">{p.protocol_name}</p>
-                      <p className="text-[10px] text-muted-foreground">{p.total_weeks} weeks · starts with 12:12 (FMOD 7 AM · LMOD 7 PM)</p>
+                      <p className="text-[13px] font-bold text-foreground truncate">{p.protocol_name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{p.total_weeks}w · 12:12 start</p>
                     </div>
                     <button
                       onClick={() => handleStartProtocol(p.id)}
                       disabled={isStarting}
-                      className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-xs shrink-0 disabled:opacity-60"
+                      className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold text-[11px] shrink-0 disabled:opacity-60"
                     >
-                      {isStarting ? "Starting…" : "Start"}
+                      {isStarting ? "…" : "Start"}
                     </button>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div className="mt-4 rounded-2xl bg-primary/5 border border-primary/15 p-3 text-xs text-muted-foreground leading-relaxed">
+            <div className="mt-3 rounded-xl bg-primary/5 border border-primary/15 p-2.5 text-[11px] text-muted-foreground leading-relaxed">
               Your coach will design a fasting protocol tailored to your health markers during your first 1:1 session.
-              The full plan, FMOD/LMOD windows and weekly progression will appear here right after that meeting.
             </div>
           )}
         </motion.div>
@@ -1997,32 +1997,32 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
 
       {/* ─── Diabetes Check-in Card ─── */}
       <motion.div
-        className="liquid-glass rounded-3xl p-5 relative overflow-hidden"
+        className="liquid-glass rounded-2xl p-3.5 relative overflow-hidden"
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.27 }}
       >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Activity className="w-5 h-5 text-primary" strokeWidth={1.6} />
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Activity className="w-4 h-4 text-primary" strokeWidth={1.6} />
             </div>
-            <div>
-              <span className="text-foreground font-bold text-sm">Diabetes Check-in</span>
+            <div className="min-w-0">
+              <span className="text-foreground font-bold text-[13px]">Diabetes Check-in</span>
               <p className="text-muted-foreground text-[10px] font-medium">
                 {diabetesMorningDone && diabetesEveningDone ? "2/2 logged" : diabetesMorningDone || diabetesEveningDone ? "1/2 logged" : "0/2 logged"}
               </p>
             </div>
           </div>
-          <span className={`px-3 py-1.5 rounded-xl font-bold text-xs ${
+          <span className={`px-2.5 py-1 rounded-lg font-bold text-[10px] shrink-0 ${
             diabetesMorningDone && diabetesEveningDone ? "bg-primary/15 text-primary" :
             diabetesMorningDone || diabetesEveningDone ? "bg-warning-soft text-warning" :
             "bg-muted text-muted-foreground"
           }`}>
-            {diabetesMorningDone && diabetesEveningDone ? "Complete" : diabetesMorningDone || diabetesEveningDone ? "Incomplete" : "Pending"}
+            {diabetesMorningDone && diabetesEveningDone ? "Complete" : diabetesMorningDone || diabetesEveningDone ? "Partial" : "Pending"}
           </span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <DiabetesSlot
             slot="morning"
             done={diabetesMorningDone}
@@ -2106,21 +2106,21 @@ function DiabetesSlot({
   }
 
   return (
-    <div className={`p-3.5 rounded-2xl transition-colors border ${editing ? "sm:col-span-2" : ""} ${
+    <div className={`p-2.5 rounded-xl transition-colors border ${editing ? "col-span-2" : ""} ${
       done ? "bg-primary/10 border-primary/25" : "bg-card border-border"
     }`}>
-      <div className="flex items-center gap-2.5 mb-3">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+      <div className="flex items-center gap-2 mb-2">
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
           done ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"
         }`}>
-          {done ? <Check className="w-4.5 h-4.5" strokeWidth={1.75} /> : <SlotIcon className="w-4.5 h-4.5" strokeWidth={1.75} />}
+          {done ? <Check className="w-3.5 h-3.5" strokeWidth={2} /> : <SlotIcon className="w-3.5 h-3.5" strokeWidth={2} />}
         </div>
         <div className="flex-1 min-w-0">
-          <p className={`text-[13px] font-bold leading-tight ${done ? "text-primary" : "text-foreground"}`}>
+          <p className={`text-[12px] font-bold leading-tight ${done ? "text-primary" : "text-foreground"}`}>
             {label}
           </p>
-          <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
-            {done ? `${value} mg/dL logged` : "Tap to add glucose"}
+          <p className="text-[10px] text-muted-foreground font-medium mt-0.5 truncate">
+            {done ? `${value} mg/dL` : "Add glucose"}
           </p>
         </div>
       </div>
@@ -2163,9 +2163,9 @@ function DiabetesSlot({
         ) : (
           <button
             onClick={() => setEditing(true)}
-            className="no-pill w-full h-12 rounded-xl bg-primary/10 text-primary text-[13px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform"
+            className="no-pill w-full h-9 rounded-lg bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center gap-1 active:scale-[0.98] transition-transform"
           >
-            <Plus className="w-4 h-4" strokeWidth={1.75} />
+            <Plus className="w-3.5 h-3.5" strokeWidth={2} />
             Add reading
           </button>
         )

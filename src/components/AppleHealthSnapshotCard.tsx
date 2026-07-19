@@ -21,13 +21,13 @@ function Tile({
   icon: any; label: string; value: string; sub?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-background/60 px-3 py-2.5">
-      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-        <Icon className="h-3.5 w-3.5 text-primary" />
-        {label}
+    <div className="rounded-xl border border-border bg-background/60 px-2 py-1.5 min-w-0">
+      <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.1em] text-muted-foreground truncate">
+        <Icon className="h-3 w-3 text-primary shrink-0" />
+        <span className="truncate">{label}</span>
       </div>
-      <div className="mt-1 text-lg font-black leading-tight text-foreground">{value}</div>
-      {sub && <div className="text-[10px] font-medium text-muted-foreground">{sub}</div>}
+      <div className="mt-0.5 text-sm font-black leading-tight text-foreground truncate">{value}</div>
+      {sub && <div className="text-[9px] font-medium text-muted-foreground truncate">{sub}</div>}
     </div>
   );
 }
@@ -137,7 +137,7 @@ export default function AppleHealthSnapshotCard() {
 
   return (
     <motion.div
-      className="liquid-glass rounded-3xl p-5"
+      className="liquid-glass rounded-3xl p-4"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22 }}
@@ -179,7 +179,8 @@ export default function AppleHealthSnapshotCard() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-4 gap-1.5">
+
           <Tile
             icon={Flame}
             label="Active kcal"
