@@ -49,6 +49,7 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
   const currentTimeRef = useRef<number>(0);
   const durationRef = useRef<number>(0);
   const nativeSessionStartRef = useRef<number>(Date.now());
+  const nativeSessionCreditedRef = useRef<number>(0);
   const [resumeFrom, setResumeFrom] = useState<number>(0);
   const [restarted, setRestarted] = useState(false);
   const [playerError, setPlayerError] = useState(false);
@@ -101,11 +102,15 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
 
   const commitNativeSession = (flush = false) => {
     const elapsed = Math.min(4 * 60 * 60, Math.max(0, (Date.now() - nativeSessionStartRef.current) / 1000));
-    if (elapsed <= 0) return;
+    const missing = Math.max(0, elapsed - nativeSessionCreditedRef.current);
+    if (missing <= 0 && !flush) return;
     const duration = durationRef.current || Math.max(FALLBACK_SHORT_VIDEO_SEC, Math.ceil(elapsed));
-    watchedSecRef.current = Math.max(watchedSecRef.current, elapsed);
+    if (missing > 0) {
+      nativeSessionCreditedRef.current += missing;
+      watchedSecRef.current += missing;
+      accumulateWatched(video.id, missing, duration, video.youtubeId, { flush });
+    }
     const progress = Math.min(duration, watchedSecRef.current);
-    accumulateWatched(video.id, elapsed, duration, video.youtubeId, { flush });
     recordProgress(video.id, progress, duration, video.youtubeId, { flush });
     if (progress / duration >= 0.9) {
       markCompleted(video.id, duration, video.youtubeId, { flush });
@@ -167,6 +172,7 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
     if (!useNativePlayer && !useAndroidSimpleEmbed) return;
     const startedAt = Date.now();
     nativeSessionStartRef.current = startedAt;
+    nativeSessionCreditedRef.current = 0;
     let lastAt = startedAt;
     const interval = window.setInterval(() => {
       const now = Date.now();
@@ -174,6 +180,7 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
       lastAt = now;
       if (delta > 0 && delta < 30) {
         watchedSecRef.current += delta;
+        nativeSessionCreditedRef.current += delta;
         accumulateWatched(video.id, delta, durationRef.current || 0, video.youtubeId);
         const fallbackDuration = durationRef.current || Math.max(FALLBACK_SHORT_VIDEO_SEC, Math.ceil((now - startedAt) / 1000));
         recordProgress(video.id, Math.min(fallbackDuration, watchedSecRef.current), fallbackDuration, video.youtubeId);
@@ -181,11 +188,6 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
     }, 1000);
     return () => {
       window.clearInterval(interval);
-      const delta = Math.min(3600, (Date.now() - lastAt) / 1000);
-      if (delta > 0) {
-        watchedSecRef.current += delta;
-        accumulateWatched(video.id, delta, durationRef.current || 0, video.youtubeId, { flush: true });
-      }
       commitNativeSession(true);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
