@@ -1267,6 +1267,11 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
       {/* Today's Yoga Class reminder */}
       <TodaysYogaClass />
 
+      {/* Foundation-tier: highlight baseline lab test / body-map tap-through */}
+      {packageKey === "foundation" && authUser?.id && (
+        <FoundationLabCard userId={authUser.id} />
+      )}
+
 
 
 
