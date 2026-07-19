@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, lazy, Suspense, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -27,60 +27,54 @@ import { fireRealtimeHealthNotificationAlert } from "@/lib/healthAlerts";
 import { isNativePushSupported } from "@/lib/nativePush";
 import { resolvePostAuthRoute, resolveProtectedAccess } from "@/lib/accessControl";
 
+// Eager: splash + onboarding entry (paint instantly on cold start)
 import Splash from "./pages/Splash";
 import LanguageSelect from "./pages/LanguageSelect";
 import Auth from "./pages/Auth";
-import BasicDetails from "./pages/setup/BasicDetails";
-import BodyStats from "./pages/setup/BodyStats";
-import ClinicalData from "./pages/setup/ClinicalData";
-import LifestyleQuestions from "./pages/setup/LifestyleQuestions";
-import HealthScore from "./pages/setup/HealthScore";
-import Purpose from "./pages/setup/Purpose";
-import HealthQuestions from "./pages/setup/HealthQuestions";
-import Plans from "./pages/Plans";
-import Payment from "./pages/Payment";
-import TestPay from "./pages/TestPay";
-import Dashboard from "./pages/Dashboard";
-import Tour from "./pages/Tour";
-import NotFound from "./pages/NotFound";
-import CoachDashboard from "./pages/CoachDashboard";
-import AdminDashboard from "./pages/AdminDashboard";
-import AdminUsersInsights from "./pages/admin/AdminUsersInsights";
-import NotificationsPage from "./pages/NotificationsPage";
-import PartnerDashboard from "./pages/PartnerDashboard";
-
-
-// Phase 0 — Entry Experience
 import RealityHook from "./pages/onboarding/RealityHook";
 import TensionScreen from "./pages/onboarding/TensionScreen";
 import BreakPattern from "./pages/onboarding/BreakPattern";
+import NotFound from "./pages/NotFound";
 
-// Phase 1 — Proof & Hope
-import TransformationStory from "./pages/onboarding/TransformationStory";
-import AuthorityStatement from "./pages/onboarding/AuthorityStatement";
-import PunchFramework from "./pages/onboarding/PunchFramework";
-import StartAssessment from "./pages/onboarding/StartAssessment";
+// Lazy: setup, onboarding tail, product, admin/coach/partner
+const BasicDetails = lazy(() => import("./pages/setup/BasicDetails"));
+const BodyStats = lazy(() => import("./pages/setup/BodyStats"));
+const ClinicalData = lazy(() => import("./pages/setup/ClinicalData"));
+const LifestyleQuestions = lazy(() => import("./pages/setup/LifestyleQuestions"));
+const HealthScore = lazy(() => import("./pages/setup/HealthScore"));
+const Purpose = lazy(() => import("./pages/setup/Purpose"));
+const HealthQuestions = lazy(() => import("./pages/setup/HealthQuestions"));
+const DeepProfiling = lazy(() => import("./pages/setup/DeepProfiling"));
+const Plans = lazy(() => import("./pages/Plans"));
+const Payment = lazy(() => import("./pages/Payment"));
+const TestPay = lazy(() => import("./pages/TestPay"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Tour = lazy(() => import("./pages/Tour"));
+const CoachDashboard = lazy(() => import("./pages/CoachDashboard"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminUsersInsights = lazy(() => import("./pages/admin/AdminUsersInsights"));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
+const PartnerDashboard = lazy(() => import("./pages/PartnerDashboard"));
 
-// Phase 3 — Transformation Insight
-import AnalyzingScreen from "./pages/onboarding/AnalyzingScreen";
-import InsightScreen from "./pages/onboarding/InsightScreen";
-import HopeScreen from "./pages/onboarding/HopeScreen";
-import ProjectionPreview from "./pages/onboarding/ProjectionPreview";
+const TransformationStory = lazy(() => import("./pages/onboarding/TransformationStory"));
+const AuthorityStatement = lazy(() => import("./pages/onboarding/AuthorityStatement"));
+const PunchFramework = lazy(() => import("./pages/onboarding/PunchFramework"));
+const StartAssessment = lazy(() => import("./pages/onboarding/StartAssessment"));
+const AnalyzingScreen = lazy(() => import("./pages/onboarding/AnalyzingScreen"));
+const InsightScreen = lazy(() => import("./pages/onboarding/InsightScreen"));
+const HopeScreen = lazy(() => import("./pages/onboarding/HopeScreen"));
+const ProjectionPreview = lazy(() => import("./pages/onboarding/ProjectionPreview"));
+const ProcessingScreen = lazy(() => import("./pages/onboarding/ProcessingScreen"));
+const ScoreInterpretation = lazy(() => import("./pages/onboarding/ScoreInterpretation"));
+const TrajectoryScreen = lazy(() => import("./pages/onboarding/TrajectoryScreen"));
+const CommitmentScreen = lazy(() => import("./pages/onboarding/CommitmentScreen"));
 
-// Phase 4 — Deep Profiling
-import DeepProfiling from "./pages/setup/DeepProfiling";
+const RouteFallback = () => (
+  <div className="min-h-dvh w-full bg-background flex items-center justify-center text-foreground">
+    <div className="h-6 w-6 rounded-full border-2 border-primary/25 border-t-primary animate-spin" />
+  </div>
+);
 
-// Phase 5 — Processing & Interpretation
-import ProcessingScreen from "./pages/onboarding/ProcessingScreen";
-import ScoreInterpretation from "./pages/onboarding/ScoreInterpretation";
-
-// Phase 6 — Trajectory
-import TrajectoryScreen from "./pages/onboarding/TrajectoryScreen";
-
-// Phase 8 — Commitment
-import CommitmentScreen from "./pages/onboarding/CommitmentScreen";
-
-// Phase 9 — Day One
 
 
 const queryClient = new QueryClient();
