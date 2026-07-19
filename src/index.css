@@ -136,6 +136,7 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     overscroll-behavior: none;
+    min-height: 100%;
   }
   html, body {
     background: var(--bbdo-cream);
@@ -148,14 +149,21 @@
     overscroll-behavior: none;
     font-feature-settings: "ss01", "kern";
     line-height: 1.5;
+    min-height: 100%;
   }
+  html.bb-native { --bbdo-native-bottom-guard: 0px; --bbdo-native-top-guard: 0px; }
+  html.bb-native.bb-android { --bbdo-native-bottom-guard: 44px; --bbdo-native-top-guard: 8px; }
   html.bb-native,
   html.bb-native body,
   html.bb-native #root {
     -webkit-text-size-adjust: none;
     text-size-adjust: none;
     font-size: 16px;
+    height: var(--bbdo-viewport-height, 100dvh);
+    min-height: var(--bbdo-viewport-height, 100dvh);
   }
+  html.bb-native body,
+  html.bb-native #root { overflow: hidden; }
   ::selection { background: var(--bbdo-blue); color: #fff; }
   *:focus-visible { outline: 2px solid var(--bbdo-ink); outline-offset: 3px; border-radius: 4px; }
   h1, h2, h3, h4, h5, h6 {
@@ -441,8 +449,9 @@
   .phone-container {
     width: 100%;
     max-width: 430px;
-    height: 100dvh;
-    min-height: 100dvh;
+    height: var(--bbdo-viewport-height, 100dvh);
+    min-height: var(--bbdo-viewport-height, 100dvh);
+    max-height: var(--bbdo-viewport-height, 100dvh);
     margin: 0 auto;
     position: relative;
     overflow-x: hidden;
@@ -457,18 +466,34 @@
   /* Onboarding */
   .ob-screen { position: relative; background: var(--bbdo-cream); min-height: 100dvh; }
 
-  /* Onboarding screen container — scrolls when content exceeds viewport
-     (fixes Android devices where taller nav/status bars pushed the CTA
-     off-screen and left users unable to reach "Let's personalise this"). */
+  /* Onboarding screen container — keep the WebView body locked and make the
+     screen itself the scroller. This is critical on Android WebViews where
+     document/body scrolling can fail on devices with tall system bars. */
   .ob-lock,
   .ob-lock.phone-container {
-    min-height: 100dvh;
-    height: auto !important;
-    max-height: none !important;
+    height: var(--bbdo-viewport-height, 100dvh) !important;
+    min-height: var(--bbdo-viewport-height, 100dvh);
+    max-height: var(--bbdo-viewport-height, 100dvh) !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    scroll-padding-bottom: calc(2rem + env(safe-area-inset-bottom) + var(--bbdo-native-bottom-guard, 0px));
+  }
+  html.bb-native.bb-android .ob-lock { padding-bottom: var(--bbdo-native-bottom-guard); }
+  html.bb-native.bb-android .ob-lock > .flex-1 { padding-bottom: calc(env(safe-area-inset-bottom) + var(--bbdo-native-bottom-guard) + 1.5rem) !important; }
+  html.bb-native.bb-android .phone-container:has(.ob-cta) {
+    padding-bottom: var(--bbdo-native-bottom-guard) !important;
+    scroll-padding-bottom: calc(var(--bbdo-native-bottom-guard) + 2rem);
+  }
+  html.bb-native.bb-android .ob-bottom {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    padding-top: 0.75rem;
+    padding-bottom: calc(var(--bbdo-native-bottom-guard) + 1rem);
+    background: linear-gradient(180deg, rgba(255, 251, 244, 0) 0%, var(--bbdo-cream) 34%, var(--bbdo-cream) 100%);
   }
   .ob-bg { position: absolute; inset: 0; z-index: 0; opacity: 0.14; }
   .ob-bg img { width: 100%; height: 100%; object-fit: cover; }
@@ -476,9 +501,14 @@
     content: ""; position: absolute; inset: 0;
     background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.85) 55%, rgba(255,255,255,1) 100%);
   }
-  .ob-content { @apply relative z-10 flex flex-col; min-height: 100dvh; padding: calc(2rem + env(safe-area-inset-top)) 1.25rem calc(2rem + env(safe-area-inset-bottom)); }
+  .ob-content { @apply relative z-10 flex flex-col; min-height: 100%; padding: calc(2rem + env(safe-area-inset-top) + var(--bbdo-native-top-guard, 0px)) 1.25rem calc(2.5rem + env(safe-area-inset-bottom) + var(--bbdo-native-bottom-guard, 0px)); }
   @media (max-width: 380px) {
-    .ob-content { padding-top: calc(1.5rem + env(safe-area-inset-top)); padding-left: 1rem; padding-right: 1rem; padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
+    .ob-content { padding-top: calc(1.5rem + env(safe-area-inset-top) + var(--bbdo-native-top-guard, 0px)); padding-left: 1rem; padding-right: 1rem; padding-bottom: calc(2rem + env(safe-area-inset-bottom) + var(--bbdo-native-bottom-guard, 0px)); }
+  }
+  @media (max-height: 700px) {
+    .ob-content { padding-top: calc(1rem + env(safe-area-inset-top) + var(--bbdo-native-top-guard, 0px)); }
+    .ob-title { font-size: clamp(1.35rem, 5.4vw, 2rem); }
+    .ob-stack { gap: 0.5rem; }
   }
   .ob-kicker { font-size: 11px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--bbdo-ink-soft); }
   .ob-title { font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif; font-size: clamp(1.5rem, 6vw, 2.4rem); font-weight: 500; line-height: 1.06; letter-spacing: -0.035em; color: var(--bbdo-ink); }

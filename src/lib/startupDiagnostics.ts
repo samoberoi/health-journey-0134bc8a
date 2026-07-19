@@ -59,6 +59,21 @@ export function installStartupDiagnostics() {
   if (win.__bbStartupDiagnosticsInstalled) return;
   win.__bbStartupDiagnosticsInstalled = true;
 
+  const syncViewportHeight = () => {
+    try {
+      const viewportHeight = window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight;
+      document.documentElement.style.setProperty("--bbdo-viewport-height", `${Math.max(1, Math.floor(viewportHeight))}px`);
+    } catch {
+      /* viewport syncing must never block startup */
+    }
+  };
+
+  syncViewportHeight();
+  window.addEventListener("resize", syncViewportHeight, { passive: true });
+  window.addEventListener("orientationchange", syncViewportHeight, { passive: true });
+  window.visualViewport?.addEventListener("resize", syncViewportHeight, { passive: true });
+  window.visualViewport?.addEventListener("scroll", syncViewportHeight, { passive: true });
+
   try {
     const platform = Capacitor.getPlatform();
     document.documentElement.classList.add("bb-app", `bb-${platform}`);
