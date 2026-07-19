@@ -10,6 +10,7 @@ import PageTransition from "@/components/PageTransition";
 import AppErrorBoundary from "@/components/AppErrorBoundary";
 import BiometricGate from "@/components/BiometricGate";
 import { isNative } from "@/lib/biometric";
+import { isNativeVideoSuppressionActive } from "@/lib/nativeVideoSession";
 
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProfileSyncProvider } from "@/components/ProfileSyncProvider";
@@ -179,7 +180,9 @@ function SubscriptionGate({ children }: { children: ReactNode }) {
     };
   }, [loading, navigate, paidRoute, ready, session, location.pathname]);
 
-  if (paidRoute && (loading || !ready || checking || !session || allowedPath !== location.pathname)) {
+  const nativeVideoTransition = isNative() && isNativeVideoSuppressionActive() && !!session;
+
+  if (!nativeVideoTransition && paidRoute && (loading || !ready || checking || !session || allowedPath !== location.pathname)) {
     return (
       <div className="min-h-dvh w-full bg-background flex items-center justify-center text-foreground">
         <div className="h-6 w-6 rounded-full border-2 border-primary/25 border-t-primary animate-spin" />
@@ -259,7 +262,7 @@ function GlobalRealtimeAlerts() {
 function NativeAuthStartupGate({ children }: { children: ReactNode }) {
   const { loading, ready } = useAuth();
 
-  if (isNative() && (loading || !ready)) {
+  if (isNative() && !isNativeVideoSuppressionActive() && (loading || !ready)) {
     return (
       <div className="min-h-dvh w-full bg-background flex items-center justify-center text-foreground">
         <div className="h-6 w-6 rounded-full border-2 border-primary/25 border-t-primary animate-spin" />
