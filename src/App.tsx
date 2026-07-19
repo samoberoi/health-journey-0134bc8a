@@ -180,7 +180,7 @@ function SubscriptionGate({ children }: { children: ReactNode }) {
     };
   }, [loading, navigate, paidRoute, ready, session, location.pathname]);
 
-  const nativeVideoTransition = isNative() && isNativeVideoSuppressionActive();
+  const nativeVideoTransition = isNative() && isNativeVideoSuppressionActive() && (loading || !!session);
 
   if (!nativeVideoTransition && paidRoute && (loading || !ready || checking || !session || allowedPath !== location.pathname)) {
     return (
