@@ -346,7 +346,6 @@ final class BBDOYouTubePlayerViewController: UIViewController, WKNavigationDeleg
     private let start: Int
     private var webView: WKWebView?
     private var onClose: (() -> Void)?
-    private let openedAt = Date()
 
     init(videoId: String, title: String, start: Int, onClose: (() -> Void)? = nil) {
         self.videoId = videoId
@@ -479,6 +478,7 @@ public class BBDOYouTubePlayerPlugin: CAPPlugin, CAPBridgedPlugin {
                 call.reject("Player is unavailable", "playerUnavailable")
                 return
             }
+            let playerStart = Date()
             let player = BBDOYouTubePlayerViewController(videoId: videoId, title: title, start: start) {
                 call.resolve(["closed": true, "elapsedSec": max(1, Int(Date().timeIntervalSince(playerStart).rounded()))])
             }
