@@ -61,6 +61,7 @@ function WatchModal({
   const firedRef = useRef(false);
   const lastWatchedRef = useRef({ watched: 0, duration: 0, completed: false });
   const lastReportedSecRef = useRef(0);
+  const onProgressRef = useRef(onProgress);
   const videoId = extractYoutubeId(exercise.youtube_url);
   const [playerError, setPlayerError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
@@ -70,15 +71,19 @@ function WatchModal({
     ? youtubePlayerProxyUrl(videoId, { autoplay: !useAndroidSimpleEmbed, simple: useAndroidSimpleEmbed })
     : "";
 
+  useEffect(() => {
+    onProgressRef.current = onProgress;
+  }, [onProgress]);
+
   const reportDelta = useCallback(
     (watchedSec: number, durationSec: number, completed: boolean, flush = false) => {
       const safeWatched = Math.max(0, Math.floor(watchedSec || 0));
       const deltaSec = Math.max(0, safeWatched - lastReportedSecRef.current);
-      if (deltaSec > 0) onProgress(deltaSec, durationSec, completed, flush);
-      else if (flush) onProgress(0, durationSec, completed, true);
+      if (deltaSec > 0) onProgressRef.current(deltaSec, durationSec, completed, flush);
+      else if (flush) onProgressRef.current(0, durationSec, completed, true);
       lastReportedSecRef.current = Math.max(lastReportedSecRef.current, safeWatched);
     },
-    [onProgress],
+    [],
   );
 
   // Wall-clock fallback: iOS native player and Android simple embed do not
