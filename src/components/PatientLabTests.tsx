@@ -292,19 +292,19 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="relative rounded-3xl p-5 md:p-6 pt-8 text-white shadow-lift overflow-hidden"
+            className="relative rounded-3xl p-5 md:p-6 pt-6 text-white shadow-lift overflow-hidden"
             style={{ background: "var(--bbdo-gradient)" }}
           >
             <div className="absolute -right-12 -top-12 w-44 h-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-            <div className="absolute top-3 left-5 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide text-[var(--bbdo-red)] bg-white shadow">
-              RECOMMENDED · START HERE
-            </div>
-            <div className="relative flex items-start justify-between gap-4 mb-4">
-              <div className="min-w-0">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/80">Day-1 essential</p>
-                <h4 className="text-lg md:text-xl font-black leading-tight mt-1">Book your BBDO Basic lab test</h4>
+            <div className="relative flex items-start justify-between gap-3 flex-wrap mb-3">
+              <div className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black tracking-wide text-[var(--bbdo-red)] bg-white shadow">
+                RECOMMENDED · START HERE
               </div>
-              <ThyrocarePoweredBy variant="light" className="ml-auto" />
+              <ThyrocarePoweredBy variant="light" />
+            </div>
+            <div className="relative mb-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/80">Day-1 essential</p>
+              <h4 className="text-lg md:text-xl font-black leading-tight mt-1">Book your BBDO Basic lab test</h4>
             </div>
             <div className="relative flex flex-col md:flex-row md:items-center gap-4">
               <div className="flex items-center gap-3 min-w-0 flex-1">
