@@ -100,8 +100,11 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
     }
   };
 
-  const commitNativeSession = (flush = false) => {
-    const elapsed = Math.min(4 * 60 * 60, Math.max(0, (Date.now() - nativeSessionStartRef.current) / 1000));
+  const commitNativeSession = (flush = false, elapsedOverrideSec?: number) => {
+    const elapsed = Math.min(
+      4 * 60 * 60,
+      Math.max(0, elapsedOverrideSec ?? ((Date.now() - nativeSessionStartRef.current) / 1000)),
+    );
     const missing = Math.max(0, elapsed - nativeSessionCreditedRef.current);
     if (missing <= 0 && !flush) return;
     const duration = durationRef.current || Math.max(FALLBACK_SHORT_VIDEO_SEC, Math.ceil(elapsed));
@@ -200,8 +203,8 @@ export default function VideoPlayer({ video, onClose }: { video: VideoEntry; onC
     setRestarted((v) => !v);
   };
 
-  const handleNativeClose = () => {
-    commitNativeSession(true);
+  const handleNativeClose = (result?: { elapsedSec?: number }) => {
+    commitNativeSession(true, result?.elapsedSec);
     onClose();
   };
 
