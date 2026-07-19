@@ -169,13 +169,30 @@ export function loadProfileToLocal(profile: ProfileRow) {
   const compact = (obj: Record<string, any>) =>
     Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined && value !== null));
 
+  // If DOB is present, derive age from it so stale ages (e.g. legacy imports) never win
+  let derivedAge: number | undefined;
+  if (profile.birth_date) {
+    const d = new Date(profile.birth_date);
+    if (!isNaN(d.getTime())) {
+      const now = new Date();
+      if (d <= now) {
+        let a = now.getFullYear() - d.getFullYear();
+        const m = now.getMonth() - d.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < d.getDate())) a--;
+        derivedAge = Math.max(0, a);
+      } else {
+        derivedAge = 0;
+      }
+    }
+  }
+
   const payload: any = {
     profile: compact({
       phone: profile.phone,
       country: profile.country,
       country_code: profile.country_code,
       name: profile.name,
-      age: profile.age,
+      age: derivedAge ?? profile.age,
       gender: profile.gender,
       email: profile.email,
       goals: profile.goals,
