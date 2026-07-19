@@ -577,9 +577,16 @@ export default function EditProfile({ onBack }: EditProfileProps) {
       return;
     }
 
+    // If DOB is set, derive age from it to keep them consistent
+    const effectiveAge = birthDate
+      ? computeAgeFromDob(birthDate)
+      : age
+        ? parseInt(age)
+        : undefined;
+
     // Update localStorage with recomputed score
     saveUser({
-      profile: { name, age: age ? parseInt(age) : undefined, gender, email: trimmedEmail || undefined } as any,
+      profile: { name, age: effectiveAge, gender, email: trimmedEmail || undefined } as any,
       bodyMetrics: bodyMetrics as any,
       lifestyle: lifestyleData as any,
       clinical: clinicalData as any,
@@ -595,7 +602,7 @@ export default function EditProfile({ onBack }: EditProfileProps) {
     // Update backend after capturing previous score state
     const ok = await updateProfile(user.id, {
       name,
-      age: age ? parseInt(age) : null,
+      age: effectiveAge ?? null,
       gender: gender || null,
       phone: phone || null,
       country_code: countryCode || null,
