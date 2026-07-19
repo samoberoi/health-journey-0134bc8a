@@ -137,14 +137,14 @@ function MetricRing({
       {label === "Health" && typeof value === "number" ? (
         <HealthScoreRing
           score={value}
-          size={92}
-          thickness={7}
+          size={72}
+          thickness={6}
           showSubtitle={false}
-          scoreClassName="stat-number text-xl"
+          scoreClassName="stat-number text-lg"
           className="mx-auto shrink-0"
         />
       ) : (
-        <div className="relative mx-auto w-full aspect-square shrink-0" style={{ maxWidth: Math.min(size, 92) }}>
+        <div className="relative mx-auto w-full aspect-square shrink-0" style={{ maxWidth: 72 }}>
           <svg viewBox="0 0 92 92" className="h-full w-full -rotate-90 block">
             <circle cx={46} cy={46} r={ringRadius} fill="none" stroke="var(--bbdo-line)" strokeWidth={7} />
             <circle
