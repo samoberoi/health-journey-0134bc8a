@@ -1173,10 +1173,29 @@ export default function Profile({ onClose, isDark = true, onToggleTheme }: Profi
           <p className="text-muted-foreground text-sm leading-snug break-words">{planName ?? t("member")}</p>
           <p className={`text-xs font-bold mt-1 leading-snug break-words ${storedUser?.profile?.gender ? "text-foreground" : "text-destructive"}`}>Gender: {userGender}</p>
         </div>
-        <div className="max-w-full flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full">
-          <Flame className="w-4 h-4 text-primary" strokeWidth={1.6} />
-          <span className="min-w-0 text-primary text-sm font-semibold leading-tight break-words">{t("goodHealth")}</span>
-        </div>
+        {(() => {
+          const rc = String(userRiskCategory || "").toLowerCase();
+          let label = t("goodHealth");
+          let tone: "good" | "moderate" | "high" = "good";
+          if (rc.includes("high") || userScore < 50) {
+            tone = "high"; label = "High Risk";
+          } else if (rc.includes("moderate") || rc.includes("medium") || (userScore >= 50 && userScore < 65)) {
+            tone = "moderate"; label = "Moderate Risk";
+          } else if (userScore >= 80) {
+            label = "Excellent Health";
+          }
+          const styles = tone === "high"
+            ? "bg-destructive/10 text-destructive"
+            : tone === "moderate"
+            ? "bg-amber-500/10 text-amber-600"
+            : "bg-primary/10 text-primary";
+          return (
+            <div className={`max-w-full flex items-center gap-2 px-4 py-2 rounded-full ${styles}`}>
+              <Flame className="w-4 h-4" strokeWidth={1.6} />
+              <span className="min-w-0 text-sm font-semibold leading-tight break-words">{label}</span>
+            </div>
+          );
+        })()}
       </motion.div>
 
       <motion.div className={`liquid-glass rounded-2xl p-4 flex items-center justify-between gap-3 ${initialScore !== null && userScore < initialScore ? "border border-destructive/40 bg-destructive/5" : "bg-primary/20"}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
