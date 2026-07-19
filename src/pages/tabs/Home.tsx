@@ -47,6 +47,7 @@ import { createNotification } from "@/lib/notificationService";
 import { whatsappCallUrl, isMeetingCallable } from "@/lib/coachAvailability";
 import { Phone } from "lucide-react";
 import CoachSummaryDialog from "@/components/CoachSummaryDialog";
+import FoundationLabCard from "@/components/home/FoundationLabCard";
 
 function getHabitItems(t: (k: string) => string) {
   return [
@@ -1265,6 +1266,11 @@ export default function Home({ onProfileOpen, packageKey }: { onProfileOpen?: ()
 
       {/* Today's Yoga Class reminder */}
       <TodaysYogaClass />
+
+      {/* Foundation-tier: highlight baseline lab test / body-map tap-through */}
+      {packageKey === "foundation" && authUser?.id && (
+        <FoundationLabCard userId={authUser.id} />
+      )}
 
 
 

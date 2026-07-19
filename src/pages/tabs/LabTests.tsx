@@ -10,14 +10,14 @@ export default function LabTestsTab({ foundationMode = false }: { foundationMode
       >
         <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
         <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-white/80 break-words">
-          {foundationMode ? "Foundation Essentials" : "Your Reports"}
+          {foundationMode ? "Day-1 Essential" : "Your Reports"}
         </p>
         <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight mt-1 break-words leading-tight">
-          {foundationMode ? "Pick a panel. Book in one tap." : "Recommended tests & reports"}
+          {foundationMode ? "Get your baseline — BBDO Basic" : "Recommended tests & reports"}
         </h1>
         <p className="text-sm text-white/85 mt-1 max-w-xl break-words">
           {foundationMode
-            ? "Curated metabolic panels with home sample collection. View what's included, book online, and see your reports here."
+            ? "A lab test is critical to personalise your plan. We strongly recommend BBDO Basic to lock in your baseline. Once your report is in, your Health Profile & body map unlock on Home."
             : "Tests recommended by your coach plus all your past reports in one place."}
         </p>
       </div>

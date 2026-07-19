@@ -418,74 +418,120 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
     return { label: "Panel", tone: "bg-muted text-muted-foreground ring-1 ring-border" };
   };
 
+  const basicTest = foundationTests.find((t) => (t.product_name || "").toUpperCase().includes("BASIC"));
+  const otherTests = foundationTests.filter((t) => t !== basicTest);
+
+  const renderPriceRow = (t: Test) => {
+    const price = patientPriceFor(t.offer_rate ?? t.rate, t.markup_pct, markupPct) ?? 0;
+    const original = Number(t.rate || 0);
+    const showStrike = original > price && price > 0;
+    return { price, original, showStrike };
+  };
+
   const FoundationStrip = foundationMode && foundationTests.length > 0 ? (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 px-1">
-        <FlaskConical className="w-4 h-4 text-[var(--bbdo-red)]" />
-        <h3 className="text-sm font-black uppercase tracking-[0.12em]">Foundation Essentials</h3>
+    <div className="space-y-5">
+      <div className="flex items-start gap-2 px-1">
+        <FlaskConical className="w-4 h-4 text-[var(--bbdo-red)] mt-0.5 shrink-0" />
+        <div>
+          <h3 className="text-sm font-black uppercase tracking-[0.12em]">Day-1 Lab Test</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            A lab test is critical to personalise your plan. We strongly recommend <span className="font-bold text-foreground">BBDO Basic</span> to establish your baseline — you can always add the other panels later.
+          </p>
+        </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        {foundationTests.map((t, idx) => {
-          const price = patientPriceFor(t.offer_rate ?? t.rate, t.markup_pct, markupPct) ?? 0;
-          const original = Number(t.rate || 0);
-          const showStrike = original > price && price > 0;
-          const tier = tierBadge(t.product_name);
-          const count = t.parameters_count || (Array.isArray(t?.raw_data?.testsIncluded) ? t.raw_data.testsIncluded.length : 0);
-          const isPlus = (t.product_name || "").toUpperCase().includes("PLUS");
-          return (
-            <motion.div
-              key={t.product_code}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.22, delay: idx * 0.04, ease: [0.22, 1, 0.36, 1] }}
-              className={`relative rounded-2xl p-5 bg-card shadow-card flex flex-col gap-4 transition-all hover:-translate-y-px ${
-                isPlus ? "ring-2 ring-primary/30 shadow-lift" : "ring-1 ring-border"
-              }`}
-            >
-              {isPlus && (
-                <div className="absolute -top-2.5 left-5 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide text-white"
-                  style={{ background: "var(--bbdo-gradient)" }}>
-                  RECOMMENDED
+
+      {basicTest && (() => {
+        const { price, original, showStrike } = renderPriceRow(basicTest);
+        const count = basicTest.parameters_count || (Array.isArray(basicTest?.raw_data?.testsIncluded) ? basicTest.raw_data.testsIncluded.length : 0);
+        return (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="relative rounded-3xl p-5 md:p-6 text-white shadow-lift overflow-hidden"
+            style={{ background: "var(--bbdo-gradient)" }}
+          >
+            <div className="absolute -right-12 -top-12 w-44 h-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+            <div className="absolute -top-2.5 left-5 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide text-[var(--bbdo-red)] bg-white shadow">
+              RECOMMENDED · START HERE
+            </div>
+            <div className="relative flex flex-col md:flex-row md:items-center gap-4">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
+                  <FlaskConical className="w-6 h-6 text-white" />
                 </div>
-              )}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
-                    style={{ background: "var(--bbdo-gradient)" }}>
-                    <FlaskConical className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-black tracking-tight leading-tight break-words">{t.product_name}</p>
-                    <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${tier.tone}`}>{tier.label}</span>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/80">Your baseline</p>
+                  <h4 className="text-lg md:text-xl font-black leading-tight">{basicTest.product_name}</h4>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[11px] text-white/85">
+                    {count > 0 && <span className="inline-flex items-center gap-1"><Check className="w-3 h-3" /> {count} parameters</span>}
+                    <span className="inline-flex items-center gap-1"><Home className="w-3 h-3" /> Free home collection</span>
+                    <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" /> {basicTest.fasting_required ? "8–10 hr fasting" : "No fasting"}</span>
                   </div>
                 </div>
               </div>
-
-              <div className="flex items-baseline gap-2">
-                <p className="text-2xl font-black text-foreground">{price > 0 ? `₹${price.toLocaleString("en-IN")}` : "—"}</p>
-                {showStrike && (
-                  <p className="text-xs text-muted-foreground line-through">₹{original.toLocaleString("en-IN")}</p>
-                )}
+              <div className="flex flex-col items-start md:items-end gap-2 shrink-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl md:text-3xl font-black">{price > 0 ? `₹${price.toLocaleString("en-IN")}` : "—"}</span>
+                  {showStrike && <span className="text-xs text-white/70 line-through">₹{original.toLocaleString("en-IN")}</span>}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="secondary" size="sm" className="h-9 bg-white/15 text-white border-white/30 hover:bg-white/25" onClick={() => setDetailsTest(basicTest)}>
+                    <Eye className="w-3.5 h-3.5 mr-1" /> Details
+                  </Button>
+                  <Button size="sm" className="h-9 font-bold bg-white text-[var(--bbdo-red)] hover:bg-white/90" onClick={() => startFoundationBooking(basicTest)}>
+                    Book now
+                  </Button>
+                </div>
               </div>
+            </div>
+          </motion.div>
+        );
+      })()}
 
-              <ul className="space-y-1.5 text-xs text-muted-foreground">
-                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-600" /> {count > 0 ? `${count} parameters` : "Curated panel"}</li>
-                <li className="flex items-center gap-2"><Home className="w-3.5 h-3.5 text-primary" /> Free home sample collection</li>
-                <li className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-amber-600" /> {t.fasting_required ? "8–10 hr fasting required" : "No fasting required"}</li>
-              </ul>
-
-              <div className="mt-auto grid grid-cols-2 gap-2 pt-1">
-                <Button variant="outline" size="sm" className="h-9" onClick={() => setDetailsTest(t)}>
-                  <Eye className="w-3.5 h-3.5 mr-1" /> Details
-                </Button>
-                <Button size="sm" className="h-9 font-bold" onClick={() => startFoundationBooking(t)}>
-                  Buy now
-                </Button>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
+      {otherTests.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground px-1">
+            Also available (for later)
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {otherTests.map((t, idx) => {
+              const { price, original, showStrike } = renderPriceRow(t);
+              const count = t.parameters_count || (Array.isArray(t?.raw_data?.testsIncluded) ? t.raw_data.testsIncluded.length : 0);
+              return (
+                <motion.div
+                  key={t.product_code}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22, delay: idx * 0.04, ease: [0.22, 1, 0.36, 1] }}
+                  className="rounded-2xl p-4 bg-card/60 ring-1 ring-border flex flex-col gap-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-black tracking-tight leading-tight break-words">{t.product_name}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {count > 0 ? `${count} parameters` : "Curated panel"} · {t.fasting_required ? "fasting" : "no fasting"}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-base font-black tabular-nums">{price > 0 ? `₹${price.toLocaleString("en-IN")}` : "—"}</p>
+                      {showStrike && <p className="text-[10px] text-muted-foreground line-through">₹{original.toLocaleString("en-IN")}</p>}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setDetailsTest(t)}>
+                      <Eye className="w-3.5 h-3.5 mr-1" /> Details
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => startFoundationBooking(t)}>
+                      Book
+                    </Button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   ) : null;
 
