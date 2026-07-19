@@ -963,8 +963,30 @@ export default function EditProfile({ onBack }: EditProfileProps) {
             </div>
           </div>
           <Field label="Email" icon={Mail} value={email} onChange={setEmail} placeholder="you@example.com" type="email" />
-          <Field label="Date of Birth" icon={Calendar} value={birthDate} onChange={setBirthDate} placeholder="YYYY-MM-DD" type="date" />
-          <Field label="Age" icon={Calendar} value={age} onChange={setAge} placeholder="Age" type="number" />
+          <div className="grid grid-cols-2 gap-3 min-w-0">
+            <Field
+              label="Date of Birth"
+              icon={Calendar}
+              value={birthDate}
+              onChange={(v) => {
+                setBirthDate(v);
+                const derived = computeAgeFromDob(v);
+                if (derived != null) setAge(String(derived));
+              }}
+              placeholder="YYYY-MM-DD"
+              type="date"
+            />
+            <Field
+              label="Age"
+              icon={Calendar}
+              value={age}
+              onChange={setAge}
+              placeholder="Age"
+              type="number"
+              readOnly={!!birthDate}
+              hint={birthDate ? "Auto from DOB" : undefined}
+            />
+          </div>
 
           <div className="space-y-1.5">
             <Label className="text-muted-foreground text-xs leading-tight break-words">Gender</Label>
