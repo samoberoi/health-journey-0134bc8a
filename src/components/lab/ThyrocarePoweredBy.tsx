@@ -10,7 +10,7 @@ export default function ThyrocarePoweredBy({ variant = "light", className = "" }
     <div
       className={`inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 ring-1 ${
         isLight
-          ? "bg-white/95 text-slate-900 ring-white/70 shadow-sm"
+          ? "bg-background/95 text-foreground ring-white/70 shadow-sm"
           : "bg-card text-foreground ring-border shadow-sm"
       } ${className}`}
       aria-label="Powered by ThyroKare"
