@@ -93,6 +93,27 @@ export default function Dashboard() {
   const storedUser = useUserStore();
   const { counts: attentionCounts } = useAttentionCounts();
 
+  // Prefetch sibling tabs during idle time so switches feel instant.
+  useEffect(() => {
+    const idle = (cb: () => void) =>
+      (window as any).requestIdleCallback
+        ? (window as any).requestIdleCallback(cb, { timeout: 2500 })
+        : setTimeout(cb, 800);
+    idle(() => {
+      void import("./tabs/Exercise");
+      void import("./tabs/Videos");
+      void import("./tabs/Diet");
+      void import("./tabs/Community");
+      void import("./tabs/Movement");
+      void import("./tabs/Profile");
+      void import("./tabs/LabTests");
+      void import("./tabs/Consult");
+      void import("./tabs/Messages");
+    });
+  }, []);
+
+
+
   const userAvatar = storedUser?.avatarUrl || (user as any)?.user_metadata?.avatar_url;
   const userName =
     storedUser?.profile?.name ||
