@@ -227,7 +227,7 @@ export default function ExerciseTab({ packageKey }: Props) {
       if (youtube && durationSec > 0) saveDuration(youtube, durationSec);
       accumulateWatched(videoKey, roundedDelta, durationSec, youtube);
       if (completed) markCompleted(videoKey, Math.max(durationSec, roundedDelta), youtube);
-      setTodayMinutes((prev) => Math.round((prev + roundedDelta / 60) * 10) / 10);
+      setTodayMinutes((prev) => prev + roundedDelta / 60);
       window.setTimeout(() => void loadTodayMinutes(), 1800);
     },
     [user, loadTodayMinutes],
