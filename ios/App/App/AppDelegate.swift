@@ -438,6 +438,19 @@ final class BBDOYouTubePlayerViewController: UIViewController, WKNavigationDeleg
             callback?()
         }
     }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // Safety net: if the VC is being dismissed via any path other than
+        // our ✕ button (system gesture, parent dismiss, etc.), still resolve
+        // the JS promise so the React overlay unmounts.
+        webView?.stopLoading()
+        webView = nil
+        if let callback = onClose {
+            onClose = nil
+            DispatchQueue.main.async { callback() }
+        }
+    }
 }
 
 @objc(BBDOYouTubePlayerPlugin)

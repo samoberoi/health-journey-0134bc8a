@@ -43,29 +43,27 @@ export default function NativeYouTubePlayer({
     if (!videoId || launching) return;
     setLaunching(true);
     setFailed(false);
-    let completedNativeSession = false;
+    let didLaunch = false;
     try {
-      // Suppress biometric re-lock for a generous window; the fullscreen
-      // native player briefly resigns the WKWebView. We don't want Face ID
-      // to fire when the user closes the video.
       (window as any).__bbdoBiometricSuppressUntil = Date.now() + 45 * 60 * 1000;
-      // Announce open so JS parents can record start time for wall-clock credit.
       window.dispatchEvent(new CustomEvent("bbdo:native-player-open", { detail: { videoId } }));
       await BBDOYouTubePlayer.open({
         videoId,
         title,
         start: Math.max(0, Math.floor(start || 0)),
       });
-      completedNativeSession = true;
-      (window as any).__bbdoBiometricSuppressUntil = Date.now() + 45 * 60 * 1000;
-      window.dispatchEvent(new CustomEvent("bbdo:native-player-close", { detail: { videoId } }));
+      didLaunch = true;
       openedRef.current = true;
     } catch (error) {
       console.error("[native-youtube] iOS player failed", error);
       setFailed(true);
     } finally {
+      (window as any).__bbdoBiometricSuppressUntil = Date.now() + 45 * 60 * 1000;
+      window.dispatchEvent(new CustomEvent("bbdo:native-player-close", { detail: { videoId } }));
       setLaunching(false);
-      if (completedNativeSession) onNativeClose?.();
+      // Always notify parent so the React overlay unmounts even if the native
+      // VC dismissed via a non-standard path.
+      if (didLaunch) onNativeClose?.();
     }
   }, [launching, onNativeClose, start, title, videoId]);
 
