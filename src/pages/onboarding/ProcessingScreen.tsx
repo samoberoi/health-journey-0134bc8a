@@ -13,9 +13,10 @@ export default function ProcessingScreen() {
   const [msgIdx, setMsgIdx] = useState(0);
 
   useEffect(() => { setPhase("power"); setIntensity("high"); }, []);
-  useEffect(() => { const interval = setInterval(() => setProgress((p) => { if (p >= 100) { clearInterval(interval); return 100; } return p + 0.8; }), 30); return () => clearInterval(interval); }, []);
-  useEffect(() => { const interval = setInterval(() => setMsgIdx((i) => (i + 1) % messages.length), 900); return () => clearInterval(interval); }, []);
-  useEffect(() => { if (progress >= 100) { const timer = setTimeout(() => navigate("/setup/score"), 600); return () => clearTimeout(timer); } }, [progress, navigate]);
+  useEffect(() => { const interval = setInterval(() => setProgress((p) => { if (p >= 100) { clearInterval(interval); return 100; } return p + 2; }), 18); return () => clearInterval(interval); }, []);
+  useEffect(() => { const interval = setInterval(() => setMsgIdx((i) => (i + 1) % messages.length), 500); return () => clearInterval(interval); }, []);
+  useEffect(() => { if (progress >= 100) { const timer = setTimeout(() => navigate("/setup/score"), 200); return () => clearTimeout(timer); } }, [progress, navigate]);
+
 
   return (
     <div className="phone-container ob-lock min-h-dvh flex flex-col items-center justify-center relative overflow-x-hidden bg-background px-6">
