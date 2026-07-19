@@ -9,11 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { patientPriceFor, useLabTestMarkup } from "@/lib/labTestMarkup";
 import LabOrderDetails from "@/components/lab/LabOrderDetails";
 import ThyrocarePoweredBy from "@/components/lab/ThyrocarePoweredBy";
+import LabBookingDialog from "@/components/lab/LabBookingDialog";
 
 
 type Rec = {
