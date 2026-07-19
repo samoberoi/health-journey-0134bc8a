@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { FlaskConical, MapPin, Check, Home, Clock, Eye } from "lucide-react";
+import { FlaskConical, Check, Home, Clock, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,11 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { patientPriceFor, useLabTestMarkup } from "@/lib/labTestMarkup";
 import LabOrderDetails from "@/components/lab/LabOrderDetails";
 import ThyrocarePoweredBy from "@/components/lab/ThyrocarePoweredBy";
+import LabBookingDialog from "@/components/lab/LabBookingDialog";
 
 
 type Rec = {
@@ -79,16 +78,6 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [bookingRec, setBookingRec] = useState<Rec | null>(null);
-  const [form, setForm] = useState({
-    name: "", age: "", gender: "Male", mobile: "", email: "",
-    pincode: "", address: "", collection_date: "", collection_slot: "",
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [pinChecking, setPinChecking] = useState(false);
-  const [pinOk, setPinOk] = useState<boolean | null>(null);
-  const [slots, setSlots] = useState<{ start: string; end: string | null; available: boolean }[]>([]);
-  const [slotsLoading, setSlotsLoading] = useState(false);
-  const [slotsSource, setSlotsSource] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -196,39 +185,8 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
           for (const t of ((tt as any) || []) as Test[]) map[t.product_code] = t;
           setTestsByCode(map);
         }
-        if (prof.data) {
-          const p: any = prof.data;
-          let age = p.age ? String(p.age) : "";
-          if (!age && p.birth_date) {
-            const b = new Date(p.birth_date);
-            if (!isNaN(b.getTime())) {
-              const now = new Date();
-              let a = now.getFullYear() - b.getFullYear();
-              const m = now.getMonth() - b.getMonth();
-              if (m < 0 || (m === 0 && now.getDate() < b.getDate())) a--;
-              if (a > 0 && a < 130) age = String(a);
-            }
-          }
-          const g = (p.gender || "").toString().toLowerCase();
-          const gender = g.startsWith("f") ? "Female" : g.startsWith("m") ? "Male" : g ? "Other" : "Male";
-          const addressParts = [p.address_line1, p.address_line2, p.city, p.state].filter(Boolean);
-          const phone = (p.phone || "").replace(/^\+?91/, "").trim();
-          setForm((f) => ({
-            ...f,
-            name: p.name || "",
-            mobile: phone || p.phone || "",
-            email: user.email || "",
-            age,
-            gender,
-            pincode: p.pincode || "",
-            address: addressParts.join(", "),
-          }));
-          if (p.pincode && /^\d{6}$/.test(p.pincode)) {
-            void checkPin(p.pincode);
-          }
-        } else {
-          setForm((f) => ({ ...f, email: user.email || "" }));
-        }
+        // Profile prefill is handled inside LabBookingDialog.
+
       } catch (e) {
         console.error("[PatientLabTests] load failed", e);
         setLoadError(e instanceof Error ? e.message : "Couldn't load lab tests.");
@@ -267,115 +225,8 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
   }, [foundationMode]);
 
 
-  const checkPin = async (pincode: string) => {
-    if (!/^\d{6}$/.test(pincode)) { setPinOk(null); setPinChecking(false); return; }
-    setPinChecking(true);
-    setPinOk(null);
-    try {
-      const { data } = await supabase.functions.invoke("thyrocare-api", {
-        body: { action: "serviceability", pincode },
-      });
-      setPinOk(!!data?.ok);
-    } catch {
-      setPinOk(false);
-    } finally {
-      setPinChecking(false);
-    }
-  };
+  // Booking / pincode / slot / submit logic lives in LabBookingDialog.
 
-  const loadSlots = async (pincode: string, date: string) => {
-    if (!/^\d{6}$/.test(pincode) || !date) {
-      setSlots([]);
-      setSlotsSource(null);
-      return;
-    }
-    setSlotsLoading(true);
-    try {
-      const { data } = await supabase.functions.invoke("thyrocare-api", {
-        body: {
-          action: "available_slots",
-          pincode,
-          date,
-          name: form.name || "Patient",
-          age: Number(form.age) || 30,
-          gender: form.gender || "Male",
-          productCodes: bookingRec?.product_codes || [],
-        },
-      });
-
-      const list = (data?.slots || []) as { start: string; end: string | null; available: boolean }[];
-      setSlots(list);
-      setSlotsSource(data?.source || null);
-      // If currently chosen slot is no longer in the list, clear it
-      setForm((f) => {
-        if (!f.collection_slot) return f;
-        return list.some((s) => s.start === f.collection_slot && s.available)
-          ? f
-          : { ...f, collection_slot: "" };
-      });
-    } catch {
-      setSlots([]);
-      setSlotsSource(null);
-    } finally {
-      setSlotsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!bookingRec) return;
-    void loadSlots(form.pincode, form.collection_date);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.pincode, form.collection_date, bookingRec]);
-
-  const submitOrder = async () => {
-    if (!bookingRec) return;
-    if (!form.name || !form.mobile || !form.pincode) {
-      return toast.error("Name, mobile and pincode are required");
-    }
-    setSubmitting(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("thyrocare-api", {
-        body: {
-          action: "create_order",
-          recommendation_id: bookingRec.id || null,
-          beneficiary: { name: form.name, age: Number(form.age) || null, gender: form.gender },
-          mobile: form.mobile,
-          email: form.email,
-          pincode: form.pincode,
-          address: form.address,
-          collection_date: form.collection_date || null,
-          collection_slot: form.collection_slot || null,
-          productCodes: bookingRec.product_codes,
-        },
-      });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.error || data?.thyrocare?.message || "Booking failed");
-      const orderId = data?.order?.thyrocare_order_id || data?.thyrocare?.orderId || data?.thyrocare?.data?.orderId;
-      toast.success(orderId ? `Booked! Order ID: ${orderId}` : "Order placed! You'll get updates here.");
-      setBookingRec(null);
-      const [{ data: r }, { data: o }] = await Promise.all([
-        supabase.from("thyrocare_recommendations" as any)
-          .select("id, product_codes, notes, status, recommended_at")
-          .eq("user_id", user!.id).order("recommended_at", { ascending: false }),
-        supabase.from("thyrocare_orders" as any)
-          .select("id, recommendation_id, product_codes, thyrocare_order_id, thyrocare_lead_id, status, status_detail, beneficiary_name, beneficiary_age, beneficiary_gender, mobile, email, pincode, address, collection_date, collection_slot, amount, raw_response, created_at")
-
-          .eq("user_id", user!.id).order("created_at", { ascending: false }),
-      ]);
-      setRecs(((r as any) || []) as Rec[]);
-      setOrders(((o as any) || []) as Order[]);
-      const orderMap: Record<string, Order> = {};
-      for (const ox of (((o as any) || []) as Order[])) {
-        if (ox.recommendation_id && !orderMap[ox.recommendation_id]) orderMap[ox.recommendation_id] = ox;
-      }
-      setOrdersByRec(orderMap);
-
-    } catch (e: any) {
-      toast.error(e.message || "Booking failed");
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   if (loading) return <div className="p-4 text-muted-foreground text-sm">Loading…</div>;
 
@@ -441,11 +292,11 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="relative rounded-3xl p-5 md:p-6 text-white shadow-lift overflow-hidden"
+            className="relative rounded-3xl p-5 md:p-6 pt-8 text-white shadow-lift overflow-hidden"
             style={{ background: "var(--bbdo-gradient)" }}
           >
             <div className="absolute -right-12 -top-12 w-44 h-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-            <div className="absolute -top-2.5 left-5 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide text-[var(--bbdo-red)] bg-white shadow">
+            <div className="absolute top-3 left-5 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide text-[var(--bbdo-red)] bg-white shadow">
               RECOMMENDED · START HERE
             </div>
             <div className="relative flex items-start justify-between gap-4 mb-4">
@@ -643,110 +494,31 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
       })}
 
 
-      <Dialog open={!!bookingRec} onOpenChange={(o) => !o && setBookingRec(null)}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Book Lab Test</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>Patient Name</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label>Age</Label>
-                <Input type="number" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
-              </div>
-              <div>
-                <Label>Gender</Label>
-                <select className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                  value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
-                  <option>Male</option><option>Female</option><option>Other</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <Label>Mobile</Label>
-              <Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} />
-            </div>
-            <div>
-              <Label>Email (optional)</Label>
-              <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            </div>
-            <div>
-              <Label className="flex items-center gap-1"><MapPin className="w-3 h-3" /> Pincode</Label>
-              <Input value={form.pincode} inputMode="numeric" maxLength={6} onChange={(e) => {
-                const v = e.target.value.replace(/\D/g, "").slice(0, 6);
-                setForm({ ...form, pincode: v });
-                if (v.length === 6) checkPin(v); else setPinOk(null);
-              }} />
-              {pinChecking && <p className="text-xs text-muted-foreground mt-1">Checking serviceability…</p>}
-              {pinOk === true && <p className="text-xs text-primary mt-1">✓ Sample collection available</p>}
-              {pinOk === false && <p className="text-xs text-destructive mt-1">Not serviceable in this pincode</p>}
-            </div>
-            <div>
-              <Label>Address</Label>
-              <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-            </div>
-            <div>
-              <Label>Collection Date</Label>
-              <Input
-                type="date"
-                min={new Date().toISOString().slice(0, 10)}
-                value={form.collection_date}
-                onChange={(e) => setForm({ ...form, collection_date: e.target.value })}
-              />
-            </div>
-            <div>
-              <div className="flex items-center justify-between">
-                <Label>Available slots</Label>
-                {slotsSource === "fallback" && (
-                  <span className="text-[10px] text-muted-foreground">Standard times</span>
-                )}
-              </div>
-              {!form.pincode || !form.collection_date ? (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Enter pincode and pick a date to see available slots.
-                </p>
-              ) : slotsLoading ? (
-                <p className="text-xs text-muted-foreground mt-1">Loading slots…</p>
-              ) : slots.length === 0 ? (
-                <p className="text-xs text-destructive mt-1">No slots available for this date.</p>
-              ) : (
-                <div className="mt-2 flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-                  {slots.map((s) => {
-                    const selected = form.collection_slot === s.start;
-                    const disabled = !s.available;
-                    return (
-                      <button
-                        key={s.start}
-                        type="button"
-                        disabled={disabled}
-                        onClick={() => setForm({ ...form, collection_slot: s.start })}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                          selected
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : disabled
-                              ? "bg-muted text-muted-foreground/50 border-border line-through cursor-not-allowed"
-                              : "bg-background text-foreground border-border hover:bg-accent"
-                        }`}
-                      >
-                        {s.start}
-                        {s.end ? `–${s.end}` : ""}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBookingRec(null)}>Cancel</Button>
-            <Button onClick={submitOrder} disabled={submitting || pinOk === false || !form.collection_slot}>
-              {submitting ? "Booking…" : "Confirm Booking"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <LabBookingDialog
+        open={!!bookingRec}
+        onClose={() => setBookingRec(null)}
+        productCodes={bookingRec?.product_codes || []}
+        recommendationId={bookingRec?.id || null}
+        onBooked={async () => {
+          if (!user) return;
+          const [{ data: r }, { data: o }] = await Promise.all([
+            supabase.from("thyrocare_recommendations" as any)
+              .select("id, product_codes, notes, status, recommended_at")
+              .eq("user_id", user.id).order("recommended_at", { ascending: false }),
+            supabase.from("thyrocare_orders" as any)
+              .select("id, recommendation_id, product_codes, thyrocare_order_id, thyrocare_lead_id, status, status_detail, beneficiary_name, beneficiary_age, beneficiary_gender, mobile, email, pincode, address, collection_date, collection_slot, amount, raw_response, created_at")
+              .eq("user_id", user.id).order("created_at", { ascending: false }),
+          ]);
+          setRecs(((r as any) || []) as Rec[]);
+          setOrders(((o as any) || []) as Order[]);
+          const orderMap: Record<string, Order> = {};
+          for (const ox of (((o as any) || []) as Order[])) {
+            if (ox.recommendation_id && !orderMap[ox.recommendation_id]) orderMap[ox.recommendation_id] = ox;
+          }
+          setOrdersByRec(orderMap);
+        }}
+      />
+
 
       <Dialog open={!!detailsTest} onOpenChange={(o) => !o && setDetailsTest(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">

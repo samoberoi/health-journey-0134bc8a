@@ -4,6 +4,7 @@ import { FlaskConical, ChevronRight, X, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import LabHistorySection from "@/components/lab/LabHistorySection";
 import ThyrocarePoweredBy from "@/components/lab/ThyrocarePoweredBy";
+import LabBookingDialog from "@/components/lab/LabBookingDialog";
 
 interface Props {
   userId: string;
@@ -19,6 +20,8 @@ interface Props {
 export default function FoundationLabCard({ userId }: Props) {
   const [hasResults, setHasResults] = useState<boolean | null>(null);
   const [open, setOpen] = useState(false);
+  const [basicCode, setBasicCode] = useState<string | null>(null);
+  const [booking, setBooking] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -33,11 +36,28 @@ export default function FoundationLabCard({ userId }: Props) {
     return () => { cancelled = true; };
   }, [userId]);
 
-  const goToLabs = () => {
-    window.dispatchEvent(new CustomEvent("nav:set-tab", { detail: "labs" }));
+  // Resolve the BBDO Basic product_code so we can open the booking dialog on Home.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("thyrocare_tests" as any)
+        .select("product_code, product_name")
+        .eq("is_active", true);
+      const list = ((data as any) || []) as { product_code: string; product_name: string }[];
+      const basic = list.find((t) => (t.product_name || "").toUpperCase().includes("BASIC"));
+      if (!cancelled && basic) setBasicCode(basic.product_code);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const openBooking = () => {
+    if (!basicCode) return;
+    setBooking(true);
   };
 
   if (hasResults === null) return null;
+
 
   return (
     <>
@@ -99,8 +119,9 @@ export default function FoundationLabCard({ userId }: Props) {
               </p>
               <button
                 type="button"
-                onClick={goToLabs}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold text-white active:scale-[0.98] transition-transform"
+                onClick={openBooking}
+                disabled={!basicCode}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold text-white active:scale-[0.98] transition-transform disabled:opacity-60"
                 style={{ background: "var(--bbdo-red)" }}
               >
                 Book lab test <ChevronRight className="w-3.5 h-3.5" />
@@ -139,6 +160,14 @@ export default function FoundationLabCard({ userId }: Props) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <LabBookingDialog
+        open={booking}
+        onClose={() => setBooking(false)}
+        productCodes={basicCode ? [basicCode] : []}
+        onBooked={() => setHasResults((v) => v)}
+      />
     </>
   );
 }
+
