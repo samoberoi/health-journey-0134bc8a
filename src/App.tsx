@@ -274,7 +274,9 @@ function AnimatedRoutes() {
   }, [location.pathname]);
   return (
     <AnimatePresence mode="wait" initial={false}>
+      <Suspense fallback={<RouteFallback />}>
       <Routes location={location} key={location.pathname}>
+
 
         {/* Phase 0 — Entry */}
         <Route path="/" element={<PageTransition><Splash /></PageTransition>} />
