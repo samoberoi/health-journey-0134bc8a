@@ -24,8 +24,8 @@ const Field = ({ label, icon: Icon, value, onChange, placeholder, type = "text" 
   label: string; icon: React.ElementType; value: string;
   onChange: (v: string) => void; placeholder: string; type?: string;
 }) => (
-  <div className="min-w-0 space-y-1.5">
-    <Label className="text-muted-foreground text-xs flex items-start gap-1.5 leading-tight break-words">
+  <div className="min-w-0 space-y-1">
+    <Label className="text-muted-foreground text-[11px] font-medium flex items-center gap-1.5 leading-tight">
       <Icon className="w-3.5 h-3.5 shrink-0" strokeWidth={1.8} />
       {label}
     </Label>
@@ -34,7 +34,7 @@ const Field = ({ label, icon: Icon, value, onChange, placeholder, type = "text" 
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="bg-accent/50 border-border/50 text-foreground rounded-xl h-11 min-w-0"
+      className="bg-white border border-border/70 text-foreground text-sm rounded-lg h-10 px-3 py-2 min-w-0 w-full max-w-full box-border shadow-none"
     />
   </div>
 );
