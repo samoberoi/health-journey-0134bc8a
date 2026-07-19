@@ -37,7 +37,7 @@ function formatCurrentDateTime(): string {
   });
 }
 
-export default function LogFAB({ packageKey }: { packageKey?: string | null }) {
+export default function LogFAB({}: { packageKey?: string | null }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const storedUser = useUserStore();
