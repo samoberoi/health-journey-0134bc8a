@@ -219,17 +219,10 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
       ]);
       const itemsData = ((i.data as FoodItem[]) || []);
       const rawFilters = ((f.data as FoodFilter[]) || []);
-      // Compute a "healthiness" score per filter from its items' recommendation.
-      // Encouraged categories bubble to the top; avoid-heavy ones (staples, sweets) sink.
-      const scoreOf = (fid: string) => {
-        const its = itemsData.filter((it) => it.filter_id === fid);
-        if (!its.length) return -1;
-        return its.reduce((sum, it) => sum + (REC_SCORE[it.recommendation] ?? 0), 0) / its.length;
-      };
       const fSorted = rawFilters.slice().sort((a, b) => {
-        const sa = scoreOf(a.id);
-        const sb = scoreOf(b.id);
-        if (sa !== sb) return sb - sa; // higher score first
+        if ((a.display_order ?? 0) !== (b.display_order ?? 0)) {
+          return (a.display_order ?? 0) - (b.display_order ?? 0);
+        }
         const ax = a.order_number ?? parseInt((a.number_label || "F99").replace(/[^\d]/g, "")) ?? 99;
         const bx = b.order_number ?? parseInt((b.number_label || "F99").replace(/[^\d]/g, "")) ?? 99;
         return ax - bx;
