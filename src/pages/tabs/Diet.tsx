@@ -54,13 +54,22 @@ export default function Diet() {
   if (mode === "plate") return <BuildMyPlate onClose={() => setMode("hub")} />;
   if (mode === "saved") return <SavedPlates onClose={() => setMode("hub")} />;
 
+  // Don't render either variant of the hub until the subscription is resolved —
+  // otherwise Package 1 users briefly see the paid "Eat smart. Reverse the spike."
+  // hub before it swaps to the embedded Quick Food Reference.
+  if (!subLoaded) {
+    return (
+      <div className="theme-diet px-5 pt-2 pb-28 max-w-3xl mx-auto min-h-[60vh]" aria-hidden />
+    );
+  }
+
   const isPaid = planId === "active" || planId === "intensive" || planId === "pro";
   // Package 2 (active) = user builds their own plates. Package 3 (intensive/pro) = pre-built 30-day plates.
   const isPrebuiltPlan = planId === "intensive" || planId === "pro";
   const isBuildYourOwnPlan = planId === "active";
   const awaitingCoach = isPrebuiltPlan && hasCompletedMeeting === false;
   // Package 1 (free / basic) has nothing else to see — auto-load the food reference directly.
-  const isPackageOne = subLoaded && planId !== "active" && planId !== "intensive" && planId !== "pro";
+  const isPackageOne = planId !== "active" && planId !== "intensive" && planId !== "pro";
 
   if (isPackageOne) {
     return (
@@ -69,6 +78,7 @@ export default function Diet() {
       </div>
     );
   }
+
 
   return (
     <div className="theme-diet px-5 pt-2 pb-28 max-w-3xl mx-auto">
