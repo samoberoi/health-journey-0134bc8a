@@ -317,7 +317,11 @@ export default function EditProfile({ onBack }: EditProfileProps) {
       if (profile.weight) setWeight(profile.weight.toString());
       if (profile.waist) setWaist(profile.waist.toString());
       if (profile.created_at) setMemberSince(profile.created_at);
-      if (profile.birth_date) setBirthDate(profile.birth_date);
+      if (profile.birth_date) {
+        setBirthDate(profile.birth_date);
+        const derived = computeAgeFromDob(profile.birth_date);
+        if (derived != null) setAge(String(derived));
+      }
       if (profile.marital_status) setMaritalStatus(profile.marital_status);
       if (profile.anniversary_date) setAnniversaryDate(profile.anniversary_date);
       if (profile.spouse_name) setSpouseName(profile.spouse_name);
