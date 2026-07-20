@@ -3605,6 +3605,7 @@ export type Database = {
           is_active: boolean
           name: string
           updated_at: string
+          veg_type: string
         }
         Insert: {
           category?: string
@@ -3617,6 +3618,7 @@ export type Database = {
           is_active?: boolean
           name: string
           updated_at?: string
+          veg_type?: string
         }
         Update: {
           category?: string
@@ -3629,6 +3631,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           updated_at?: string
+          veg_type?: string
         }
         Relationships: []
       }
