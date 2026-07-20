@@ -650,7 +650,18 @@ function FoundationSupplementBrowser({
                     <TimingIcon timing={s.default_timing} className="w-3 h-3" /> {s.default_timing}
                   </span>
                 )}
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary/10 text-secondary inline-flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> {kitMap.get(s.id) ?? 8} weeks
+                </span>
+                {(s.veg_type ?? "both") !== "both" && (
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                    s.veg_type === "veg" ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"
+                  }`}>
+                    {s.veg_type === "veg" ? <><Leaf className="w-3 h-3" /> Veg</> : <><Drumstick className="w-3 h-3" /> Non-veg</>}
+                  </span>
+                )}
               </div>
+
               <button
                 onClick={() => (added ? handleRemove(s) : handleAdd(s))}
                 disabled={isAdding || isRemoving}
