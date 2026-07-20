@@ -1,0 +1,1 @@
+DELETE FROM public.device_push_tokens WHERE platform = 'android';
