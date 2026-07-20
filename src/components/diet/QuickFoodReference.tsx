@@ -672,7 +672,7 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
       {/* Body */}
       <div className={embedded ? "flex-1 pb-6" : "flex-1 overflow-y-auto pb-24"}>
         <div className={embedded ? "max-w-3xl mx-auto px-1 py-3" : "max-w-3xl mx-auto px-4 py-4"}>
-          {activeConditions.length > 0 && (
+          {!loading && activeConditions.length > 0 && (
             <div className="mb-3 rounded-2xl border border-[var(--bbdo-blue)]/25 bg-gradient-to-br from-[var(--bbdo-blue)]/[0.06] to-white p-3">
               {/* Header row */}
               <div className="flex items-start gap-2.5">
@@ -740,7 +740,7 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
           )}
 
           {/* Per-condition food breakdown, filtered by the chips + action toggles above. */}
-          {conditionBreakdown.length > 0 && (
+          {!loading && conditionBreakdown.length > 0 && (
             <div className="mb-4 space-y-3">
               {conditionBreakdown.map(({ condition, avoid, limit, encourage }) => {
                 if (!avoid.length && !limit.length && !encourage.length) return null;
@@ -758,8 +758,10 @@ export default function QuickFoodReference({ onClose, embedded = false }: { onCl
             </div>
           )}
 
-          {/* Section heading */}
-          {!isGlobalSort && activeFilterObj ? (
+          {/* Section heading — suppressed during initial load so users don't
+              see a stale "0 foods · encouraged + moderate" placeholder before
+              the real data arrives. */}
+          {loading ? null : !isGlobalSort && activeFilterObj ? (
             <motion.div
               key={activeFilterObj.id}
               initial={{ opacity: 0, y: 6 }}
