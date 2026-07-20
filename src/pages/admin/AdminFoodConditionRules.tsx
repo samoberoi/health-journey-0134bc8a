@@ -143,6 +143,7 @@ export default function AdminFoodConditionRules() {
   const openNew = () => {
     setEditing(null);
     setForm(emptyRuleForm(activeConditions[0]?.key || "hypothyroid"));
+    setSelectedFoods([]);
     setDialogOpen(true);
   };
   const openEdit = (r: Rule) => {
@@ -152,31 +153,34 @@ export default function AdminFoodConditionRules() {
       name_pattern: r.name_pattern, filter_id: r.filter_id,
       reason: r.reason, priority: r.priority, is_active: r.is_active,
     });
+    setSelectedFoods([]);
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
-    if (!form.name_pattern.trim()) { toast.error("Food name pattern is required"); return; }
     if (!form.reason.trim()) { toast.error("Reason is required"); return; }
-    const payload = {
+    const basePayload = {
       condition_key: form.condition_key,
       action: form.action,
-      name_pattern: form.name_pattern.trim().toLowerCase(),
       filter_id: form.filter_id || null,
       reason: form.reason.trim(),
       priority: Number(form.priority) || 100,
       is_active: form.is_active,
     };
     if (editing) {
+      if (!form.name_pattern.trim()) { toast.error("Food is required"); return; }
+      const payload = { ...basePayload, name_pattern: form.name_pattern.trim().toLowerCase() };
       const { error } = await supabase.from("food_condition_rules").update(payload).eq("id", editing.id);
       if (error) { toast.error(error.message); return; }
       logAudit({ module: "Diet", action: "update", target_type: "rule", target_id: editing.id, target_label: `${payload.condition_key}: ${payload.name_pattern}` });
       toast.success("Rule updated");
     } else {
-      const { error } = await supabase.from("food_condition_rules").insert(payload);
+      if (selectedFoods.length === 0) { toast.error("Pick at least one food"); return; }
+      const rows = selectedFoods.map((n) => ({ ...basePayload, name_pattern: n.trim().toLowerCase() }));
+      const { error } = await supabase.from("food_condition_rules").insert(rows);
       if (error) { toast.error(error.message); return; }
-      logAudit({ module: "Diet", action: "create", target_type: "rule", target_label: `${payload.condition_key}: ${payload.name_pattern}` });
-      toast.success("Rule created");
+      logAudit({ module: "Diet", action: "create", target_type: "rule", target_label: `${basePayload.condition_key}: ${rows.length} foods` });
+      toast.success(`Created ${rows.length} rule${rows.length === 1 ? "" : "s"}`);
     }
     setDialogOpen(false);
     load();
