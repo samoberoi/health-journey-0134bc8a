@@ -604,7 +604,7 @@ export default function EditProfile({ onBack }: EditProfileProps) {
       name,
       age: effectiveAge ?? null,
       gender: gender || null,
-      phone: phone || null,
+      // phone is the unique login identifier — never overwrite from this screen
       country_code: countryCode || null,
       country: country || null,
       email: trimmedEmail || null,
@@ -947,27 +947,24 @@ export default function EditProfile({ onBack }: EditProfileProps) {
               Phone
             </Label>
             <div className="flex gap-2 min-w-0">
-              <Select value={countryCode} onValueChange={setCountryCode}>
-                <SelectTrigger className="bg-white border border-border/70 text-foreground text-sm rounded-lg h-10 w-24 shrink-0 shadow-none">
-                  <SelectValue placeholder="+91" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  {COUNTRY_DIAL_CODES.map((c) => (
-                    <SelectItem key={c.code + c.name} value={c.code} className="text-xs">
-                      {c.code} {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="bg-muted/40 border border-border/70 text-muted-foreground text-sm rounded-lg h-10 w-24 shrink-0 flex items-center justify-center">
+                {countryCode || "+91"}
+              </div>
               <Input
                 type="tel"
                 inputMode="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ""))}
+                readOnly
+                disabled
+                aria-readonly="true"
+                title="Phone number is your login ID and can't be changed"
                 placeholder="Phone number"
-                className="flex-1 min-w-0 bg-white border border-border/70 text-foreground text-sm rounded-lg h-10 px-3 py-2 shadow-none"
+                className="flex-1 min-w-0 bg-muted/40 border border-border/70 text-muted-foreground text-sm rounded-lg h-10 px-3 py-2 shadow-none cursor-not-allowed"
               />
             </div>
+            <p className="text-[10px] text-muted-foreground/80 leading-tight">
+              Phone number is your login ID and can't be changed.
+            </p>
           </div>
           <Field label="Email" icon={Mail} value={email} onChange={setEmail} placeholder="you@example.com" type="email" />
           <div className="grid grid-cols-2 gap-3 min-w-0">
