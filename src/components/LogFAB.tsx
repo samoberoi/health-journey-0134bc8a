@@ -47,7 +47,7 @@ export default function LogFAB(_props: { packageKey?: string | null }) {
   const exerciseBadgeValue = `${Math.min(exerciseMinutesToday, EXERCISE_GOAL).toLocaleString("en-IN", { maximumFractionDigits: 1 })}/${EXERCISE_GOAL}`;
   const visibleActions = actions.filter((a) => {
     if (a.id === "diabetes") return hasDiabetesFlag;
-    if (a.id === "bp") return hasHypertensionFlag;
+    // Blood pressure is always shown per clinical guidance — everyone should be able to log BP.
     return true;
   });
   const [open, setOpen] = useState(false);
