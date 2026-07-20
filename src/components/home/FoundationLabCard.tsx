@@ -160,6 +160,41 @@ export default function FoundationLabCard({ userId }: Props) {
             <ChevronRight className="w-3 h-3" />
           </div>
         </motion.button>
+      ) : hasCompletedOrder ? (
+        <motion.button
+          type="button"
+          onClick={() => setOpen(true)}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full text-left rounded-2xl p-4 text-white shadow-card relative overflow-hidden active:scale-[0.99] transition-transform"
+          style={{ background: "var(--bbdo-gradient)" }}
+        >
+          <div className="absolute -right-16 -top-16 w-52 h-52 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+          <div className="relative flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/80">
+                Your health profile
+              </p>
+              <h3 className="text-sm font-black leading-tight mt-0.5">
+                Your BBDO Basic test is done
+              </h3>
+              {reportDate && (
+                <p className="text-[10px] text-white/75 mt-0.5">
+                  Collected {new Date(reportDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                </p>
+              )}
+              <p className="text-[11px] text-white/85 mt-2 leading-snug">
+                Your report is syncing. Health markers will unlock automatically once the lab publishes the PDF.
+              </p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/90 shrink-0 mt-1" />
+          </div>
+          <div className="relative mt-3 flex items-center gap-1.5 text-[11px] font-bold text-white/95">
+            View booking & report status
+            <ChevronRight className="w-3 h-3" />
+          </div>
+        </motion.button>
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
@@ -196,6 +231,7 @@ export default function FoundationLabCard({ userId }: Props) {
           </button>
         </motion.div>
       )}
+
 
       <AnimatePresence>
         {open && (
