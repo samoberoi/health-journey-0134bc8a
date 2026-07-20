@@ -555,11 +555,12 @@ function FoundationSupplementBrowser({
         style={{ background: "var(--bbdo-gradient)" }}
       >
         <div className="absolute -right-12 -top-12 w-44 h-44 rounded-full bg-white/10 blur-2xl" />
-        <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-white/80">Foundation Library</p>
-        <h2 className="text-2xl font-black tracking-tight mt-1">Build your supplements & boosters stack</h2>
+        <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-white/80">Foundational Kit</p>
+        <h2 className="text-2xl font-black tracking-tight mt-1">Your Foundation Care supplements</h2>
         <p className="text-sm text-white/85 mt-1 max-w-xl">
-          Browse by category and timing. Tap <span className="font-black">Add</span> to put it on your daily list — we'll
-          remind you under Today's Habits when to take each one.
+          {dietLabel
+            ? <>Being <span className="font-black">{dietLabel}</span>, these are the supplements we recommend. Tap <span className="font-black">Add</span> to start taking them for the recommended weeks.</>
+            : <>Tap <span className="font-black">Add</span> to start taking a supplement for the recommended weeks.</>}
         </p>
       </div>
 
@@ -574,16 +575,22 @@ function FoundationSupplementBrowser({
         />
       </div>
 
-      {/* Category filters */}
+      {/* Veg / Non-veg filter */}
       <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-        {CATEGORY_FILTERS.map((c) => {
+        {[
+          { id: "auto" as const, label: dietLabel ? `For ${dietLabel}` : "Recommended", Icon: Sparkles },
+          { id: "veg" as const, label: "Vegetarian", Icon: Leaf },
+          { id: "non_veg" as const, label: "Non-vegetarian", Icon: Drumstick },
+          { id: "all" as const, label: "Show all", Icon: Pill },
+        ].map((c) => {
           const Icon = c.Icon;
+          const active = vegFilter === c.id;
           return (
             <button
               key={c.id}
-              onClick={() => setCategory(c.id)}
+              onClick={() => setVegFilter(c.id)}
               className={`no-pill shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${
-                category === c.id
+                active
                   ? "bg-primary/10 text-primary ring-1 ring-primary/30"
                   : "bg-muted/40 text-muted-foreground hover:bg-accent"
               }`}
@@ -594,24 +601,6 @@ function FoundationSupplementBrowser({
         })}
       </div>
 
-      {/* Timing filters */}
-      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-        {TIMING_FILTERS.map((t) => {
-          const Icon = t.Icon;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTiming(t.id)}
-              className={`no-pill shrink-0 px-3 py-2 rounded-xl text-[11px] font-semibold inline-flex items-center gap-1.5 ${
-                timing === t.id ? "bg-foreground text-background" : "bg-muted/40 text-muted-foreground hover:bg-accent"
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" strokeWidth={1.75} />
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
 
       {/* Results */}
       {(() => {
