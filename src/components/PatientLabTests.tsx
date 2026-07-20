@@ -441,7 +441,12 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
     </div>
   ) : null;
 
+  const orphanOrders = foundationMode
+    ? orphanOrdersAll.filter((o) => !(basicTest && (o.product_codes || []).includes(basicTest.product_code)))
+    : orphanOrdersAll;
+
   if (recs.length === 0 && reports.length === 0 && orphanOrders.length === 0 && !foundationMode) {
+
     if (!alwaysShow) return null;
     return (
       <div className="liquid-glass rounded-2xl p-6 text-center space-y-2">
