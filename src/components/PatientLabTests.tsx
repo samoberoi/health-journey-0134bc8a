@@ -273,12 +273,20 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
   const basicTest = foundationTests.find((t) => (t.product_name || "").toUpperCase().includes("BASIC"));
   const otherTests = foundationTests.filter((t) => t !== basicTest);
 
+  const doneStatuses = new Set(["done", "completed", "report_ready", "reports_ready", "partially_ready", "ready", "in_lab", "processing", "sample_collected", "sample_received"]);
+  const basicOrder = basicTest
+    ? orders.find((o) => (o.product_codes || []).includes(basicTest.product_code) && doneStatuses.has((o.status || "").toLowerCase()))
+    : undefined;
+  const basicReports = basicOrder ? reports.filter((r: any) => r.order_id === basicOrder.id) : [];
+  const basicReportReady = basicReports.some((r: any) => !!r.report_url);
+
   const renderPriceRow = (t: Test) => {
     const price = patientPriceFor(t.offer_rate ?? t.rate, t.markup_pct, markupPct) ?? 0;
     const original = Number(t.rate || 0);
     const showStrike = original > price && price > 0;
     return { price, original, showStrike };
   };
+
 
   const FoundationStrip = foundationMode && foundationTests.length > 0 ? (
     <div className="space-y-5">
