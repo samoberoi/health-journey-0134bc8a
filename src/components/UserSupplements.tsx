@@ -148,7 +148,10 @@ export default function UserSupplements({ simpleMode = false }: { simpleMode?: b
           onChanged={load}
           planItems={items}
           plan={plan}
+          dietSlug={dietSlug}
+          foundationalKit={foundationalKit}
         />
+
       </div>
     );
   }
