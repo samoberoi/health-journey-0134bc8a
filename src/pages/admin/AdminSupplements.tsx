@@ -863,9 +863,9 @@ export default function AdminSupplements() {
                         >
                           <div className="px-5 pb-5 space-y-4" style={{ borderTop: "1px solid hsl(var(--border))" }}>
                             {/* Detailed table */}
-                            <div className="rounded-2xl border border-border overflow-hidden mt-4">
-                              <div className="grid grid-cols-[minmax(120px,1.5fr)_100px_minmax(100px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_80px_minmax(100px,1fr)_50px] gap-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted px-3 py-2">
-                                <span>Supplement</span>
+                              <div className="rounded-2xl border border-border overflow-hidden mt-4">
+                              <div className="grid grid-cols-[minmax(150px,1.6fr)_100px_minmax(100px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_80px_minmax(100px,1fr)_50px] gap-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted px-3 py-2">
+                                <span>Supplement / Veg type</span>
                                 <span>Severity</span>
                                 <span>Dosage</span>
                                 <span>Frequency</span>
@@ -882,13 +882,25 @@ export default function AdminSupplements() {
                                   return (
                                     <div key={rule.id} className="border-b border-border last:border-b-0">
                                       {/* Display row */}
-                                      <div className="grid grid-cols-[minmax(120px,1.5fr)_100px_minmax(100px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_80px_minmax(100px,1fr)_50px] gap-0 items-center px-3 py-2.5 text-sm hover:bg-accent/30 transition-colors">
-                                        <span className="font-bold text-foreground text-xs flex items-center gap-2">
-                                          <div className={`w-6 h-6 rounded-lg ${CATEGORY_BG[supp?.category ?? ""] ?? "bg-muted"} flex items-center justify-center shrink-0`}>
-                                            <Pill className={`w-3 h-3 ${CATEGORY_COLORS[supp?.category ?? ""] ?? "text-muted-foreground"}`} />
-                                          </div>
-                                          {supp?.name ?? "Unknown"}
-                                        </span>
+                                       <div className="grid grid-cols-[minmax(150px,1.6fr)_100px_minmax(100px,1fr)_minmax(80px,1fr)_minmax(80px,1fr)_80px_minmax(100px,1fr)_50px] gap-0 items-center px-3 py-2.5 text-sm hover:bg-accent/30 transition-colors">
+                                         <span className="text-xs flex items-center gap-2 min-w-0">
+                                           <div className={`w-6 h-6 rounded-lg ${CATEGORY_BG[supp?.category ?? ""] ?? "bg-muted"} flex items-center justify-center shrink-0`}>
+                                             <Pill className={`w-3 h-3 ${CATEGORY_COLORS[supp?.category ?? ""] ?? "text-muted-foreground"}`} />
+                                           </div>
+                                           <span className="min-w-0 flex-1">
+                                             <span className="block font-bold text-foreground truncate">{supp?.name ?? "Unknown"}</span>
+                                             {supp && (
+                                               <select
+                                                 aria-label={`Veg type for ${supp.name}`}
+                                                 className="mt-1 max-w-full rounded-lg border border-input bg-background px-2 py-1 text-[10px] font-bold text-foreground"
+                                                 value={supp.veg_type ?? "both"}
+                                                 onChange={(e) => handleUpdateSupplementVegType(supp, e.target.value as VegType)}
+                                               >
+                                                 {VEG_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                               </select>
+                                             )}
+                                           </span>
+                                         </span>
                                         <span>
                                           <Badge className={`text-[9px] ${SEVERITY_COLORS[rule.severity] ?? ""}`} variant="outline">
                                             {rule.severity}
