@@ -292,7 +292,50 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
     <div className="space-y-5">
 
 
-      {basicTest && (() => {
+      {basicTest && basicOrder ? (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          className="relative rounded-3xl p-5 md:p-6 pt-6 text-white shadow-lift overflow-hidden"
+          style={{ background: "var(--bbdo-gradient)" }}
+        >
+          <div className="absolute -right-12 -top-12 w-44 h-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+          <div className="relative flex items-start justify-between gap-3 flex-wrap mb-3">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black tracking-wide text-[var(--bbdo-red)] bg-white shadow">
+              <Check className="w-3 h-3" /> TEST DONE
+            </div>
+            <ThyrocarePoweredBy variant="light" />
+          </div>
+          <div className="relative mb-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/80">Your baseline</p>
+            <h4 className="text-lg md:text-xl font-black leading-tight mt-1">Your BBDO Basic test is done</h4>
+            <p className="text-[12px] text-white/85 mt-1.5 leading-snug">
+              {basicReportReady
+                ? "Your report is ready. Tap View report to open the PDF."
+                : "Your sample has been processed. The report PDF is syncing from the lab — usually within a few hours."}
+            </p>
+          </div>
+          <div className="relative flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
+              <FlaskConical className="w-6 h-6 text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h5 className="text-base font-black leading-tight truncate">{basicTest.product_name}</h5>
+              <p className="text-[11px] text-white/85 mt-0.5 font-mono truncate">
+                Order · {basicOrder.thyrocare_order_id || basicOrder.id.slice(0, 8)}
+              </p>
+            </div>
+            {basicReportReady && basicReports[0]?.report_url && (
+              <Button size="sm" className="h-9 font-bold bg-white text-[var(--bbdo-red)] hover:bg-white/90 shrink-0" asChild>
+                <a href={basicReports[0].report_url!} target="_blank" rel="noreferrer">
+                  <Eye className="w-3.5 h-3.5 mr-1" /> View report
+                </a>
+              </Button>
+            )}
+          </div>
+        </motion.div>
+      ) : basicTest && (() => {
         const { price, original, showStrike } = renderPriceRow(basicTest);
         const count = basicTest.parameters_count || (Array.isArray(basicTest?.raw_data?.testsIncluded) ? basicTest.raw_data.testsIncluded.length : 0);
         return (
@@ -347,6 +390,7 @@ export default function PatientLabTests({ alwaysShow = false, foundationMode = f
           </motion.div>
         );
       })()}
+
 
       {otherTests.length > 0 && (
         <div className="space-y-2">
