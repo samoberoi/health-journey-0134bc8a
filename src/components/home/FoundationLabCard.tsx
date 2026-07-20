@@ -21,6 +21,7 @@ type KeyMarker = { code: string; label: string; value: number; unit: string; sta
  */
 export default function FoundationLabCard({ userId }: Props) {
   const [hasResults, setHasResults] = useState<boolean | null>(null);
+  const [hasCompletedOrder, setHasCompletedOrder] = useState(false);
   const [markers, setMarkers] = useState<KeyMarker[]>([]);
   const [reportDate, setReportDate] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -31,13 +32,24 @@ export default function FoundationLabCard({ userId }: Props) {
     if (!userId) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from("lab_results" as any)
-        .select("parameter_code, parameter_name, value_numeric, unit, status, observed_at")
-        .eq("user_id", userId)
-        .order("observed_at", { ascending: false });
-      const rows = ((data as any) || []) as any[];
+      const [resultsRes, ordersRes] = await Promise.all([
+        supabase
+          .from("lab_results" as any)
+          .select("parameter_code, parameter_name, value_numeric, unit, status, observed_at")
+          .eq("user_id", userId)
+          .order("observed_at", { ascending: false }),
+        supabase
+          .from("thyrocare_orders" as any)
+          .select("status, collection_date, created_at")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false }),
+      ]);
       if (cancelled) return;
+      const rows = ((resultsRes.data as any) || []) as any[];
+      const orders = ((ordersRes.data as any) || []) as any[];
+      const doneStatuses = new Set(["done", "completed", "report_ready", "reports_ready", "partially_ready", "ready", "in_lab", "processing", "sample_collected", "sample_received"]);
+      const completed = orders.find((o) => doneStatuses.has((o.status || "").toLowerCase()));
+      setHasCompletedOrder(!!completed);
       setHasResults(rows.length > 0);
       if (rows.length > 0) {
         setReportDate(rows[0].observed_at);
@@ -60,10 +72,13 @@ export default function FoundationLabCard({ userId }: Props) {
           }
         }
         setMarkers(pick);
+      } else if (completed) {
+        setReportDate(completed.collection_date || completed.created_at);
       }
     })();
     return () => { cancelled = true; };
   }, [userId]);
+
 
   // Resolve the BBDO Basic product_code so we can open the booking dialog on Home.
   useEffect(() => {
@@ -145,6 +160,41 @@ export default function FoundationLabCard({ userId }: Props) {
             <ChevronRight className="w-3 h-3" />
           </div>
         </motion.button>
+      ) : hasCompletedOrder ? (
+        <motion.button
+          type="button"
+          onClick={() => setOpen(true)}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full text-left rounded-2xl p-4 text-white shadow-card relative overflow-hidden active:scale-[0.99] transition-transform"
+          style={{ background: "var(--bbdo-gradient)" }}
+        >
+          <div className="absolute -right-16 -top-16 w-52 h-52 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+          <div className="relative flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/80">
+                Your health profile
+              </p>
+              <h3 className="text-sm font-black leading-tight mt-0.5">
+                Your BBDO Basic test is done
+              </h3>
+              {reportDate && (
+                <p className="text-[10px] text-white/75 mt-0.5">
+                  Collected {new Date(reportDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                </p>
+              )}
+              <p className="text-[11px] text-white/85 mt-2 leading-snug">
+                Your report is syncing. Health markers will unlock automatically once the lab publishes the PDF.
+              </p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/90 shrink-0 mt-1" />
+          </div>
+          <div className="relative mt-3 flex items-center gap-1.5 text-[11px] font-bold text-white/95">
+            View booking & report status
+            <ChevronRight className="w-3 h-3" />
+          </div>
+        </motion.button>
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
@@ -181,6 +231,7 @@ export default function FoundationLabCard({ userId }: Props) {
           </button>
         </motion.div>
       )}
+
 
       <AnimatePresence>
         {open && (

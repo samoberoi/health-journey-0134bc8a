@@ -225,49 +225,57 @@ export default function LabOrderDetails({ order, fastingRequired, reports = [], 
       )}
 
       {/* Reports — show inline once available */}
-      {(reports.length > 0 || (sampleCollected && userId && order.id)) && (
-        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-3">
-          <div className="flex items-center justify-between gap-2">
+      {(reports.length > 0 || (sampleCollected && userId && order.id)) && (() => {
+        // Split reports into ones with a downloadable file vs still-syncing/failed fetch.
+        const ready = reports.filter((r) => !!r.report_url);
+        const pending = reports.filter((r) => !r.report_url);
+        return (
+          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-3">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
               <FileText className="w-3.5 h-3.5" />
-              {reports.length > 0 ? "Lab Reports Ready" : "Lab Reports"}
+              {ready.length > 0 ? "Lab Reports Ready" : "Lab Reports"}
             </div>
-          </div>
-          {reports.length > 0 && (
-            <ul className="space-y-2">
-              {reports.map((r) => (
-                <li key={r.id} className="flex items-center justify-between gap-3 rounded-xl bg-background border border-border p-3">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate">{r.report_type || "Lab Report"}</div>
-                    {r.delivered_at && (
-                      <div className="text-[10px] text-muted-foreground">
-                        Delivered {fmtDateTime(r.delivered_at)}
+            {ready.length > 0 && (
+              <ul className="space-y-2">
+                {ready.map((r) => {
+                  // Hide any vendor-error phrasing from the type label.
+                  const rawType = (r.report_type || "").trim();
+                  const label = /fail|error|not\s*found/i.test(rawType) ? "BBDO Lab Report" : rawType || "Lab Report";
+                  return (
+                    <li key={r.id} className="flex items-center justify-between gap-3 rounded-xl bg-background border border-border p-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold truncate">{label}</div>
+                        {r.delivered_at && (
+                          <div className="text-[10px] text-muted-foreground">
+                            Delivered {fmtDateTime(r.delivered_at)}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  {r.report_url ? (
-                    <Button size="sm" asChild className="shrink-0 rounded-full">
-                      <a href={r.report_url} target="_blank" rel="noreferrer">
-                        <Download className="w-3.5 h-3.5 mr-1.5" />
-                        View
-                      </a>
-                    </Button>
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground text-right">
-                      {r.parameters?.detail ? String(r.parameters.detail).slice(0, 90) : "Awaiting file…"}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-          {reports.length === 0 && (
-            <p className="text-[11px] text-muted-foreground">
-              Sample is collected. Values sync to your profile automatically once the report PDF arrives.
-            </p>
-          )}
-        </div>
-      )}
+                      <Button size="sm" asChild className="shrink-0 rounded-full">
+                        <a href={r.report_url!} target="_blank" rel="noreferrer">
+                          <Download className="w-3.5 h-3.5 mr-1.5" />
+                          View
+                        </a>
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {ready.length === 0 && pending.length > 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                Your sample has been processed. The PDF is still syncing from the lab — usually within a few hours. Your health markers will appear here automatically once it arrives.
+              </p>
+            )}
+            {ready.length === 0 && pending.length === 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                Sample is collected. Values sync to your profile automatically once the report PDF arrives.
+              </p>
+            )}
+          </div>
+        );
+      })()}
+
 
       {/* OTP for technician — only before sample is collected */}
       {otp && !sampleCollected && (
