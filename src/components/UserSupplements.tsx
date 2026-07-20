@@ -2,16 +2,18 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Pill, Check, Clock, AlertTriangle, Droplets,
-  Coffee, Sun, Moon, Loader2, Flame, Trophy, Plus, Search, Sparkles, Minus, Lock, Leaf, Zap
+  Coffee, Sun, Moon, Loader2, Flame, Trophy, Plus, Search, Sparkles, Minus, Lock, Leaf, Zap, Drumstick
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import {
   fetchUserPlan, fetchPlanItems, fetchSupplements, createUserPlan, addPlanItem, removePlanItem,
   fetchTodayTracking, toggleTracking, fetchTrackingHistory,
   CATEGORY_COLORS, CATEGORY_BG,
-  type UserSupplementPlan, type PlanItem, type Supplement, type SupplementTracking
+  type UserSupplementPlan, type PlanItem, type Supplement, type SupplementTracking, type VegType
 } from "@/lib/supplementService";
+
 import {
   fetchSupplementBadgeDefinitions, fetchUserSupplementBadges,
   getSupplementBadgeLevel, calculateSupplementStreak,
