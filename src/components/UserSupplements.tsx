@@ -112,7 +112,7 @@ export default function UserSupplements({ simpleMode = false }: { simpleMode?: b
 
   if (!plan || items.length === 0) {
     if (simpleMode) {
-      return <FoundationSupplementBrowser supplements={supplements} userId={user?.id ?? null} onChanged={load} planItems={items} plan={plan} />;
+      return <FoundationSupplementBrowser supplements={supplements} userId={user?.id ?? null} onChanged={load} planItems={items} plan={plan} dietSlug={dietSlug} foundationalKit={foundationalKit} />;
     }
     return (
       <div className="p-6">
