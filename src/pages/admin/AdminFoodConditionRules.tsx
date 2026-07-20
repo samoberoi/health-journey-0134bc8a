@@ -86,6 +86,7 @@ export default function AdminFoodConditionRules() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Rule | null>(null);
   const [form, setForm] = useState(emptyRuleForm("hypothyroid"));
+  const [selectedFoods, setSelectedFoods] = useState<string[]>([]); // names, used only when creating
   const [foodPickerOpen, setFoodPickerOpen] = useState(false);
 
   // Condition manager state
