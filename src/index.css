@@ -151,8 +151,8 @@
     line-height: 1.5;
     min-height: 100%;
   }
-  html.bb-native { --bbdo-native-bottom-guard: 0px; --bbdo-native-top-guard: 0px; }
-  html.bb-native.bb-android { --bbdo-native-bottom-guard: 96px; --bbdo-native-top-guard: 8px; }
+  html.bb-native { --bbdo-native-bottom-guard: 0px; --bbdo-onboarding-bottom-guard: 0px; --bbdo-native-top-guard: 0px; }
+  html.bb-native.bb-android { --bbdo-native-bottom-guard: 14px; --bbdo-onboarding-bottom-guard: 96px; --bbdo-native-top-guard: 8px; }
   html.bb-native,
   html.bb-native body,
   html.bb-native #root {
@@ -468,7 +468,7 @@
   }
 
   html.bb-native.bb-android .mobile-bottom-safe {
-    padding-bottom: calc(var(--bbdo-native-bottom-guard) + 1rem) !important;
+    padding-bottom: calc(var(--bbdo-onboarding-bottom-guard) + 1rem) !important;
   }
 
   /* Onboarding */
@@ -487,20 +487,20 @@
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
     touch-action: pan-y;
-    scroll-padding-bottom: calc(2rem + env(safe-area-inset-bottom) + var(--bbdo-native-bottom-guard, 0px));
+    scroll-padding-bottom: calc(2rem + env(safe-area-inset-bottom) + var(--bbdo-onboarding-bottom-guard, 0px));
   }
-  html.bb-native.bb-android .ob-lock { padding-bottom: var(--bbdo-native-bottom-guard); }
-  html.bb-native.bb-android .ob-lock > .flex-1 { padding-bottom: calc(env(safe-area-inset-bottom) + var(--bbdo-native-bottom-guard) + 1.5rem) !important; }
+  html.bb-native.bb-android .ob-lock { padding-bottom: var(--bbdo-onboarding-bottom-guard); }
+  html.bb-native.bb-android .ob-lock > .flex-1 { padding-bottom: calc(env(safe-area-inset-bottom) + var(--bbdo-onboarding-bottom-guard) + 1.5rem) !important; }
   html.bb-native.bb-android .phone-container:has(.ob-cta) {
-    padding-bottom: var(--bbdo-native-bottom-guard) !important;
-    scroll-padding-bottom: calc(var(--bbdo-native-bottom-guard) + 2rem);
+    padding-bottom: var(--bbdo-onboarding-bottom-guard) !important;
+    scroll-padding-bottom: calc(var(--bbdo-onboarding-bottom-guard) + 2rem);
   }
   html.bb-native.bb-android .ob-bottom {
     position: sticky;
     bottom: 0;
     z-index: 20;
     padding-top: 0.75rem;
-    padding-bottom: calc(var(--bbdo-native-bottom-guard) + 1rem);
+    padding-bottom: calc(var(--bbdo-onboarding-bottom-guard) + 1rem);
     background: linear-gradient(180deg, rgba(255, 251, 244, 0) 0%, var(--bbdo-cream) 34%, var(--bbdo-cream) 100%);
   }
   .ob-bg { position: absolute; inset: 0; z-index: 0; opacity: 0.14; }
@@ -509,9 +509,9 @@
     content: ""; position: absolute; inset: 0;
     background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.85) 55%, rgba(255,255,255,1) 100%);
   }
-  .ob-content { @apply relative z-10 flex flex-col; min-height: 100%; padding: calc(2rem + env(safe-area-inset-top) + var(--bbdo-native-top-guard, 0px)) 1.25rem calc(2.5rem + env(safe-area-inset-bottom) + var(--bbdo-native-bottom-guard, 0px)); }
+  .ob-content { @apply relative z-10 flex flex-col; min-height: 100%; padding: calc(2rem + env(safe-area-inset-top) + var(--bbdo-native-top-guard, 0px)) 1.25rem calc(2.5rem + env(safe-area-inset-bottom) + var(--bbdo-onboarding-bottom-guard, 0px)); }
   @media (max-width: 380px) {
-    .ob-content { padding-top: calc(1.5rem + env(safe-area-inset-top) + var(--bbdo-native-top-guard, 0px)); padding-left: 1rem; padding-right: 1rem; padding-bottom: calc(2rem + env(safe-area-inset-bottom) + var(--bbdo-native-bottom-guard, 0px)); }
+    .ob-content { padding-top: calc(1.5rem + env(safe-area-inset-top) + var(--bbdo-native-top-guard, 0px)); padding-left: 1rem; padding-right: 1rem; padding-bottom: calc(2rem + env(safe-area-inset-bottom) + var(--bbdo-onboarding-bottom-guard, 0px)); }
   }
   @media (max-height: 700px) {
     .ob-content { padding-top: calc(1rem + env(safe-area-inset-top) + var(--bbdo-native-top-guard, 0px)); }
@@ -587,7 +587,7 @@
   .pt-safe      { padding-top: calc(env(safe-area-inset-top) + 0.75rem); }
   .pb-safe      { padding-bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   /* Content clearance above the floating bottom nav + FAB on mobile */
-  .pb-nav       { padding-bottom: calc(env(safe-area-inset-bottom) + var(--bbdo-native-bottom-guard, 0px) + 6.5rem); }
+  .pb-nav       { padding-bottom: calc(env(safe-area-inset-bottom) + var(--bbdo-native-bottom-guard, 0px) + 5.25rem); }
   @media (min-width: 768px) { .pb-nav { padding-bottom: 0; } }
 
   /* Consistent mobile page gutter (20px, matches .bbdo-screen but works on any element) */
