@@ -1,33 +1,47 @@
-import { forwardRef, SVGProps } from "react";
+import { forwardRef, HTMLAttributes } from "react";
+import avocadoAsset from "@/assets/avocado.png.asset.json";
 
-interface AvocadoProps extends SVGProps<SVGSVGElement> {
+interface AvocadoProps extends Omit<HTMLAttributes<HTMLSpanElement>, "children"> {
   size?: number | string;
+  /** Accepted for Lucide-icon API compatibility. Ignored — image is full-color. */
   strokeWidth?: number | string;
+  /** Accepted for Lucide-icon API compatibility. Ignored. */
+  color?: string;
+  /** Accepted for Lucide-icon API compatibility. Ignored. */
+  fill?: string;
 }
 
-// Lucide-compatible Avocado icon (outline style, currentColor)
-const Avocado = forwardRef<SVGSVGElement, AvocadoProps>(
-  ({ size = 24, strokeWidth = 2, className, ...props }, ref) => (
-    <svg
-      ref={ref}
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      {...props}
-    >
-      {/* Outer avocado silhouette (pear shape) */}
-      <path d="M12 2.5c-3.6 0-6.5 3.2-6.5 7.3 0 2 .7 3.6 1.7 5 1.4 2 3 4.7 3 6.2 0 .6.4 1 1 1h1.6c.6 0 1-.4 1-1 0-1.5 1.6-4.2 3-6.2 1-1.4 1.7-3 1.7-5 0-4.1-2.9-7.3-6.5-7.3Z" />
-      {/* Pit */}
-      <circle cx="12" cy="12" r="2.6" />
-    </svg>
-  )
+/**
+ * Cute kawaii avocado icon rendered as a transparent PNG.
+ *
+ * Drop-in replacement for a Lucide icon: accepts the same size / className
+ * props, so callers like `<Icon className="w-4 h-4" />` continue to size it
+ * correctly. Because the PNG is transparent, whatever background the parent
+ * surface uses shows through — the icon inherits the surrounding look & feel.
+ */
+const Avocado = forwardRef<HTMLSpanElement, AvocadoProps>(
+  ({ size, className, style, strokeWidth: _sw, color: _c, fill: _f, ...props }, ref) => {
+    const dimStyle =
+      size != null
+        ? { width: typeof size === "number" ? `${size}px` : size, height: typeof size === "number" ? `${size}px` : size }
+        : undefined;
+    return (
+      <span
+        ref={ref}
+        aria-hidden="true"
+        className={`inline-flex items-center justify-center align-middle ${className ?? ""}`}
+        style={{ ...dimStyle, ...style }}
+        {...props}
+      >
+        <img
+          src={avocadoAsset.url}
+          alt=""
+          draggable={false}
+          className="w-full h-full object-contain select-none pointer-events-none"
+        />
+      </span>
+    );
+  }
 );
 Avocado.displayName = "Avocado";
 
