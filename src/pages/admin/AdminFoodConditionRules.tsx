@@ -121,6 +121,17 @@ export default function AdminFoodConditionRules() {
   const conditionByKey = useMemo(() => new Map(conditions.map((c) => [c.key, c])), [conditions]);
   const activeConditions = useMemo(() => conditions.filter((c) => c.is_active), [conditions]);
 
+  const foodsGrouped = useMemo(() => {
+    const groups = new Map<string, { name: string; items: FoodOption[] }>();
+    foods.forEach((fd) => {
+      const key = fd.filter_id || "__uncategorized__";
+      const name = fd.filter_id ? (filterById.get(fd.filter_id)?.name || "Uncategorized") : "Uncategorized";
+      if (!groups.has(key)) groups.set(key, { name, items: [] });
+      groups.get(key)!.items.push(fd);
+    });
+    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [foods, filterById]);
+
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rules.filter((r) => {
