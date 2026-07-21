@@ -51,7 +51,7 @@ export default function TrajectoryScreen() {
   return (
     <div className="phone-container ob-lock min-h-dvh flex flex-col overflow-x-hidden">
       <SoundToggle />
-      <div className="flex-1 flex flex-col px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[env(safe-area-inset-bottom)]">
+      <div className="flex-1 flex flex-col px-5 pt-[calc(env(safe-area-inset-top)+1rem)] mobile-bottom-safe">
         <HeroCard variant="navy" className="pb-5">
           <p className="bbdo-eyebrow text-white mb-2">Health Score Trajectory</p>
           <h1 className="text-[24px] leading-[1.05] font-extrabold tracking-tight text-white">
@@ -194,7 +194,7 @@ export default function TrajectoryScreen() {
         </motion.div>
 
         <motion.div
-          className="pt-3 pb-3 mt-auto flex justify-end"
+          className="pt-3 mt-auto flex justify-end shrink-0"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}

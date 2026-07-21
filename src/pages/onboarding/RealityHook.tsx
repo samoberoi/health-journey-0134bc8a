@@ -35,7 +35,7 @@ export default function RealityHook() {
   return (
     <div className="phone-container ob-lock overflow-x-hidden overflow-y-auto" style={{ minHeight: "100dvh", WebkitOverflowScrolling: "touch" }}>
       <SoundToggle />
-      <div className="flex-1 flex flex-col px-5 pt-[calc(env(safe-area-inset-top)+2rem)] pb-[env(safe-area-inset-bottom)]">
+      <div className="flex-1 flex flex-col px-5 pt-[calc(env(safe-area-inset-top)+2rem)] mobile-bottom-safe">
 
         <HeroCard variant="navy" className="pb-8">
           <p className="bbdo-eyebrow text-white mb-3">Reality check</p>
@@ -65,7 +65,7 @@ export default function RealityHook() {
         </div>
 
         <motion.div
-          className="mt-auto pt-5 pb-6 flex items-center justify-between gap-3"
+          className="mt-auto pt-5 flex items-center justify-between gap-3 shrink-0"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}

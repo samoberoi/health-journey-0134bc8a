@@ -33,7 +33,7 @@ export default function StartAssessment() {
       style={{
         minHeight: "100dvh",
         paddingTop: "calc(env(safe-area-inset-top) + 1rem)",
-        paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)",
+        paddingBottom: "calc(env(safe-area-inset-bottom) + var(--bbdo-native-bottom-guard, 0px) + 1.5rem)",
         WebkitOverflowScrolling: "touch",
       }}
     >

@@ -20,7 +20,7 @@ export default function BreakPattern() {
   return (
     <div className="phone-container ob-lock bg-background overflow-x-hidden overflow-y-auto" style={{ minHeight: "100dvh", WebkitOverflowScrolling: "touch" }}>
       <SoundToggle />
-      <div className="flex-1 flex flex-col px-6 pt-[calc(env(safe-area-inset-top)+2rem)] pb-[env(safe-area-inset-bottom)]">
+      <div className="flex-1 flex flex-col px-6 pt-[calc(env(safe-area-inset-top)+2rem)] mobile-bottom-safe">
         {/* Header */}
         <motion.p
           className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary mb-2"
@@ -78,7 +78,7 @@ export default function BreakPattern() {
 
         {/* CTA */}
         <motion.div
-          className="mt-auto pt-3 pb-4"
+          className="mt-auto pt-3 shrink-0"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.1 }}

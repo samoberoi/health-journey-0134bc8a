@@ -10,7 +10,7 @@ export default function AuthorityStatement() {
   useEffect(() => { setPhase("hope"); }, []);
 
   return (
-    <div className="phone-container ob-lock min-h-dvh overflow-x-hidden bg-background flex flex-col px-6 pt-[calc(env(safe-area-inset-top)+2rem)] pb-[env(safe-area-inset-bottom)]">
+    <div className="phone-container ob-lock min-h-dvh overflow-x-hidden bg-background flex flex-col px-6 pt-[calc(env(safe-area-inset-top)+2rem)] mobile-bottom-safe">
       <SoundToggle />
       <div className="flex-1 flex flex-col items-center justify-center text-center">
         <motion.p
@@ -52,7 +52,7 @@ export default function AuthorityStatement() {
       </div>
 
       <motion.div
-        className="pb-10"
+        className="shrink-0"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.9 }}
