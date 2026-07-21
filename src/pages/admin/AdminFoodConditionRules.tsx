@@ -45,7 +45,7 @@ interface Rule {
 }
 
 interface FilterRow { id: string; name: string; slug: string; }
-interface FoodOption { id: string; name: string; }
+interface FoodOption { id: string; name: string; filter_id: string | null; }
 
 const ACTIONS: { value: Action; label: string; cls: string }[] = [
   { value: "avoid",     label: "Avoid",     cls: "bg-destructive/10 text-destructive border-destructive/30" },
@@ -101,7 +101,7 @@ export default function AdminFoodConditionRules() {
       (supabase as any).from("food_conditions").select("*").order("sort_order").order("label"),
       supabase.from("food_condition_rules").select("*").order("condition_key").order("priority", { ascending: false }),
       supabase.from("food_filters").select("id,name,slug").order("name"),
-      supabase.from("food_items").select("id,name").order("name"),
+      supabase.from("food_items").select("id,name,filter_id").order("name"),
     ]);
     const conds = ((cRes.data as any[]) || []) as Condition[];
     setConditions(conds);
@@ -120,6 +120,17 @@ export default function AdminFoodConditionRules() {
   const filterById = useMemo(() => new Map(filters.map((f) => [f.id, f])), [filters]);
   const conditionByKey = useMemo(() => new Map(conditions.map((c) => [c.key, c])), [conditions]);
   const activeConditions = useMemo(() => conditions.filter((c) => c.is_active), [conditions]);
+
+  const foodsGrouped = useMemo(() => {
+    const groups = new Map<string, { name: string; items: FoodOption[] }>();
+    foods.forEach((fd) => {
+      const key = fd.filter_id || "__uncategorized__";
+      const name = fd.filter_id ? (filterById.get(fd.filter_id)?.name || "Uncategorized") : "Uncategorized";
+      if (!groups.has(key)) groups.set(key, { name, items: [] });
+      groups.get(key)!.items.push(fd);
+    });
+    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [foods, filterById]);
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -386,7 +397,7 @@ export default function AdminFoodConditionRules() {
 
       {/* Edit rule dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Rule" : "Add Food ↔ Condition Rule"}</DialogTitle>
           </DialogHeader>
@@ -442,37 +453,39 @@ export default function AdminFoodConditionRules() {
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+                <PopoverContent className="p-0 w-[min(720px,92vw)]" align="start">
                   <Command>
                     <CommandInput placeholder="Search foods…" />
-                    <CommandList className="max-h-72">
+                    <CommandList className="max-h-[420px]">
                       <CommandEmpty>No food found. Add it in Foods first.</CommandEmpty>
-                      <CommandGroup>
-                        {foods.map((fd) => {
-                          const selected = editing
-                            ? form.name_pattern.toLowerCase() === fd.name.toLowerCase()
-                            : selectedFoods.includes(fd.name);
-                          return (
-                            <CommandItem
-                              key={fd.id}
-                              value={fd.name}
-                              onSelect={() => {
-                                if (editing) {
-                                  setForm((f) => ({ ...f, name_pattern: fd.name }));
-                                  setFoodPickerOpen(false);
-                                } else {
-                                  setSelectedFoods((prev) =>
-                                    prev.includes(fd.name) ? prev.filter((n) => n !== fd.name) : [...prev, fd.name],
-                                  );
-                                }
-                              }}
-                            >
-                              <Check className={cn("mr-2 h-4 w-4", selected ? "opacity-100" : "opacity-0")} />
-                              {fd.name}
-                            </CommandItem>
-                          );
-                        })}
-                      </CommandGroup>
+                      {foodsGrouped.map((group) => (
+                        <CommandGroup key={group.name} heading={group.name}>
+                          {group.items.map((fd) => {
+                            const selected = editing
+                              ? form.name_pattern.toLowerCase() === fd.name.toLowerCase()
+                              : selectedFoods.includes(fd.name);
+                            return (
+                              <CommandItem
+                                key={fd.id}
+                                value={`${group.name} ${fd.name}`}
+                                onSelect={() => {
+                                  if (editing) {
+                                    setForm((f) => ({ ...f, name_pattern: fd.name }));
+                                    setFoodPickerOpen(false);
+                                  } else {
+                                    setSelectedFoods((prev) =>
+                                      prev.includes(fd.name) ? prev.filter((n) => n !== fd.name) : [...prev, fd.name],
+                                    );
+                                  }
+                                }}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4", selected ? "opacity-100" : "opacity-0")} />
+                                {fd.name}
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      ))}
                     </CommandList>
                   </Command>
                 </PopoverContent>
@@ -482,21 +495,6 @@ export default function AdminFoodConditionRules() {
                   ? `Only foods from the master Foods list can be mapped. ${foods.length} available.`
                   : `Select multiple foods to create one rule per food with the same action & reason. ${selectedFoods.length} selected of ${foods.length}.`}
               </p>
-            </div>
-
-
-            <div>
-              <Label>Scope to filter (optional)</Label>
-              <Select
-                value={form.filter_id || "__all__"}
-                onValueChange={(v) => setForm((f) => ({ ...f, filter_id: v === "__all__" ? null : v }))}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">All food filters</SelectItem>
-                  {filters.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
             </div>
 
             <div>
