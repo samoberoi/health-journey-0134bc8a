@@ -44,7 +44,7 @@ interface Rule {
   updated_at?: string;
 }
 
-interface FilterRow { id: string; name: string; slug: string; }
+interface FilterRow { id: string; name: string; slug: string; number_label: string | null; order_number: number | null; }
 interface FoodOption { id: string; name: string; filter_id: string | null; }
 
 const ACTIONS: { value: Action; label: string; cls: string }[] = [
