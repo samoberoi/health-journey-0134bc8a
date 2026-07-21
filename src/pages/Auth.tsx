@@ -270,14 +270,16 @@ export default function Auth() {
     setLoading(true);
     setEmailError("");
 
-    // Check email uniqueness
-    const { data: exists, error: checkErr } = await supabase.rpc("email_exists" as any, { _email: trimmedEmail });
-    if (checkErr) {
-      setLoading(false);
-      setEmailError("Couldn't verify email. Please try again.");
-      return;
-    }
-    if (exists) {
+    // Email uniqueness check with a hard 4s timeout so we never spin forever.
+    // If the check times out or errors, allow the user through — DB unique
+    // constraint on profiles.email is the real guard.
+    const uniquenessCheck = supabase.rpc("email_exists" as any, { _email: trimmedEmail });
+    const timeout = new Promise<{ data: any; error: any }>((resolve) =>
+      setTimeout(() => resolve({ data: null, error: null }), 4000)
+    );
+    const { data: exists, error: checkErr } = (await Promise.race([uniquenessCheck, timeout])) as any;
+
+    if (!checkErr && exists === true) {
       setLoading(false);
       setEmailError("This email is already registered. Please sign in with the phone number linked to it.");
       return;
@@ -285,29 +287,31 @@ export default function Auth() {
 
     saveUser({ profile: { name: name.trim(), email: trimmedEmail, phone, country: country.name, country_code: country.dial } as any });
 
-    // Save name + email to backend
-    let { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      const { data: sessionData } = await supabase.auth.signInWithPassword({ email, password });
-      user = sessionData.user;
-      if (user) await persistNativeSession(sessionData.session);
-    }
-    if (!user) {
-      setLoading(false);
-      toast.error("We couldn't keep you signed in. Please verify your phone again.");
-      setStep("otp");
-      return;
-    }
-    if (user) {
-      const { error } = await supabase
-        .from("profiles" as any)
-        .update({ name: name.trim(), email: trimmedEmail, phone, country: country.name, country_code: country.dial } as any)
-        .eq("user_id", user.id);
-      if (error) console.error("Failed to save name/email:", error);
-    }
+    // Prefer local session (no network) — user just verified OTP moments ago.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user?.id;
 
-    const { data: currentSessionData } = await supabase.auth.getSession();
-    await persistNativeSession(currentSessionData.session);
+    const profilePayload = { name: name.trim(), email: trimmedEmail, phone, country: country.name, country_code: country.dial } as any;
+
+    // Fire the profile update + native persistence in the background; don't block navigation.
+    if (userId) {
+      void supabase
+        .from("profiles" as any)
+        .update(profilePayload)
+        .eq("user_id", userId)
+        .then(({ error }) => {
+          if (error) console.error("Failed to save name/email:", error);
+        });
+      void persistNativeSession(sessionData.session);
+    } else {
+      // No local session — recover in background but don't make the user wait.
+      void supabase.auth.signInWithPassword({ email, password }).then(async ({ data }) => {
+        if (data?.user) {
+          void supabase.from("profiles" as any).update(profilePayload).eq("user_id", data.user.id);
+          void persistNativeSession(data.session);
+        }
+      });
+    }
 
     setLoading(false);
     navigate("/setup/purpose");
