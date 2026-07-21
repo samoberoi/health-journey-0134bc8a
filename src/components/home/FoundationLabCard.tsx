@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import LabHistorySection from "@/components/lab/LabHistorySection";
 import ThyrocarePoweredBy from "@/components/lab/ThyrocarePoweredBy";
 import LabBookingDialog from "@/components/lab/LabBookingDialog";
+import { patientPriceFor, useLabTestMarkup } from "@/lib/labTestMarkup";
 
 interface Props {
   userId: string;
@@ -26,7 +27,9 @@ export default function FoundationLabCard({ userId }: Props) {
   const [reportDate, setReportDate] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [basicCode, setBasicCode] = useState<string | null>(null);
+  const [basicPrice, setBasicPrice] = useState<{ price: number; original: number } | null>(null);
   const [booking, setBooking] = useState(false);
+  const markupPct = useLabTestMarkup();
 
   useEffect(() => {
     if (!userId) return;
@@ -86,14 +89,19 @@ export default function FoundationLabCard({ userId }: Props) {
     (async () => {
       const { data } = await supabase
         .from("thyrocare_tests" as any)
-        .select("product_code, product_name")
+        .select("product_code, product_name, offer_rate, rate, markup_pct")
         .eq("is_active", true);
-      const list = ((data as any) || []) as { product_code: string; product_name: string }[];
+      const list = ((data as any) || []) as { product_code: string; product_name: string; offer_rate: number | null; rate: number | null; markup_pct: number | null }[];
       const basic = list.find((t) => (t.product_name || "").toUpperCase().includes("BASIC"));
-      if (!cancelled && basic) setBasicCode(basic.product_code);
+      if (!cancelled && basic) {
+        setBasicCode(basic.product_code);
+        const price = patientPriceFor(basic.offer_rate ?? basic.rate, basic.markup_pct, markupPct) ?? 0;
+        const original = Number(basic.rate || 0);
+        setBasicPrice({ price, original });
+      }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [markupPct]);
 
   const openBooking = () => {
     if (!basicCode) return;
@@ -220,6 +228,19 @@ export default function FoundationLabCard({ userId }: Props) {
           <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
             This first test helps personalise your plan. Once your report is ready, your Health Profile and body map will unlock on Home.
           </p>
+          {basicPrice && basicPrice.price > 0 && (
+            <div className="mt-3 flex items-baseline gap-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Your price</p>
+              <p className="text-lg font-black text-foreground tabular-nums">
+                ₹{basicPrice.price.toLocaleString("en-IN")}
+              </p>
+              {basicPrice.original > basicPrice.price && (
+                <p className="text-xs text-muted-foreground line-through">
+                  ₹{basicPrice.original.toLocaleString("en-IN")}
+                </p>
+              )}
+            </div>
+          )}
           <button
             type="button"
             onClick={openBooking}
@@ -227,7 +248,10 @@ export default function FoundationLabCard({ userId }: Props) {
             className="mt-4 inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-bold text-white active:scale-[0.98] transition-transform disabled:opacity-60"
             style={{ background: "var(--bbdo-red)" }}
           >
-            Book lab test <ChevronRight className="w-4 h-4" />
+            {basicPrice && basicPrice.price > 0
+              ? `Book for ₹${basicPrice.price.toLocaleString("en-IN")}`
+              : "Book lab test"}
+            <ChevronRight className="w-4 h-4" />
           </button>
         </motion.div>
       )}
