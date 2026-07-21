@@ -432,71 +432,106 @@ export default function AdminFoodConditionRules() {
 
             <div>
               <Label>Food{editing ? "" : "s"} *</Label>
-              <Popover open={foodPickerOpen} onOpenChange={setFoodPickerOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={foodPickerOpen}
-                    className={cn(
-                      "w-full justify-between font-normal h-auto min-h-10 py-2",
-                      !editing && selectedFoods.length === 0 && !form.name_pattern && "text-muted-foreground",
-                    )}
-                  >
-                    <span className="flex flex-wrap gap-1 text-left">
-                      {editing ? (
-                        foods.find((fd) => fd.name.toLowerCase() === form.name_pattern.toLowerCase())?.name ?? form.name_pattern ?? "Pick a food…"
-                      ) : selectedFoods.length === 0 ? (
-                        "Pick one or more foods…"
-                      ) : (
-                        selectedFoods.map((n) => (
-                          <Badge key={n} variant="secondary" className="font-normal">{n}</Badge>
-                        ))
-                      )}
-                    </span>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="p-0 w-[min(720px,92vw)]" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search foods…" />
-                    <CommandList className="max-h-[420px]">
-                      <CommandEmpty>No food found. Add it in Foods first.</CommandEmpty>
-                      {foodsGrouped.map((group) => (
-                        <CommandGroup key={group.name} heading={group.name}>
+              {!editing && selectedFoods.length > 0 && (
+                <div className="flex flex-wrap gap-1 my-2">
+                  {selectedFoods.map((n) => (
+                    <Badge key={n} variant="secondary" className="font-normal gap-1">
+                      {n}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFoods((prev) => prev.filter((x) => x !== n))}
+                        className="ml-1 opacity-60 hover:opacity-100"
+                        aria-label={`Remove ${n}`}
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              {editing && (
+                <div className="my-2 text-sm text-muted-foreground">
+                  Current: <span className="font-medium text-foreground">{form.name_pattern || "—"}</span>
+                </div>
+              )}
+              <div className="rounded-lg border bg-background overflow-hidden">
+                <div className="relative border-b">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search foods…"
+                    value={foodSearch}
+                    onChange={(e) => setFoodSearch(e.target.value)}
+                    className="pl-9 border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </div>
+                <div className="max-h-[420px] overflow-y-auto overscroll-contain">
+                  {(() => {
+                    const q = foodSearch.trim().toLowerCase();
+                    const groups = foodsGrouped
+                      .map((g) => ({
+                        ...g,
+                        items: q ? g.items.filter((fd) => fd.name.toLowerCase().includes(q)) : g.items,
+                      }))
+                      .filter((g) => g.items.length > 0);
+                    if (groups.length === 0) {
+                      return <p className="text-sm text-muted-foreground text-center py-8">No foods match.</p>;
+                    }
+                    return groups.map((group) => (
+                      <div key={group.key}>
+                        <div className="sticky top-0 z-10 flex items-center gap-2 px-3 py-1.5 bg-primary/10 border-b border-primary/20 backdrop-blur">
+                          {group.label && (
+                            <span className="inline-flex items-center justify-center min-w-[28px] h-5 px-1.5 rounded-md bg-primary text-primary-foreground text-[10px] font-bold">
+                              {group.label}
+                            </span>
+                          )}
+                          <span className="text-xs font-semibold uppercase tracking-wide text-primary">
+                            {group.name}
+                          </span>
+                          <span className="ml-auto text-[10px] text-muted-foreground">{group.items.length}</span>
+                        </div>
+                        <ul className="py-1">
                           {group.items.map((fd) => {
                             const selected = editing
                               ? form.name_pattern.toLowerCase() === fd.name.toLowerCase()
                               : selectedFoods.includes(fd.name);
                             return (
-                              <CommandItem
-                                key={fd.id}
-                                value={`${group.name} ${fd.name}`}
-                                onSelect={() => {
-                                  if (editing) {
-                                    setForm((f) => ({ ...f, name_pattern: fd.name }));
-                                    setFoodPickerOpen(false);
-                                  } else {
-                                    setSelectedFoods((prev) =>
-                                      prev.includes(fd.name) ? prev.filter((n) => n !== fd.name) : [...prev, fd.name],
-                                    );
-                                  }
-                                }}
-                              >
-                                <Check className={cn("mr-2 h-4 w-4", selected ? "opacity-100" : "opacity-0")} />
-                                {fd.name}
-                              </CommandItem>
+                              <li key={fd.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (editing) {
+                                      setForm((f) => ({ ...f, name_pattern: fd.name }));
+                                    } else {
+                                      setSelectedFoods((prev) =>
+                                        prev.includes(fd.name) ? prev.filter((n) => n !== fd.name) : [...prev, fd.name],
+                                      );
+                                    }
+                                  }}
+                                  className={cn(
+                                    "w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-muted/60 transition",
+                                    selected && "bg-primary/5",
+                                  )}
+                                >
+                                  <span
+                                    className={cn(
+                                      "w-4 h-4 rounded border flex items-center justify-center shrink-0",
+                                      selected ? "bg-primary border-primary" : "border-muted-foreground/40",
+                                    )}
+                                  >
+                                    {selected && <Check className="w-3 h-3 text-primary-foreground" strokeWidth={3} />}
+                                  </span>
+                                  <span className="flex-1">{fd.name}</span>
+                                </button>
+                              </li>
                             );
                           })}
-                        </CommandGroup>
-                      ))}
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              <p className="text-xs text-muted-foreground mt-1">
-                {editing
+                        </ul>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+
                   ? `Only foods from the master Foods list can be mapped. ${foods.length} available.`
                   : `Select multiple foods to create one rule per food with the same action & reason. ${selectedFoods.length} selected of ${foods.length}.`}
               </p>
