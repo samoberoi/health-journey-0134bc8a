@@ -397,7 +397,7 @@ export default function AdminFoodConditionRules() {
 
       {/* Edit rule dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Rule" : "Add Food ↔ Condition Rule"}</DialogTitle>
           </DialogHeader>
