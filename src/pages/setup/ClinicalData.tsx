@@ -98,7 +98,7 @@ export default function ClinicalData() {
     });
 
   return (
-    <div className="phone-container min-h-dvh flex flex-col px-5 pt-14 pb-8 bg-background">
+    <div className="phone-container min-h-dvh flex flex-col px-5 pt-14 mobile-bottom-safe bg-background">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <span className="text-muted-foreground text-xs font-medium">Step 4 of 5</span>
@@ -125,7 +125,7 @@ export default function ClinicalData() {
       </div>
 
 
-      <div className="flex gap-3 mt-8">
+      <div className="flex gap-3 mt-8 shrink-0">
         <button onClick={prev} className="w-14 h-14 rounded-xl flex items-center justify-center text-muted-foreground bg-card">
           <ArrowLeft className="w-5 h-5" />
         </button>

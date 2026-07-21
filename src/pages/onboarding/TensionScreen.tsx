@@ -19,7 +19,7 @@ export default function TensionScreen() {
   return (
     <div className="phone-container ob-lock min-h-dvh flex flex-col bg-background overflow-x-hidden">
       <SoundToggle />
-      <div className="flex-1 flex flex-col px-5 pt-[calc(env(safe-area-inset-top)+2rem)] pb-[env(safe-area-inset-bottom)]">
+      <div className="flex-1 flex flex-col px-5 pt-[calc(env(safe-area-inset-top)+2rem)] mobile-bottom-safe">
 
 
         <motion.p
@@ -73,7 +73,7 @@ export default function TensionScreen() {
         </div>
 
         <motion.div
-          className="mt-auto pt-6 pb-6 flex flex-col items-center"
+          className="mt-auto pt-6 flex flex-col items-center shrink-0"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.22, ease: [0.22, 1, 0.36, 1] }}

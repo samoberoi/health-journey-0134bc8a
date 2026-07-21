@@ -177,8 +177,9 @@ export default function BottomNav({
       {/* Flat full-width dock — slim height, icons use all phone width */}
       <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
         <div
-          className="flex items-center gap-0.5 px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
+          className="flex items-center gap-0.5 px-2 pt-1.5"
           style={{
+            paddingBottom: "calc(max(0.375rem, env(safe-area-inset-bottom)) + var(--bbdo-native-bottom-guard, 0px))",
             background: "#ffffff",
             borderTop: "1px solid var(--bbdo-line)",
             boxShadow: "0 -6px 20px -12px rgba(15,26,61,0.18)",

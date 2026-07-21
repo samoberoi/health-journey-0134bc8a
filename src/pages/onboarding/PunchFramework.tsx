@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Utensils, Timer, Footprints, Pill, Brain, ArrowRight } from "lucide-react";
+import { Timer, Footprints, Pill, Brain, ArrowRight } from "lucide-react";
+import Avocado from "@/components/icons/Avocado";
 import SoundToggle from "@/components/SoundToggle";
 import { setPhase } from "@/lib/musicEngine";
 
 const pillars = [
-  { icon: Utensils, label: "Food", desc: "Metabolic nutrition tailored to your body" },
+  { icon: Avocado, label: "Food", desc: "Metabolic nutrition tailored to your body" },
   { icon: Timer, label: "Fasting", desc: "Strategic windows for your body to rest and reset" },
   { icon: Footprints, label: "Movement", desc: "Daily activity calibrated to your level" },
   { icon: Pill, label: "Supplements", desc: "Evidence-based micronutrient support" },

@@ -335,7 +335,7 @@ export default function Auth() {
       <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-16 w-72 h-72 rounded-full opacity-25 blur-3xl hidden md:block"
         style={{ background: "radial-gradient(circle, hsl(var(--destructive)/0.30), transparent 70%)" }} />
 
-      <div className={`relative z-10 flex flex-col flex-1 ${step === "name" ? "px-6 pb-8 pt-[calc(env(safe-area-inset-top)+1rem)]" : ""}`}>
+      <div className={`relative z-10 flex flex-col flex-1 ${step === "name" ? "px-6 mobile-bottom-safe pt-[calc(env(safe-area-inset-top)+1rem)]" : ""}`}>
         {/* Top bar only on name step */}
         {step === "name" && (
           <div className="flex items-center justify-between mt-4 mb-8">
@@ -372,7 +372,7 @@ export default function Auth() {
               </div>
 
               {/* Bottom half content */}
-              <div className="flex flex-col flex-1 px-6 pb-8 pt-8">
+              <div className="flex flex-col flex-1 px-6 mobile-bottom-safe pt-8">
                 <h1 className="text-foreground text-[32px] leading-[1.05] font-black tracking-[-0.03em]">
                   What's your <br /> phone number?
                 </h1>
@@ -496,7 +496,7 @@ export default function Auth() {
               </div>
 
               {/* Bottom half content */}
-              <div className="flex flex-col flex-1 px-6 pb-8 pt-8">
+              <div className="flex flex-col flex-1 px-6 mobile-bottom-safe pt-8">
                 <h1 className="text-foreground text-[26px] leading-[1.1] font-black tracking-[-0.03em]">
                   Enter the 6-digit code
                 </h1>

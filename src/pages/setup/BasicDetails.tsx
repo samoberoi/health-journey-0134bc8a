@@ -26,7 +26,7 @@ export default function BasicDetails() {
   const sliderBg = `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${((age - 18) / 82) * 100}%, hsl(var(--border)) ${((age - 18) / 82) * 100}%, hsl(var(--border)) 100%)`;
 
   return (
-    <div className="phone-container min-h-dvh flex flex-col px-5 pt-14 pb-8 bg-background">
+    <div className="phone-container min-h-dvh flex flex-col px-5 pt-14 mobile-bottom-safe bg-background">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <span className="text-muted-foreground text-xs font-medium">Step 2 of 5</span>
@@ -81,7 +81,7 @@ export default function BasicDetails() {
           </div>
         </div>
 
-        <div className="flex gap-3 mt-8">
+        <div className="flex gap-3 mt-8 shrink-0">
           <button onClick={() => navigate("/setup/purpose")} className="w-14 h-14 rounded-xl flex items-center justify-center text-muted-foreground bg-card">
             <ArrowLeft className="w-5 h-5" />
           </button>

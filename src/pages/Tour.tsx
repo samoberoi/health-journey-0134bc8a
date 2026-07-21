@@ -246,7 +246,7 @@ export default function Tour() {
                       {p.tagline}
                     </p>
                   </div>
-                  <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center shrink-0">
+                  <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center shrink-0 overflow-hidden">
                     <p.Icon className="w-7 h-7 md:w-8 md:h-8" strokeWidth={1.75} />
                   </div>
                 </div>
@@ -328,7 +328,7 @@ export default function Tour() {
               <div className="mt-8 grid grid-cols-5 gap-2 max-w-md mx-auto">
                 {PILLARS.map((pl) => (
                   <div key={pl.key} className="flex flex-col items-center gap-1.5">
-                    <div className="w-10 h-10 rounded-xl text-white flex items-center justify-center" style={{ backgroundImage: pl.gradient }}>
+                    <div className="w-10 h-10 rounded-xl text-white flex items-center justify-center overflow-hidden" style={{ backgroundImage: pl.gradient }}>
                       <pl.Icon className="w-5 h-5" strokeWidth={1.75} />
                     </div>
                     <span className="text-[10px] font-semibold tracking-tight text-foreground/80">{pl.name.split(" ")[0]}</span>
@@ -346,7 +346,7 @@ export default function Tour() {
         className="relative z-30 shrink-0 bg-background/98 backdrop-blur-xl shadow-[0_-10px_30px_rgba(15,26,61,0.08)]"
         style={{
           borderTop: "1px solid hsl(var(--border))",
-          paddingBottom: "max(env(safe-area-inset-bottom), 56px)",
+          paddingBottom: "calc(max(env(safe-area-inset-bottom), 12px) + var(--bbdo-native-bottom-guard, 0px))",
         }}
       >
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-3 px-5 pt-3">

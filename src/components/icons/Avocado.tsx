@@ -1,5 +1,5 @@
 import { forwardRef, HTMLAttributes } from "react";
-import avocadoAsset from "@/assets/avocado.png.asset.json";
+import avocadoAsset from "@/assets/avocado-bbdo.png";
 
 interface AvocadoProps extends Omit<HTMLAttributes<HTMLSpanElement>, "children"> {
   size?: number | string;
@@ -34,7 +34,7 @@ const Avocado = forwardRef<HTMLSpanElement, AvocadoProps>(
         {...props}
       >
         <img
-          src={avocadoAsset.url}
+          src={avocadoAsset}
           alt=""
           draggable={false}
           className="w-full h-full object-contain select-none pointer-events-none"

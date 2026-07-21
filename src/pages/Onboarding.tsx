@@ -83,7 +83,7 @@ export default function Onboarding() {
       </div>
 
       {/* Bottom content */}
-      <div className="relative z-10 flex-1 flex flex-col justify-end px-6 pb-12">
+      <div className="relative z-10 flex-1 flex flex-col justify-end px-6 mobile-bottom-safe">
         <AnimatePresence initial={false}>
           <motion.div
             key={current}

@@ -27,7 +27,7 @@ export default function Purpose() {
   };
 
   return (
-    <div className="phone-container min-h-dvh flex flex-col px-5 pt-14 pb-8 bg-background">
+    <div className="phone-container min-h-dvh flex flex-col px-5 pt-14 mobile-bottom-safe bg-background">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <span className="text-muted-foreground text-xs font-medium">Step 1 of 5</span>

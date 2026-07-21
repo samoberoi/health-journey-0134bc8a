@@ -86,7 +86,7 @@ export default function HealthScore() {
     : "bg-background";
 
   return (
-    <div className={`phone-container min-h-dvh flex flex-col px-5 pt-14 pb-8 overflow-y-auto ${emotionalBg}`}>
+    <div className={`phone-container min-h-dvh flex flex-col px-5 pt-14 mobile-bottom-safe overflow-y-auto ${emotionalBg}`}>
       <SoundToggle />
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col flex-1">

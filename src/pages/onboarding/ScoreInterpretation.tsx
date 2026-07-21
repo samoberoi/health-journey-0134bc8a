@@ -24,7 +24,7 @@ export default function ScoreInterpretation() {
   const ambientGlow = score < 50 ? "rgba(239,68,68,0.06)" : score < 70 ? "rgba(245,158,11,0.06)" : "rgba(59,130,246,0.06)";
 
   return (
-    <div className="phone-container ob-lock min-h-dvh flex flex-col px-6 pt-14 pb-12 bg-background relative">
+    <div className="phone-container ob-lock min-h-dvh flex flex-col px-6 pt-14 mobile-bottom-safe bg-background relative">
       <SoundToggle />
       <div className="absolute inset-0 z-0" style={{ background: `radial-gradient(ellipse at top, ${ambientGlow}, transparent 60%)` }} />
       <div className="relative z-10 flex flex-col flex-1">
