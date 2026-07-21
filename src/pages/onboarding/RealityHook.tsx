@@ -3,11 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { AppIcon, AppIconName } from "@/components/ui/AppIcon";
 import { HeroCard } from "@/components/ui/HeroCard";
-import { Fab } from "@/components/ui/Fab";
 import SoundToggle from "@/components/SoundToggle";
 import { setPhase } from "@/lib/musicEngine";
-import { getExistingSessionUnlessLoggedOut } from "@/contexts/AuthContext";
-import { resolvePostAuthRoute } from "@/lib/accessControl";
 
 type SymptomItem = { text: string; icon: AppIconName };
 
@@ -26,12 +23,11 @@ export default function RealityHook() {
   const navigate = useNavigate();
   useEffect(() => { setPhase("reality"); }, []);
 
-  const goToLogin = async () => {
-    const existingSession = await getExistingSessionUnlessLoggedOut();
-    if (existingSession) {
-      const route = await resolvePostAuthRoute(existingSession.user.id, { missingProfileRoute: null });
-      navigate(route ?? "/auth", { replace: true });
-      return;
+  const goToLogin = () => {
+    try {
+      sessionStorage.setItem("bb_skip_auth_prepare_once", "1");
+    } catch {
+      /* sessionStorage may be unavailable in rare WebView states */
     }
     navigate("/auth", { replace: true });
   };
@@ -75,7 +71,7 @@ export default function RealityHook() {
           transition={{ delay: 0.7 }}
         >
           <button
-            onClick={() => void goToLogin()}
+            onClick={goToLogin}
             className="text-bbdo-inksoft text-[13px] font-medium min-h-11 px-2 hover:text-bbdo-ink transition-colors"
           >
             Skip to Login
