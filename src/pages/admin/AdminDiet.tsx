@@ -316,7 +316,7 @@ export default function AdminDiet() {
           <span className="text-[10px] text-muted-foreground font-mono">{catFilters.length} filters</span>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
-          {catFilters.map((f, idx) => {
+          {catFilters.map((f) => {
             const active = f.id === activeFilter;
             const Icon = FILTER_ICONS[f.slug] || Leaf;
             const num = filterLabel(f);
