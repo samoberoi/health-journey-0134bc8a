@@ -146,6 +146,19 @@ const CAT_THEME: Record<string, {
 };
 const themeFor = (slug?: string) => CAT_THEME[slug || ""] || CAT_THEME.metabolic_essential;
 
+const filterNumberFromLabel = (label: string | null | undefined) => {
+  const match = label?.match(/\d+/);
+  return match ? Number(match[0]) : null;
+};
+const filterAlphaFromLabel = (label: string | null | undefined) => label?.match(/[a-z]+$/i)?.[0].toLowerCase() || "";
+const filterOrder = (filter: Filter) => filter.order_number ?? filterNumberFromLabel(filter.number_label) ?? filter.display_order ?? 9999;
+const filterLabel = (filter: Filter) => filter.number_label || `F${filterOrder(filter)}`;
+const sortFilters = (a: Filter, b: Filter) =>
+  filterOrder(a) - filterOrder(b) ||
+  filterAlphaFromLabel(filterLabel(a)).localeCompare(filterAlphaFromLabel(filterLabel(b))) ||
+  (a.display_order ?? 9999) - (b.display_order ?? 9999) ||
+  a.name.localeCompare(b.name);
+
 export default function AdminDiet() {
   const { types: dietTypes } = useDietTypes(true);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -168,16 +181,16 @@ export default function AdminDiet() {
     setLoading(true);
     const [c, f, i] = await Promise.all([
       supabase.from("food_categories").select("*").order("display_order"),
-      supabase.from("food_filters").select("*").order("display_order"),
+      supabase.from("food_filters").select("*").order("order_number", { ascending: true, nullsFirst: false }).order("display_order"),
       supabase.from("food_items").select("*").order("display_order"),
     ]);
     if (c.data) { setCategories(c.data as any); if (!activeCat && c.data[0]) setActiveCat(c.data[0].id); }
-    if (f.data) setFilters(f.data as any);
+    if (f.data) setFilters(((f.data as any) || []).slice().sort(sortFilters));
     if (i.data) setItems(i.data as any);
     setLoading(false);
   }
 
-  const catFilters = useMemo(() => filters.filter(f => f.category_id === activeCat), [filters, activeCat]);
+  const catFilters = useMemo(() => filters.filter(f => f.category_id === activeCat).slice().sort(sortFilters), [filters, activeCat]);
   useEffect(() => {
     if (catFilters.length && !catFilters.some(f => f.id === activeFilter)) setActiveFilter(catFilters[0].id);
   }, [catFilters, activeFilter]);
@@ -306,7 +319,7 @@ export default function AdminDiet() {
           {catFilters.map((f, idx) => {
             const active = f.id === activeFilter;
             const Icon = FILTER_ICONS[f.slug] || Leaf;
-            const num = f.number_label ?? `F${String(f.order_number ?? idx + 1).padStart(2, "0")}`;
+            const num = filterLabel(f);
             const count = items.filter(i => i.filter_id === f.id).length;
             const th = themeFor(activeCatObj?.slug);
             return (
@@ -356,7 +369,7 @@ export default function AdminDiet() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-mono font-bold text-primary tracking-wider mb-0.5">{activeFilterObj.number_label ?? `F${String(activeFilterObj.order_number ?? 0).padStart(2, "0")}`}</p>
+                    <p className="text-[11px] font-mono font-bold text-primary tracking-wider mb-0.5">{filterLabel(activeFilterObj)}</p>
                     <h2 className="text-2xl font-black text-foreground leading-tight">{activeFilterObj.name}</h2>
                     {activeFilterObj.description && <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl">{activeFilterObj.description}</p>}
                   </div>
@@ -445,12 +458,12 @@ export default function AdminDiet() {
                   </thead>
                   <tbody>
                     {filterItems.map((it, idx) => {
-                      const filterLabel = activeFilterObj.number_label ?? `F${String(activeFilterObj.order_number ?? 0).padStart(2, "0")}`;
+                      const currentFilterLabel = filterLabel(activeFilterObj);
                       const dt = getAdminDietBadge(it.diet_type);
                       return (
                         <tr key={it.id} className="border-t border-border hover:bg-muted/30 transition-colors">
                           <td className="px-3 py-3 font-mono text-[11px] text-muted-foreground whitespace-nowrap">
-                            {filterLabel}.{String(idx + 1).padStart(2, "0")}
+                            {currentFilterLabel}.{String(idx + 1).padStart(2, "0")}
                           </td>
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-2">
