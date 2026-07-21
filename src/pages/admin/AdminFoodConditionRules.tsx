@@ -100,7 +100,7 @@ export default function AdminFoodConditionRules() {
     const [cRes, rRes, fRes, foodRes] = await Promise.all([
       (supabase as any).from("food_conditions").select("*").order("sort_order").order("label"),
       supabase.from("food_condition_rules").select("*").order("condition_key").order("priority", { ascending: false }),
-      supabase.from("food_filters").select("id,name,slug").order("name"),
+      supabase.from("food_filters").select("id,name,slug,number_label,order_number").order("order_number", { ascending: true, nullsFirst: false }).order("name"),
       supabase.from("food_items").select("id,name,filter_id").order("name"),
     ]);
     const conds = ((cRes.data as any[]) || []) as Condition[];
